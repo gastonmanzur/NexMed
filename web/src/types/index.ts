@@ -24,8 +24,8 @@ export type Patient = {
   email: string;
   firstName: string;
   lastName: string;
-  age: number;
-  phone: string;
+  age?: number;
+  phone?: string;
 };
 
 export type AuthUser = {

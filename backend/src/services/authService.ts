@@ -7,7 +7,7 @@ export type AuthUserRecord = {
   id: string;
   type: AuthUserType;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   displayName: string;
 };
 
@@ -30,7 +30,7 @@ export async function findUserByEmail(email: string): Promise<AuthUserRecord | n
     id: patient._id.toString(),
     type: "patient",
     email: patient.email,
-    passwordHash: patient.passwordHash,
+    ...(patient.passwordHash ? { passwordHash: patient.passwordHash } : {}),
     displayName: `${patient.firstName} ${patient.lastName}`.trim(),
   };
 }

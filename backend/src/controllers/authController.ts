@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
 import { Clinic } from "../models/Clinic";
 import { Patient } from "../models/Patient";
 import { fail, ok } from "../utils/http";
 import { signJwt } from "../utils/jwt";
 import { slugify } from "../utils/slug";
 import { emailExists, findUserByEmail } from "../services/authService";
+import { env } from "../config/env";
+
+const googleClient = new OAuth2Client();
 
 async function makeUniqueSlug(base: string) {
   const safeBase = slugify(base) || "clinica";
@@ -24,6 +28,16 @@ function authPayload(user: { id: string; type: "clinic" | "patient"; email: stri
   return {
     token,
     user,
+  };
+}
+
+function parseNames(fullName: string) {
+  const chunks = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!chunks.length) return { firstName: "Paciente", lastName: "" };
+  if (chunks.length === 1) return { firstName: chunks[0], lastName: "" };
+  return {
+    firstName: chunks.slice(0, -1).join(" "),
+    lastName: chunks[chunks.length - 1] ?? "",
   };
 }
 
@@ -83,7 +97,7 @@ export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
 
   const userRecord = await findUserByEmail(email);
-  if (!userRecord) return fail(res, "Credenciales inválidas", 401);
+  if (!userRecord?.passwordHash) return fail(res, "Credenciales inválidas", 401);
 
   const isValid = await bcrypt.compare(password, userRecord.passwordHash);
   if (!isValid) return fail(res, "Credenciales inválidas", 401);
@@ -93,6 +107,57 @@ export async function login(req: Request, res: Response) {
     type: userRecord.type,
     email: userRecord.email,
     displayName: userRecord.displayName,
+  };
+
+  const token = signJwt({ sub: user.id, type: user.type });
+  return ok(res, authPayload(user, token));
+}
+
+export async function googleLogin(req: Request, res: Response) {
+  if (!env.googleClientId) {
+    return fail(res, "Google auth no está configurado", 500);
+  }
+
+  const { credential } = req.body as { credential: string };
+
+  let payload: any;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: env.googleClientId,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    return fail(res, "Credential de Google inválida", 401);
+  }
+  const email = payload?.email?.toLowerCase().trim();
+  if (!email) return fail(res, "No se pudo obtener el email de Google", 400);
+
+  const clinic = await Clinic.findOne({ email }).lean();
+  if (clinic) {
+    return fail(res, "Ese email ya está registrado como consultorio. Iniciá sesión con email y contraseña.", 409);
+  }
+
+  let patient = await Patient.findOne({ email });
+  if (!patient) {
+    const fallbackNames = parseNames(payload?.name ?? "");
+    patient = await Patient.create({
+      email,
+      firstName: payload?.given_name || fallbackNames.firstName,
+      lastName: payload?.family_name || fallbackNames.lastName,
+      phone: "",
+      googleSub: payload?.sub,
+    });
+  } else if (payload?.sub && patient.googleSub !== payload.sub) {
+    patient.googleSub = payload.sub;
+    await patient.save();
+  }
+
+  const user = {
+    id: patient._id.toString(),
+    type: "patient" as const,
+    email: patient.email,
+    displayName: `${patient.firstName} ${patient.lastName}`.trim(),
   };
 
   const token = signJwt({ sub: user.id, type: user.type });

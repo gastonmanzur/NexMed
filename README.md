@@ -6,7 +6,7 @@
 
 ## Backend (`/backend`)
 1. Copiar variables: `cp .env.example .env`
-2. Completar `JWT_SECRET` y `MONGO_URI`
+2. Completar `JWT_SECRET`, `MONGO_URI` y `GOOGLE_CLIENT_ID`
 3. Ejecutar: `npm run dev`
 
 Opcional seed rápido:
@@ -14,7 +14,8 @@ Opcional seed rápido:
 
 ## Web (`/web`)
 1. Copiar variables: `cp .env.example .env`
-2. Ejecutar: `npm run dev`
+2. Completar `VITE_GOOGLE_CLIENT_ID`
+3. Ejecutar: `npm run dev`
 
 ## URLs
 - API: `http://localhost:5000`
@@ -22,6 +23,7 @@ Opcional seed rápido:
 
 ## Flujos MVP
 - Registro/login de clínica en `/register` y `/login`.
+- Portal paciente en `/patient`, incluyendo login con Google y cierre de sesión.
 - Panel admin en `/admin`, con agenda, métricas, búsqueda y cancelación.
 - Configuración de horarios en `/admin/settings`.
 - Reserva pública por slug en `/c/:slug`.
