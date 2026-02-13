@@ -5,7 +5,8 @@ import { fail } from "../utils/http";
 declare module "express-serve-static-core" {
   interface Request {
     auth?: {
-      clinicId: string;
+      id: string;
+      type: "clinic" | "patient";
     };
   }
 }
@@ -19,9 +20,17 @@ export function authRequired(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    req.auth = verifyJwt(token);
+    const payload = verifyJwt(token);
+    req.auth = { id: payload.sub, type: payload.type };
     next();
   } catch {
     return fail(res, "Token inválido", 401);
   }
+}
+
+export function clinicOnly(req: Request, res: Response, next: NextFunction) {
+  if (!req.auth || req.auth.type !== "clinic") {
+    return fail(res, "No autorizado", 403);
+  }
+  next();
 }

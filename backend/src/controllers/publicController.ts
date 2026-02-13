@@ -25,7 +25,7 @@ export async function getClinicAvailability(req: Request, res: Response) {
   });
 
   return ok(res, {
-    clinic: { name: clinic.name, slug: clinic.slug },
+    clinic: { name: clinic.name, slug: clinic.slug, phone: clinic.phone, address: clinic.address, city: clinic.city },
     slots: slots.map((s) => ({ startAt: s.startAt.toISOString(), endAt: s.endAt.toISOString() })),
   });
 }

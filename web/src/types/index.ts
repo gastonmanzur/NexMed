@@ -4,14 +4,38 @@ export type WeeklyDay = { dayOfWeek: number; enabled: boolean; intervals: Interv
 export type Clinic = {
   _id?: string;
   id?: string;
+  type?: "clinic";
   name: string;
   email: string;
   slug: string;
+  phone: string;
+  address: string;
+  city: string;
   settings: {
     slotDurationMinutes: number;
     weeklySchedule: WeeklyDay[];
   };
 };
+
+export type Patient = {
+  _id?: string;
+  id?: string;
+  type?: "patient";
+  email: string;
+  firstName: string;
+  lastName: string;
+  age: number;
+  phone: string;
+};
+
+export type AuthUser = {
+  id: string;
+  type: "clinic" | "patient";
+  email: string;
+  displayName: string;
+};
+
+export type AuthProfile = (Clinic & { type: "clinic" }) | (Patient & { type: "patient" });
 
 export type Appointment = {
   _id: string;

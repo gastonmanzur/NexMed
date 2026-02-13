@@ -9,7 +9,7 @@ import { WeeklyDay } from "../types";
 const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 export function AdminSettingsPage() {
-  const { clinic, token, refreshClinic } = useAuth();
+  const { clinic, token, refreshProfile } = useAuth();
   const [slotDurationMinutes, setSlotDurationMinutes] = useState(30);
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklyDay[]>([]);
   const [msg, setMsg] = useState("");
@@ -22,7 +22,7 @@ export function AdminSettingsPage() {
 
   const save = async () => {
     await updateSettings(token!, { slotDurationMinutes, weeklySchedule });
-    await refreshClinic();
+    await refreshProfile();
     setMsg("Configuración guardada");
   };
 

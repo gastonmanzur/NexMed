@@ -7,7 +7,7 @@ function dateOnlyToUtcStart(value: string) {
 }
 
 export async function listAppointments(req: Request, res: Response) {
-  const clinicId = req.auth?.clinicId;
+  const clinicId = req.auth?.id;
   const from = dateOnlyToUtcStart(String(req.query.from));
   const to = dateOnlyToUtcStart(String(req.query.to));
   const q = String(req.query.q ?? "").trim();
@@ -26,7 +26,7 @@ export async function listAppointments(req: Request, res: Response) {
 }
 
 export async function cancelAppointment(req: Request, res: Response) {
-  const clinicId = req.auth?.clinicId;
+  const clinicId = req.auth?.id;
 
   const appointment = await Appointment.findOneAndUpdate(
     { _id: req.params.id, clinicId } as any,

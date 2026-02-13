@@ -18,8 +18,8 @@ export function LoginPage() {
     setLoading(true);
     try {
       const data = await login({ email, password });
-      setSession(data.token, data.clinic);
-      window.location.href = "/admin";
+      setSession(data.token, data.user);
+      window.location.href = data.user.type === "clinic" ? "/admin" : "/patient";
     } catch (err: any) {
       setError(err.message);
     } finally {

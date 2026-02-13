@@ -17,6 +17,9 @@ export interface ClinicDocument {
   email: string;
   passwordHash: string;
   slug: string;
+  phone: string;
+  address: string;
+  city: string;
   settings: {
     slotDurationMinutes: number;
     weeklySchedule: WeeklyScheduleDay[];
@@ -54,6 +57,9 @@ const clinicSchema = new Schema<ClinicDocument>(
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     slug: { type: String, required: true, unique: true, index: true },
+    phone: { type: String, default: "" },
+    address: { type: String, default: "" },
+    city: { type: String, default: "" },
     settings: {
       slotDurationMinutes: { type: Number, default: 30, min: 5, max: 180 },
       weeklySchedule: {

@@ -4,11 +4,12 @@ import { AdminAppointmentsPage } from "./pages/AdminAppointmentsPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
 import { LoginPage } from "./pages/LoginPage";
+import { PatientPage } from "./pages/PatientPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { RegisterPage } from "./pages/RegisterPage";
 
 function App() {
-  const { token, loading } = useAuth();
+  const { token, loading, user } = useAuth();
   const path = window.location.pathname;
 
   if (loading) return <p className="page">Cargando...</p>;
@@ -20,9 +21,16 @@ function App() {
   if (path === "/register") return <RegisterPage />;
   if (path === "/login") return <LoginPage />;
 
-  if (!token) {
+  if (!token || !user) {
     if (path !== "/login") window.history.replaceState({}, "", "/login");
     return <LoginPage />;
+  }
+
+  if (user.type === "patient") {
+    if (path !== "/patient") {
+      window.history.replaceState({}, "", "/patient");
+    }
+    return <PatientPage />;
   }
 
   let content = <AdminDashboardPage />;
