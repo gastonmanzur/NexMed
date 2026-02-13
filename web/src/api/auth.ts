@@ -11,4 +11,7 @@ export const register = (body:
 export const login = (body: { email: string; password: string }) =>
   apiFetch<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(body) });
 
+export const loginWithGoogle = (body: { credential: string }) =>
+  apiFetch<AuthResponse>("/auth/google", { method: "POST", body: JSON.stringify(body) });
+
 export const getMe = (token: string) => apiFetch<AuthProfile>("/auth/me", {}, token);

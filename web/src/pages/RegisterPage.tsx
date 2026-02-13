@@ -1,7 +1,8 @@
 import { FormEvent, useMemo, useState } from "react";
-import { register } from "../api/auth";
+import { loginWithGoogle, register } from "../api/auth";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { GoogleSignInButton } from "../components/GoogleSignInButton";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
 
@@ -21,6 +22,7 @@ export function RegisterPage() {
   const [age, setAge] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const buttonText = useMemo(() => (type === "clinic" ? "Crear cuenta de consultorio" : "Crear cuenta de paciente"), [type]);
 
@@ -63,6 +65,20 @@ export function RegisterPage() {
     }
   };
 
+  const onGoogleCredential = async (credential: string) => {
+    setError("");
+    setGoogleLoading(true);
+    try {
+      const data = await loginWithGoogle({ credential });
+      setSession(data.token, data.user);
+      window.location.href = "/patient";
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="page">
       <Card>
@@ -72,6 +88,13 @@ export function RegisterPage() {
             <label><input type="radio" checked={type === "clinic"} onChange={() => setType("clinic")} /> Consultorio/Clínica</label>
             <label><input type="radio" checked={type === "patient"} onChange={() => setType("patient")} /> Paciente</label>
           </div>
+
+          {type === "patient" && (
+            <div className="form-row">
+              <GoogleSignInButton onCredential={onGoogleCredential} text="signup_with" />
+              {googleLoading && <p>Validando cuenta de Google...</p>}
+            </div>
+          )}
 
           {type === "clinic" && <div className="form-row"><Input placeholder="Nombre del consultorio" value={name} onChange={(e) => setName(e.target.value)} /></div>}
           {type === "patient" && (
@@ -94,7 +117,7 @@ export function RegisterPage() {
           )}
 
           {error && <p className="error">{error}</p>}
-          <Button disabled={loading}>{loading ? "Creando..." : buttonText}</Button>
+          <Button disabled={loading || googleLoading}>{loading ? "Creando..." : buttonText}</Button>
         </form>
         <p><a href="/login">Ya tengo cuenta</a></p>
       </Card>
