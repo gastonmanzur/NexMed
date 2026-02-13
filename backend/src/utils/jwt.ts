@@ -2,7 +2,8 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 
 export type JwtPayload = {
-  clinicId: string;
+  sub: string;
+  type: "clinic" | "patient";
 };
 
 export function signJwt(payload: JwtPayload) {
