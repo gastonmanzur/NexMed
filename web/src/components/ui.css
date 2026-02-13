@@ -1,0 +1,15 @@
+.page { max-width: 980px; margin: 0 auto; padding: 24px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-box { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.btn { background: #0d6efd; color: #fff; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.input { width: 100%; border: 1px solid #ccc; border-radius: 6px; padding: 10px; box-sizing: border-box; }
+.form-row { margin-bottom: 12px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.slot-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.slot { border: 1px solid #0d6efd; background: #eef5ff; border-radius: 6px; padding: 8px; cursor: pointer; }
+.slot.active { background: #0d6efd; color: #fff; }
+.error { color: #b00020; }
+.success { color: #0f7a2a; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }

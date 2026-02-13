@@ -1,35 +1,38 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { AdminLayout } from "./components/AdminLayout";
+import { useAuth } from "./hooks/useAuth";
+import { AdminAppointmentsPage } from "./pages/AdminAppointmentsPage";
+import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { AdminSettingsPage } from "./pages/AdminSettingsPage";
+import { LoginPage } from "./pages/LoginPage";
+import { PublicBookingPage } from "./pages/PublicBookingPage";
+import { RegisterPage } from "./pages/RegisterPage";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { token, loading } = useAuth();
+  const path = window.location.pathname;
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+  if (loading) return <p className="page">Cargando...</p>;
+
+  if (path.startsWith("/c/")) {
+    return <PublicBookingPage slug={path.split("/")[2] ?? ""} />;
+  }
+
+  if (path === "/register") return <RegisterPage />;
+  if (path === "/login") return <LoginPage />;
+
+  if (!token) {
+    if (path !== "/login") window.history.replaceState({}, "", "/login");
+    return <LoginPage />;
+  }
+
+  let content = <AdminDashboardPage />;
+  if (path === "/admin/settings") content = <AdminSettingsPage />;
+  if (path === "/admin/appointments") content = <AdminAppointmentsPage />;
+  if (!["/admin", "/admin/settings", "/admin/appointments"].includes(path)) {
+    window.history.replaceState({}, "", "/admin");
+  }
+
+  return <AdminLayout>{content}</AdminLayout>;
 }
 
-export default App
+export default App;
