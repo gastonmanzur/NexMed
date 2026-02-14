@@ -1,10 +1,12 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { login, loginWithGoogle } from "../api/auth";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { GoogleSignInButton } from "../components/GoogleSignInButton";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
+
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "Ocurrió un error inesperado";
 
 export function LoginPage() {
   const { setSession } = useAuth();
@@ -22,33 +24,38 @@ export function LoginPage() {
       const data = await login({ email, password });
       setSession(data.token, data.user);
       window.location.href = data.user.type === "clinic" ? "/admin" : "/patient";
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const onGoogleCredential = async (credential: string) => {
+  const onGoogleCredential = useCallback(async (credential: string) => {
     setError("");
     setGoogleLoading(true);
     try {
       const data = await loginWithGoogle({ credential });
       setSession(data.token, data.user);
-      window.location.href = "/patient";
-    } catch (err: any) {
-      setError(err.message);
+      window.location.href = data.user.type === "clinic" ? "/admin" : "/patient";
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setGoogleLoading(false);
     }
-  };
+  }, [setSession]);
+
+  const onGoogleError = useCallback((message: string) => {
+    setError(message);
+  }, []);
 
   return (
     <div className="page">
       <Card>
         <h1>Ingresar</h1>
         <div className="form-row">
-          <GoogleSignInButton onCredential={onGoogleCredential} text="signin_with" />
+          <p>Iniciar sesión con Google</p>
+          <GoogleSignInButton onCredential={onGoogleCredential} onError={onGoogleError} text="signin_with" />
           {googleLoading && <p>Validando cuenta de Google...</p>}
         </div>
         <p>o continuá con email y contraseña</p>
