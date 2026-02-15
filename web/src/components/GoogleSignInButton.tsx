@@ -38,7 +38,6 @@ export function GoogleSignInButton({ text = "signin_with", onCredential, onError
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
-codex/add-google-sign-in-button-to-login-page-2tyfua
       console.warn("VITE_GOOGLE_CLIENT_ID no está disponible; Google Sign-In no se inicializó.");
 
       onError?.("Falta configurar VITE_GOOGLE_CLIENT_ID para usar Google Sign-In.");
