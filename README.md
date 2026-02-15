@@ -13,9 +13,10 @@ Opcional seed rápido:
 - `npm run seed:clinic`
 
 ## Web (`/web`)
-1. Copiar variables: `cp .env.example .env`
-2. Completar `VITE_GOOGLE_CLIENT_ID`
-3. Ejecutar: `npm run dev`
+1. Copiar variables: `cp .env.example .env.local`
+2. Completar `VITE_GOOGLE_CLIENT_ID` en `web/.env.local`
+3. Reiniciar el servidor cada vez que cambies variables (`npm run dev`)
+4. Ejecutar: `npm run dev`
 
 ## URLs
 - API: `http://localhost:5000`
