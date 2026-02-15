@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type GoogleSignInButtonProps = {
   text?: "signin_with" | "signup_with";
@@ -34,11 +34,13 @@ declare global {
 
 export function GoogleSignInButton({ text = "signin_with", onCredential, onError }: GoogleSignInButtonProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [statusMessage, setStatusMessage] = useState("Inicializando Google Sign-In...");
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
       console.warn("VITE_GOOGLE_CLIENT_ID no está disponible; Google Sign-In no se inicializó.");
+      setStatusMessage("Falta configurar Google Sign-In (VITE_GOOGLE_CLIENT_ID).");
 
       onError?.("Falta configurar VITE_GOOGLE_CLIENT_ID para usar Google Sign-In.");
 
@@ -70,6 +72,7 @@ export function GoogleSignInButton({ text = "signin_with", onCredential, onError
       });
 
       googleId.prompt();
+      setStatusMessage("");
       return true;
     };
 
@@ -86,6 +89,7 @@ export function GoogleSignInButton({ text = "signin_with", onCredential, onError
     const timeoutId = window.setTimeout(() => {
       window.clearInterval(intervalId);
       if (!window.google?.accounts?.id) {
+        setStatusMessage("No pudimos cargar Google Sign-In. Revisá tu conexión e intentá nuevamente.");
         onError?.("No pudimos cargar Google Sign-In. Revisá tu conexión e intentá nuevamente.");
       }
     }, 5000);
@@ -96,5 +100,10 @@ export function GoogleSignInButton({ text = "signin_with", onCredential, onError
     };
   }, [text, onCredential, onError]);
 
-  return <div ref={containerRef} aria-label="Iniciar sesión con Google" />;
+  return (
+    <div>
+      {statusMessage && <p>{statusMessage}</p>}
+      <div ref={containerRef} aria-label="Iniciar sesión con Google" />
+    </div>
+  );
 }
