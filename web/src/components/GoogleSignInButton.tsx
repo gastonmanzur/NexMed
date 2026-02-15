@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getViteEnv, getViteEnvLength, logGoogleClientIdStatusOnce } from "../config/env";
 
 type GoogleSignInButtonProps = {
   text?: "signin_with" | "signup_with";
@@ -32,18 +33,33 @@ declare global {
   }
 }
 
+const GOOGLE_SCRIPT_WAIT_INTERVAL_MS = 200;
+const GOOGLE_SCRIPT_TIMEOUT_MS = 7000;
+
 export function GoogleSignInButton({ text = "signin_with", onCredential, onError }: GoogleSignInButtonProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [statusMessage, setStatusMessage] = useState("Inicializando Google Sign-In...");
+  const clientId = getViteEnv("VITE_GOOGLE_CLIENT_ID");
+
+  const missingEnvMessage = (() => {
+    if (clientId) {
+      return "";
+    }
+
+    const baseMessage = "Falta configurar Google Sign-In. Definí VITE_GOOGLE_CLIENT_ID en web/.env.local y reiniciá `npm run dev`.";
+    if (!import.meta.env.DEV) {
+      return baseMessage;
+    }
+
+    return `${baseMessage} (debug: largo detectado=${getViteEnvLength("VITE_GOOGLE_CLIENT_ID")})`;
+  })();
 
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    logGoogleClientIdStatusOnce();
+
     if (!clientId) {
       console.warn("VITE_GOOGLE_CLIENT_ID no está disponible; Google Sign-In no se inicializó.");
-      setStatusMessage("Falta configurar Google Sign-In (VITE_GOOGLE_CLIENT_ID).");
-
-      onError?.("Falta configurar VITE_GOOGLE_CLIENT_ID para usar Google Sign-In.");
-
+      onError?.(missingEnvMessage);
       return;
     }
 
@@ -84,25 +100,26 @@ export function GoogleSignInButton({ text = "signin_with", onCredential, onError
       if (initializeGoogleButton()) {
         window.clearInterval(intervalId);
       }
-    }, 200);
+    }, GOOGLE_SCRIPT_WAIT_INTERVAL_MS);
 
     const timeoutId = window.setTimeout(() => {
       window.clearInterval(intervalId);
       if (!window.google?.accounts?.id) {
-        setStatusMessage("No pudimos cargar Google Sign-In. Revisá tu conexión e intentá nuevamente.");
-        onError?.("No pudimos cargar Google Sign-In. Revisá tu conexión e intentá nuevamente.");
+        const message = "No se pudo cargar el script de Google Sign-In. Verificá tu conexión e intentá nuevamente.";
+        setStatusMessage(message);
+        onError?.(message);
       }
-    }, 5000);
+    }, GOOGLE_SCRIPT_TIMEOUT_MS);
 
     return () => {
       window.clearInterval(intervalId);
       window.clearTimeout(timeoutId);
     };
-  }, [text, onCredential, onError]);
+  }, [clientId, missingEnvMessage, onCredential, onError, text]);
 
   return (
     <div>
-      {statusMessage && <p>{statusMessage}</p>}
+      {(missingEnvMessage || statusMessage) && <p>{missingEnvMessage || statusMessage}</p>}
       <div ref={containerRef} aria-label="Iniciar sesión con Google" />
     </div>
   );
