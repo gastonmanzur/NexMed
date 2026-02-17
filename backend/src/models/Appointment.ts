@@ -5,6 +5,8 @@ export type AppointmentStatus = "confirmed" | "cancelled";
 export interface AppointmentDocument {
   _id: Types.ObjectId;
   clinicId: Types.ObjectId;
+  clinicSlug?: string;
+  patientId?: Types.ObjectId;
   startAt: Date;
   endAt: Date;
   patientFullName: string;
@@ -18,6 +20,8 @@ export interface AppointmentDocument {
 const appointmentSchema = new Schema<AppointmentDocument>(
   {
     clinicId: { type: Schema.Types.ObjectId, ref: "Clinic", required: true, index: true },
+    clinicSlug: { type: String, required: false, index: true },
+    patientId: { type: Schema.Types.ObjectId, ref: "Patient", required: false, index: true },
     startAt: { type: Date, required: true, index: true },
     endAt: { type: Date, required: true },
     patientFullName: { type: String, required: true },

@@ -17,3 +17,8 @@ export const listAppointmentsQuerySchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   q: z.string().optional(),
 });
+
+
+export const rescheduleMyAppointmentSchema = z.object({
+  startAt: z.iso.datetime(),
+});

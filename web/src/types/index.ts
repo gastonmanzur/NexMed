@@ -40,6 +40,7 @@ export type AuthProfile = (Clinic & { type: "clinic" }) | (Patient & { type: "pa
 export type Appointment = {
   _id: string;
   clinicId: string;
+  clinicSlug?: string;
   startAt: string;
   endAt: string;
   patientFullName: string;
