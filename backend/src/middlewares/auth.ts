@@ -34,3 +34,10 @@ export function clinicOnly(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+export function patientOnly(req: Request, res: Response, next: NextFunction) {
+  if (!req.auth || req.auth.type !== "patient") {
+    return fail(res, "No autorizado", 403);
+  }
+  next();
+}
