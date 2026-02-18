@@ -29,5 +29,9 @@
   },
   "overrides": {
     "vite": "^8.0.0-beta.13"
-  }
+  },
+  "description": "1. Crear `web/.env.local` (o `web/.env`) a partir de `web/.env.example`.\r 2. Configurar `VITE_GOOGLE_CLIENT_ID=...` (debe comenzar con `VITE_`).\r 3. Reiniciar `npm run dev` después de cambiar cualquier variable de entorno.",
+  "main": "eslint.config.js",
+  "author": "Gason Manzur",
+  "license": "ISC"
 }
