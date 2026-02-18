@@ -28,6 +28,23 @@ export function authRequired(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export function authOptional(req: Request, _res: Response, next: NextFunction) {
+  const header = req.header("authorization");
+  const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
+
+  if (!token) {
+    next();
+    return;
+  }
+
+  try {
+    const payload = verifyJwt(token);
+    req.auth = { id: payload.sub, type: payload.type };
+  } catch {}
+
+  next();
+}
+
 export function clinicOnly(req: Request, res: Response, next: NextFunction) {
   if (!req.auth || req.auth.type !== "clinic") {
     return fail(res, "No autorizado", 403);

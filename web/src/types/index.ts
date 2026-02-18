@@ -48,3 +48,23 @@ export type Appointment = {
   note?: string;
   status: "confirmed" | "cancelled";
 };
+
+export type ClinicInvite = {
+  _id: string;
+  token: string;
+  active: boolean;
+  label?: string;
+  createdAt: string;
+};
+
+export type PatientClinic = {
+  _id: string;
+  name: string;
+  slug: string;
+  phone: string;
+  address: string;
+  city: string;
+  source: "invite" | "appointment";
+  createdAt: string;
+  lastSeenAt: string;
+};

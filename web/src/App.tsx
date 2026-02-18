@@ -5,6 +5,7 @@ import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientPage } from "./pages/PatientPage";
+import { JoinClinicPage } from "./pages/JoinClinicPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { RegisterPage } from "./pages/RegisterPage";
 
@@ -16,6 +17,10 @@ function App() {
 
   if (path.startsWith("/c/")) {
     return <PublicBookingPage slug={path.split("/")[2] ?? ""} />;
+  }
+
+  if (path.startsWith("/join/")) {
+    return <JoinClinicPage token={path.split("/")[2] ?? ""} />;
   }
 
   if (path === "/register") return <RegisterPage />;

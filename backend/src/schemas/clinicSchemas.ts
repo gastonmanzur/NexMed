@@ -21,3 +21,7 @@ export const updateSettingsSchema = z.object({
     )
     .length(7),
 });
+
+export const createInviteSchema = z.object({
+  label: z.string().trim().min(1).max(120).optional(),
+});

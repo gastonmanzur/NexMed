@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { updateSettings } from "../api/clinic";
+import { createInvite, listInvites, updateSettings } from "../api/clinic";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
-import { WeeklyDay } from "../types";
+import { ClinicInvite, WeeklyDay } from "../types";
 
 const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -12,6 +12,9 @@ export function AdminSettingsPage() {
   const { clinic, token, refreshProfile } = useAuth();
   const [slotDurationMinutes, setSlotDurationMinutes] = useState(30);
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklyDay[]>([]);
+  const [inviteLabel, setInviteLabel] = useState("");
+  const [invites, setInvites] = useState<ClinicInvite[]>([]);
+  const [newInviteUrl, setNewInviteUrl] = useState("");
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -20,14 +23,29 @@ export function AdminSettingsPage() {
     setWeeklySchedule(clinic.settings.weeklySchedule);
   }, [clinic]);
 
+  useEffect(() => {
+    if (!token) return;
+    listInvites(token).then(setInvites).catch(() => setInvites([]));
+  }, [token]);
+
   const save = async () => {
     await updateSettings(token!, { slotDurationMinutes, weeklySchedule });
     await refreshProfile();
     setMsg("Configuración guardada");
   };
 
+  const onCreateInvite = async () => {
+    if (!token) return;
+    const created = await createInvite(token, inviteLabel.trim() ? { label: inviteLabel.trim() } : {});
+    setNewInviteUrl(created.url);
+    setInviteLabel("");
+    const rows = await listInvites(token);
+    setInvites(rows);
+  };
+
   return (
-    <Card>
+    <>
+      <Card>
       <h3>Configuración de agenda</h3>
       <div className="form-row">
         <label>Duración de turno (minutos)</label>
@@ -56,6 +74,28 @@ export function AdminSettingsPage() {
       ))}
       <Button onClick={save}>Guardar</Button>
       {msg && <p className="success">{msg}</p>}
-    </Card>
+      </Card>
+      <Card>
+      <h3>Invitaciones por QR / link</h3>
+      <div className="form-row">
+        <Input placeholder="Etiqueta opcional (ej: recepción)" value={inviteLabel} onChange={(e) => setInviteLabel(e.target.value)} />
+        <Button onClick={onCreateInvite}>Generar link</Button>
+      </div>
+      {newInviteUrl && (
+        <p className="success">
+          Link generado: <a href={newInviteUrl}>{newInviteUrl}</a>
+        </p>
+      )}
+      {invites.map((invite) => (
+        <div key={invite._id} className="form-row">
+          <div>
+            <b>{invite.label || "Sin etiqueta"}</b>
+            <div>{new Date(invite.createdAt).toLocaleString("es-AR")}</div>
+          </div>
+          <code>{invite.token}</code>
+        </div>
+      ))}
+      </Card>
+    </>
   );
 }
