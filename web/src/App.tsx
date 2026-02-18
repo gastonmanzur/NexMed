@@ -2,10 +2,13 @@ import { AdminLayout } from "./components/AdminLayout";
 import { useAuth } from "./hooks/useAuth";
 import { AdminAppointmentsPage } from "./pages/AdminAppointmentsPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { AdminProfessionalsPage } from "./pages/AdminProfessionalsPage";
+import { AdminSchedulesPage } from "./pages/AdminSchedulesPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
+import { AdminSpecialtiesPage } from "./pages/AdminSpecialtiesPage";
+import { JoinClinicPage } from "./pages/JoinClinicPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientPage } from "./pages/PatientPage";
-import { JoinClinicPage } from "./pages/JoinClinicPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { RegisterPage } from "./pages/RegisterPage";
 
@@ -41,7 +44,10 @@ function App() {
   let content = <AdminDashboardPage />;
   if (path === "/admin/settings") content = <AdminSettingsPage />;
   if (path === "/admin/appointments") content = <AdminAppointmentsPage />;
-  if (!["/admin", "/admin/settings", "/admin/appointments"].includes(path)) {
+  if (path === "/admin/specialties") content = <AdminSpecialtiesPage />;
+  if (path === "/admin/professionals") content = <AdminProfessionalsPage />;
+  if (path === "/admin/schedules") content = <AdminSchedulesPage />;
+  if (!["/admin", "/admin/settings", "/admin/appointments", "/admin/specialties", "/admin/professionals", "/admin/schedules"].includes(path)) {
     window.history.replaceState({}, "", "/admin");
   }
 

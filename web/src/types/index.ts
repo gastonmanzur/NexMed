@@ -41,12 +41,61 @@ export type Appointment = {
   _id: string;
   clinicId: string;
   clinicSlug?: string;
+  professionalId?: string;
+  specialtyId?: string;
   startAt: string;
   endAt: string;
   patientFullName: string;
   patientPhone: string;
   note?: string;
   status: "confirmed" | "cancelled";
+};
+
+export type Specialty = {
+  _id: string;
+  clinicId: string;
+  name: string;
+  normalizedName?: string;
+  description?: string;
+  isActive: boolean;
+};
+
+export type Professional = {
+  _id: string;
+  clinicId: string;
+  firstName: string;
+  lastName: string;
+  displayName?: string;
+  email?: string;
+  phone?: string;
+  specialtyIds: string[];
+  specialties?: { _id: string; name: string }[];
+  isActive: boolean;
+};
+
+export type ProfessionalAvailabilityBlock = {
+  _id: string;
+  professionalId: string;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  slotMinutes: number;
+  isActive: boolean;
+};
+
+export type ProfessionalTimeOff = {
+  _id: string;
+  professionalId: string;
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  reason?: string;
+};
+
+export type ProfessionalAvailabilityPayload = {
+  weeklyBlocks: ProfessionalAvailabilityBlock[];
+  slotMinutes?: number;
+  timeoff?: ProfessionalTimeOff[];
 };
 
 export type ClinicInvite = {
