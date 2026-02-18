@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { listMyAppointments, publicAvailabilityByClinicId, rescheduleMyAppointment } from "../api/appointments";
+import { listMyClinics } from "../api/patientClinics";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { useAuth } from "../hooks/useAuth";
-import { Appointment } from "../types";
+import { Appointment, PatientClinic } from "../types";
 import { fmtDate } from "./helpers";
 
 export function PatientPage() {
   const { logout, token } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [clinics, setClinics] = useState<PatientClinic[]>([]);
   const [slots, setSlots] = useState<{ startAt: string; endAt: string }[]>([]);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -29,6 +31,12 @@ export function PatientPage() {
     if (!selectedAppointmentId && data.length) setSelectedAppointmentId(data[0]._id);
   };
 
+  const loadClinics = async () => {
+    if (!token) return;
+    const data = await listMyClinics(token);
+    setClinics(data);
+  };
+
   const loadSlots = async (clinicId: string) => {
     const data = await publicAvailabilityByClinicId(clinicId, from, to);
     setSlots(data.slots);
@@ -36,6 +44,7 @@ export function PatientPage() {
 
   useEffect(() => {
     loadAppointments().catch((e) => setError(e.message));
+    loadClinics().catch((e) => setError(e.message));
   }, [token]);
 
   useEffect(() => {
@@ -69,6 +78,21 @@ export function PatientPage() {
         <h2>Área paciente</h2>
         <Button onClick={onLogout}>Cerrar sesión</Button>
       </div>
+      <Card>
+        <h3>Mis clínicas</h3>
+        {!clinics.length && <p>Todavía no te uniste a ninguna clínica.</p>}
+        {clinics.map((clinic) => (
+          <div key={clinic._id} className="form-row">
+            <div>
+              <b>{clinic.name}</b>
+              <div>{clinic.city}</div>
+              <div>{clinic.address}</div>
+              <div>{clinic.phone}</div>
+            </div>
+            <Button onClick={() => { window.location.href = `/c/${clinic.slug}`; }}>Reservar turno</Button>
+          </div>
+        ))}
+      </Card>
       <Card>
         <h3>Mis turnos</h3>
         {!appointments.length && <p>No tenés turnos confirmados.</p>}

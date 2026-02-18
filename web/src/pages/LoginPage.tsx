@@ -5,6 +5,7 @@ import { Card } from "../components/Card";
 import { GoogleSignInButton } from "../components/GoogleSignInButton";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
+import { RETURN_TO_KEY } from "./JoinClinicPage";
 
 const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "Ocurrió un error inesperado";
 
@@ -16,6 +17,17 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  const redirectAfterLogin = (userType: "clinic" | "patient") => {
+    const returnTo = localStorage.getItem(RETURN_TO_KEY);
+    if (returnTo) {
+      localStorage.removeItem(RETURN_TO_KEY);
+      window.location.href = returnTo;
+      return;
+    }
+
+    window.location.href = userType === "clinic" ? "/admin" : "/patient";
+  };
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -23,7 +35,7 @@ export function LoginPage() {
     try {
       const data = await login({ email, password });
       setSession(data.token, data.user);
-      window.location.href = data.user.type === "clinic" ? "/admin" : "/patient";
+      redirectAfterLogin(data.user.type);
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {
@@ -37,7 +49,7 @@ export function LoginPage() {
     try {
       const data = await loginWithGoogle({ credential });
       setSession(data.token, data.user);
-      window.location.href = data.user.type === "clinic" ? "/admin" : "/patient";
+      redirectAfterLogin(data.user.type);
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {

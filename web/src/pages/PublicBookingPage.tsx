@@ -3,9 +3,11 @@ import { publicAvailability, publicCreateAppointment } from "../api/appointments
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
+import { useAuth } from "../hooks/useAuth";
 import { fmtDate } from "./helpers";
 
 export function PublicBookingPage({ slug }: { slug: string }) {
+  const { token } = useAuth();
   const [slots, setSlots] = useState<{ startAt: string; endAt: string }[]>([]);
   const [clinicName, setClinicName] = useState("Clínica");
   const [selected, setSelected] = useState<string>("");
@@ -45,7 +47,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     setMsg("");
     setError("");
     try {
-      await publicCreateAppointment(slug, { startAt: selected, patientFullName: fullName, patientPhone: phone, note });
+      await publicCreateAppointment(slug, { startAt: selected, patientFullName: fullName, patientPhone: phone, note }, token ?? undefined);
       setMsg("Turno reservado con éxito");
       setSelected("");
       await load();

@@ -20,8 +20,9 @@ export const publicAvailabilityByClinicId = (clinicId: string, from: string, to:
 
 export const publicCreateAppointment = (
   slug: string,
-  body: { startAt: string; patientFullName: string; patientPhone: string; note?: string }
-) => apiFetch<Appointment>(`/public/clinics/${slug}/appointments`, { method: "POST", body: JSON.stringify(body) });
+  body: { startAt: string; patientFullName: string; patientPhone: string; note?: string },
+  token?: string
+) => apiFetch<Appointment>(`/public/clinics/${slug}/appointments`, { method: "POST", body: JSON.stringify(body) }, token);
 
 
 export const listMyAppointments = (token: string) => apiFetch<Appointment[]>(`/public/me/appointments`, {}, token);

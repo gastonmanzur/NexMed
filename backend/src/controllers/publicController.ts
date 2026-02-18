@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Appointment } from "../models/Appointment";
 import { Clinic } from "../models/Clinic";
 import { buildAvailableSlots } from "../services/availabilityService";
+import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { fail, ok } from "../utils/http";
 
 function dateOnlyToUtcStart(value: string) {
@@ -93,6 +94,14 @@ export async function createPublicAppointment(req: Request, res: Response) {
   }
 
   const appointment = await Appointment.create(appointmentPayload);
+
+  if (req.auth?.type === "patient") {
+    await upsertPatientClinicLink({
+      patientId: req.auth.id,
+      clinicId: clinic._id,
+      source: "appointment",
+    });
+  }
 
   return ok(res, appointment, 201);
 }
