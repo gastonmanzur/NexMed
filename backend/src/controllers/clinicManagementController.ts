@@ -22,15 +22,16 @@ export async function listSpecialties(req: Request, res: Response) {
 }
 
 export async function createSpecialty(req: Request, res: Response) {
+  const body = (res.locals.validated?.body ?? req.body) as { name: string; description?: string };
   const clinicId = req.auth!.id;
-  const name = req.body.name.trim();
+  const name = body.name.trim();
 
   try {
     const row = await Specialty.create({
       clinicId,
       name,
       normalizedName: normalizeName(name),
-      description: req.body.description?.trim() || "",
+      description: body.description?.trim() || "",
       isActive: true,
     });
     return ok(res, row, 201);
@@ -41,17 +42,19 @@ export async function createSpecialty(req: Request, res: Response) {
 }
 
 export async function updateSpecialty(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
+  const body = (res.locals.validated?.body ?? req.body) as { name?: string; description?: string; isActive?: boolean };
   const clinicId = req.auth!.id;
-  const id = String(req.params.id);
+  const id = String(params.id);
 
   const update: any = {};
-  if (typeof req.body.name === "string") {
-    const name = req.body.name.trim();
+  if (typeof body.name === "string") {
+    const name = body.name.trim();
     update.name = name;
     update.normalizedName = normalizeName(name);
   }
-  if (typeof req.body.description === "string") update.description = req.body.description.trim();
-  if (typeof req.body.isActive === "boolean") update.isActive = req.body.isActive;
+  if (typeof body.description === "string") update.description = body.description.trim();
+  if (typeof body.isActive === "boolean") update.isActive = body.isActive;
 
   try {
     const row = await Specialty.findOneAndUpdate({ _id: id, clinicId }, update, { new: true }).lean();
@@ -64,8 +67,9 @@ export async function updateSpecialty(req: Request, res: Response) {
 }
 
 export async function deleteSpecialty(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
   const clinicId = req.auth!.id;
-  const id = String(req.params.id);
+  const id = String(params.id);
 
   const row = await Specialty.findOneAndUpdate({ _id: id, clinicId }, { isActive: false }, { new: true }).lean();
   if (!row) return fail(res, "Especialidad no encontrada", 404);
@@ -89,45 +93,62 @@ async function validateSpecialties(clinicId: string, specialtyIds: string[]) {
 }
 
 export async function createProfessional(req: Request, res: Response) {
+  const body = (res.locals.validated?.body ?? req.body) as {
+    specialtyIds: string[];
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+    isActive?: boolean;
+  };
   const clinicId = req.auth!.id;
 
   let specialtyObjectIds: Types.ObjectId[] = [];
   try {
-    specialtyObjectIds = await validateSpecialties(clinicId, req.body.specialtyIds);
+    specialtyObjectIds = await validateSpecialties(clinicId, body.specialtyIds);
   } catch {
     return fail(res, "Especialidades inválidas", 400);
   }
 
-  const firstName = req.body.firstName.trim();
-  const lastName = req.body.lastName.trim();
+  const firstName = body.firstName.trim();
+  const lastName = body.lastName.trim();
   const row = await Professional.create({
     clinicId,
     firstName,
     lastName,
     displayName: `${firstName} ${lastName}`.trim(),
-    email: req.body.email?.trim() || "",
-    phone: req.body.phone?.trim() || "",
+    email: body.email?.trim() || "",
+    phone: body.phone?.trim() || "",
     specialtyIds: specialtyObjectIds,
-    isActive: req.body.isActive ?? true,
+    isActive: body.isActive ?? true,
   });
 
   return ok(res, row, 201);
 }
 
 export async function updateProfessional(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
+  const body = (res.locals.validated?.body ?? req.body) as {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    isActive?: boolean;
+    specialtyIds?: string[];
+  };
   const clinicId = req.auth!.id;
-  const id = String(req.params.id);
+  const id = String(params.id);
 
   const update: any = {};
-  if (typeof req.body.firstName === "string") update.firstName = req.body.firstName.trim();
-  if (typeof req.body.lastName === "string") update.lastName = req.body.lastName.trim();
-  if (typeof req.body.email === "string") update.email = req.body.email.trim();
-  if (typeof req.body.phone === "string") update.phone = req.body.phone.trim();
-  if (typeof req.body.isActive === "boolean") update.isActive = req.body.isActive;
+  if (typeof body.firstName === "string") update.firstName = body.firstName.trim();
+  if (typeof body.lastName === "string") update.lastName = body.lastName.trim();
+  if (typeof body.email === "string") update.email = body.email.trim();
+  if (typeof body.phone === "string") update.phone = body.phone.trim();
+  if (typeof body.isActive === "boolean") update.isActive = body.isActive;
 
-  if (Array.isArray(req.body.specialtyIds)) {
+  if (Array.isArray(body.specialtyIds)) {
     try {
-      update.specialtyIds = await validateSpecialties(clinicId, req.body.specialtyIds);
+      update.specialtyIds = await validateSpecialties(clinicId, body.specialtyIds);
     } catch {
       return fail(res, "Especialidades inválidas", 400);
     }
@@ -145,8 +166,9 @@ export async function updateProfessional(req: Request, res: Response) {
 }
 
 export async function deleteProfessional(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
   const clinicId = req.auth!.id;
-  const id = String(req.params.id);
+  const id = String(params.id);
 
   const row = await Professional.findOneAndUpdate({ _id: id, clinicId }, { isActive: false }, { new: true }).lean();
   if (!row) return fail(res, "Profesional no encontrado", 404);
@@ -154,8 +176,9 @@ export async function deleteProfessional(req: Request, res: Response) {
 }
 
 export async function getProfessionalAvailability(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
   const clinicId = req.auth!.id;
-  const professionalId = String(req.params.id);
+  const professionalId = String(params.id);
 
   const professional = await getProfessionalForClinic(clinicId, professionalId);
   if (!professional) return fail(res, "Profesional no encontrado", 404);
@@ -169,20 +192,25 @@ export async function getProfessionalAvailability(req: Request, res: Response) {
 }
 
 export async function putProfessionalAvailability(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
+  const body = (res.locals.validated?.body ?? req.body) as {
+    slotMinutes?: number;
+    weeklyBlocks: Array<{ weekday: number; startTime: string; endTime: string }>;
+  };
   const clinicId = req.auth!.id;
-  const professionalId = String(req.params.id);
+  const professionalId = String(params.id);
 
   const professional = await getProfessionalForClinic(clinicId, professionalId);
   if (!professional) return fail(res, "Profesional no encontrado", 404);
 
   const clinic = await Clinic.findById(clinicId).lean();
-  const slotMinutes = req.body.slotMinutes ?? clinic?.settings.slotDurationMinutes ?? 30;
+  const slotMinutes = body.slotMinutes ?? clinic?.settings.slotDurationMinutes ?? 30;
 
   await ProfessionalAvailability.deleteMany({ clinicId, professionalId });
 
-  if (req.body.weeklyBlocks.length > 0) {
+  if (body.weeklyBlocks.length > 0) {
     await ProfessionalAvailability.insertMany(
-      req.body.weeklyBlocks.map((b: any) => ({
+      body.weeklyBlocks.map((b) => ({
         clinicId,
         professionalId,
         weekday: b.weekday,
@@ -202,8 +230,9 @@ export async function putProfessionalAvailability(req: Request, res: Response) {
 }
 
 export async function listProfessionalTimeOff(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
   const clinicId = req.auth!.id;
-  const professionalId = String(req.params.id);
+  const professionalId = String(params.id);
 
   const professional = await getProfessionalForClinic(clinicId, professionalId);
   if (!professional) return fail(res, "Profesional no encontrado", 404);
@@ -213,8 +242,15 @@ export async function listProfessionalTimeOff(req: Request, res: Response) {
 }
 
 export async function createProfessionalTimeOff(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string };
+  const body = (res.locals.validated?.body ?? req.body) as {
+    date: string;
+    startTime: string;
+    endTime: string;
+    reason?: string;
+  };
   const clinicId = req.auth!.id;
-  const professionalId = String(req.params.id);
+  const professionalId = String(params.id);
 
   const professional = await getProfessionalForClinic(clinicId, professionalId);
   if (!professional) return fail(res, "Profesional no encontrado", 404);
@@ -222,19 +258,20 @@ export async function createProfessionalTimeOff(req: Request, res: Response) {
   const row = await ProfessionalTimeOff.create({
     clinicId,
     professionalId,
-    date: req.body.date,
-    startTime: req.body.startTime,
-    endTime: req.body.endTime,
-    reason: req.body.reason?.trim() || "",
+    date: body.date,
+    startTime: body.startTime,
+    endTime: body.endTime,
+    reason: body.reason?.trim() || "",
   });
 
   return ok(res, row, 201);
 }
 
 export async function deleteProfessionalTimeOff(req: Request, res: Response) {
+  const params = (res.locals.validated?.params ?? req.params) as { id: string; timeoffId: string };
   const clinicId = req.auth!.id;
-  const professionalId = String(req.params.id);
-  const timeoffId = String(req.params.timeoffId);
+  const professionalId = String(params.id);
+  const timeoffId = String(params.timeoffId);
 
   const professional = await getProfessionalForClinic(clinicId, professionalId);
   if (!professional) return fail(res, "Profesional no encontrado", 404);

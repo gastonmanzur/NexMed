@@ -42,7 +42,8 @@ function parseNames(fullName: string) {
 }
 
 export async function register(req: Request, res: Response) {
-  const { type, email, password } = req.body;
+  const body = (res.locals.validated?.body ?? req.body) as any;
+  const { type, email, password } = body;
 
   if (await emailExists(email)) {
     return fail(res, "El email ya está registrado", 409);
@@ -51,15 +52,15 @@ export async function register(req: Request, res: Response) {
   const passwordHash = await bcrypt.hash(password, 10);
 
   if (type === "clinic") {
-    const slug = await makeUniqueSlug(req.body.name);
+    const slug = await makeUniqueSlug(body.name ?? "");
     const clinic = await Clinic.create({
-      name: req.body.name,
+      name: body.name,
       email,
       passwordHash,
       slug,
-      phone: req.body.phone,
-      address: req.body.address,
-      city: req.body.city,
+      phone: body.phone,
+      address: body.address,
+      city: body.city,
     });
 
     const user = {
@@ -76,10 +77,10 @@ export async function register(req: Request, res: Response) {
   const patient = await Patient.create({
     email,
     passwordHash,
-    firstName: req.body.firstName,
-    lastName: req.body.lastName,
-    age: req.body.age,
-    phone: req.body.phone,
+    firstName: body.firstName,
+    lastName: body.lastName,
+    age: body.age,
+    phone: body.phone,
   });
 
   const user = {
@@ -94,7 +95,8 @@ export async function register(req: Request, res: Response) {
 }
 
 export async function login(req: Request, res: Response) {
-  const { email, password } = req.body;
+  const body = (res.locals.validated?.body ?? req.body) as any;
+  const { email, password } = body;
 
   const userRecord = await findUserByEmail(email);
   if (!userRecord?.passwordHash) return fail(res, "Credenciales inválidas", 401);
@@ -114,11 +116,11 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function googleLogin(req: Request, res: Response) {
+  const body = (res.locals.validated?.body ?? req.body) as { credential: string };
   if (!env.googleClientId) {
     return fail(res, "Google auth no está configurado", 500);
   }
-
-  const { credential } = req.body as { credential: string };
+  const { credential } = body;
 
   let payload: any;
   try {
