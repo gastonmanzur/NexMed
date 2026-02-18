@@ -12,14 +12,20 @@ function dateOnlyToUtcStart(value: string) {
 }
 
 export async function getClinicAvailability(req: Request, res: Response) {
+  const query = (res.locals.validated?.query ?? req.query) as {
+    from: string;
+    to: string;
+    professionalId?: string;
+    specialtyId?: string;
+  };
   const slug = String(req.params.slug);
   const clinic = await Clinic.findOne({ slug }).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
-  const from = dateOnlyToUtcStart(String(req.query.from));
-  const to = dateOnlyToUtcStart(String(req.query.to));
-  const professionalId = req.query.professionalId ? String(req.query.professionalId) : undefined;
-  const specialtyId = req.query.specialtyId ? String(req.query.specialtyId) : undefined;
+  const from = dateOnlyToUtcStart(String(query.from));
+  const to = dateOnlyToUtcStart(String(query.to));
+  const professionalId = query.professionalId ? String(query.professionalId) : undefined;
+  const specialtyId = query.specialtyId ? String(query.specialtyId) : undefined;
 
   const slots = await buildAvailableSlots({
     clinicId: clinic._id,
@@ -42,11 +48,12 @@ export async function getClinicAvailability(req: Request, res: Response) {
 }
 
 export async function getClinicAvailabilityById(req: Request, res: Response) {
+  const query = (res.locals.validated?.query ?? req.query) as { from: string; to: string };
   const clinic = await Clinic.findById(req.params.clinicId).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
-  const from = dateOnlyToUtcStart(String(req.query.from));
-  const to = dateOnlyToUtcStart(String(req.query.to));
+  const from = dateOnlyToUtcStart(String(query.from));
+  const to = dateOnlyToUtcStart(String(query.to));
 
   const slots = await buildAvailableSlots({
     clinicId: clinic._id,
@@ -72,11 +79,12 @@ export async function listPublicSpecialties(req: Request, res: Response) {
 }
 
 export async function listPublicProfessionals(req: Request, res: Response) {
+  const query = (res.locals.validated?.query ?? req.query) as { includeSpecialties?: string };
   const slug = String(req.params.slug);
   const clinic = await Clinic.findOne({ slug }).select({ _id: 1 }).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
-  const includeSpecialties = String(req.query.includeSpecialties ?? "false") === "true";
+  const includeSpecialties = String(query.includeSpecialties ?? "false") === "true";
   const professionals = await Professional.find({ clinicId: clinic._id, isActive: true })
     .sort({ firstName: 1, lastName: 1 })
     .lean();
@@ -99,12 +107,20 @@ export async function listPublicProfessionals(req: Request, res: Response) {
 }
 
 export async function createPublicAppointment(req: Request, res: Response) {
+  const body = (res.locals.validated?.body ?? req.body) as {
+    professionalId?: string;
+    specialtyId?: string;
+    startAt: string;
+    patientFullName: string;
+    patientPhone: string;
+    note?: string;
+  };
   const slug = String(req.params.slug);
   const clinic = await Clinic.findOne({ slug }).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
-  const professionalId = req.body.professionalId ? String(req.body.professionalId) : undefined;
-  const specialtyId = req.body.specialtyId ? String(req.body.specialtyId) : undefined;
+  const professionalId = body.professionalId ? String(body.professionalId) : undefined;
+  const specialtyId = body.specialtyId ? String(body.specialtyId) : undefined;
 
   if (professionalId) {
     const professional = await Professional.findOne({ _id: professionalId, clinicId: clinic._id, isActive: true }).lean();
@@ -119,7 +135,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
     if (!specialty) return fail(res, "Especialidad inválida", 400);
   }
 
-  const startAt = new Date(req.body.startAt);
+  const startAt = new Date(body.startAt);
   const endAt = new Date(startAt.getTime() + clinic.settings.slotDurationMinutes * 60_000);
 
   const from = new Date(Date.UTC(startAt.getUTCFullYear(), startAt.getUTCMonth(), startAt.getUTCDate()));
@@ -149,9 +165,9 @@ export async function createPublicAppointment(req: Request, res: Response) {
     clinicSlug: clinic.slug,
     startAt,
     endAt,
-    patientFullName: req.body.patientFullName,
-    patientPhone: req.body.patientPhone,
-    note: req.body.note,
+    patientFullName: body.patientFullName,
+    patientPhone: body.patientPhone,
+    note: body.note,
     status: "confirmed",
   };
 
@@ -182,6 +198,7 @@ export async function listMyAppointments(req: Request, res: Response) {
 }
 
 export async function rescheduleMyAppointment(req: Request, res: Response) {
+  const body = (res.locals.validated?.body ?? req.body) as { startAt: string };
   const patientId = req.auth!.id;
   const appointmentId = String(req.params.id);
 
@@ -191,7 +208,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   const clinic = await Clinic.findById(appointment.clinicId).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
-  const nextStartAt = new Date(req.body.startAt);
+  const nextStartAt = new Date(body.startAt);
   const nextEndAt = new Date(nextStartAt.getTime() + clinic.settings.slotDurationMinutes * 60_000);
 
   const from = new Date(Date.UTC(nextStartAt.getUTCFullYear(), nextStartAt.getUTCMonth(), nextStartAt.getUTCDate()));

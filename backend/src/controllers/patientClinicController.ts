@@ -5,10 +5,11 @@ import { fail, ok } from "../utils/http";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
 
 export async function joinClinic(req: Request, res: Response) {
+  const body = (res.locals.validated?.body ?? req.body) as { token: string };
   const patientId = req.auth?.id;
   if (!patientId) return fail(res, "No autorizado", 401);
 
-  const invite = await ClinicInvite.findOne({ token: req.body.token, active: true }).populate("clinicId").lean();
+  const invite = await ClinicInvite.findOne({ token: body.token, active: true }).populate("clinicId").lean();
   if (!invite) return fail(res, "Invitación inválida o inactiva", 404);
 
   const clinic = invite.clinicId as any;

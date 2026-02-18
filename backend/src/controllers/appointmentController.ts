@@ -8,9 +8,10 @@ function dateOnlyToUtcStart(value: string) {
 
 export async function listAppointments(req: Request, res: Response) {
   const clinicId = req.auth?.id;
-  const from = dateOnlyToUtcStart(String(req.query.from));
-  const to = dateOnlyToUtcStart(String(req.query.to));
-  const q = String(req.query.q ?? "").trim();
+  const query = (res.locals.validated?.query ?? req.query) as { from: string; to: string; q?: string };
+  const from = dateOnlyToUtcStart(String(query.from));
+  const to = dateOnlyToUtcStart(String(query.to));
+  const q = String(query.q ?? "").trim();
 
   const filter: any = {
     clinicId,

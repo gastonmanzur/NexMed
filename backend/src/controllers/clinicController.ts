@@ -12,9 +12,10 @@ export async function getMe(req: Request, res: Response) {
 }
 
 export async function updateSettings(req: Request, res: Response) {
+  const body = res.locals.validated?.body ?? req.body;
   const clinic = await Clinic.findByIdAndUpdate(
     req.auth?.id,
-    { settings: req.body },
+    { settings: body },
     { new: true }
   )
     .select({ passwordHash: 0 })
@@ -25,6 +26,7 @@ export async function updateSettings(req: Request, res: Response) {
 }
 
 export async function createInvite(req: Request, res: Response) {
+  const body = (res.locals.validated?.body ?? req.body) as any;
   const clinicId = req.auth?.id;
   if (!clinicId) return fail(res, "No autorizado", 401);
 
@@ -34,7 +36,7 @@ export async function createInvite(req: Request, res: Response) {
     clinicId,
     token,
     active: true,
-    label: req.body.label,
+    label: body.label,
   });
 
   const baseUrl = env.corsOrigin.replace(/\/$/, "");
