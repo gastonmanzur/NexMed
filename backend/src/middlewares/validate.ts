@@ -23,3 +23,14 @@ export function validateQuery(schema: ZodTypeAny) {
     next();
   };
 }
+
+export function validateParams(schema: ZodTypeAny) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const parsed = schema.safeParse(req.params);
+    if (!parsed.success) {
+      return fail(res, parsed.error.issues.map((i) => i.message).join(", "), 400);
+    }
+    req.params = parsed.data as any;
+    next();
+  };
+}
