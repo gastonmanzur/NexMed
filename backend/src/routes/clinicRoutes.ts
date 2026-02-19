@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createInvite, getMe, listInvites, updateSettings } from "../controllers/clinicController";
+import { getMe, updateSettings } from "../controllers/clinicController";
 import {
   createProfessional,
   createProfessionalTimeOff,
@@ -17,7 +17,7 @@ import {
 } from "../controllers/clinicManagementController";
 import { authRequired, clinicOnly } from "../middlewares/auth";
 import { validateBody, validateParams } from "../middlewares/validate";
-import { createInviteSchema, updateSettingsSchema } from "../schemas/clinicSchemas";
+import { updateSettingsSchema } from "../schemas/clinicSchemas";
 import {
   createProfessionalSchema,
   createSpecialtySchema,
@@ -33,9 +33,6 @@ const router = Router();
 
 router.get("/me", authRequired, clinicOnly, getMe);
 router.put("/me/settings", authRequired, clinicOnly, validateBody(updateSettingsSchema), updateSettings);
-router.post("/invites", authRequired, clinicOnly, validateBody(createInviteSchema), createInvite);
-router.get("/invites", authRequired, clinicOnly, listInvites);
-
 router.get("/specialties", authRequired, clinicOnly, listSpecialties);
 router.post("/specialties", authRequired, clinicOnly, validateBody(createSpecialtySchema), createSpecialty);
 router.put("/specialties/:id", authRequired, clinicOnly, validateParams(idParamSchema), validateBody(updateSpecialtySchema), updateSpecialty);

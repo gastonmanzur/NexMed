@@ -10,6 +10,7 @@ import { JoinClinicPage } from "./pages/JoinClinicPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientPage } from "./pages/PatientPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
 
 function App() {
@@ -33,6 +34,8 @@ function App() {
     if (path !== "/login") window.history.replaceState({}, "", "/login");
     return <LoginPage />;
   }
+
+  if (path === "/profile") return <ProfilePage />;
 
   if (user.type === "patient") {
     if (path !== "/patient") {

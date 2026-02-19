@@ -37,9 +37,9 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
 
   const userDisplayName = useMemo(() => {
     if (user.type === "clinic") {
-      return clinicName || user.email;
+      return clinicName || user.displayName || user.email;
     }
-    return user.email;
+    return user.displayName || user.email;
   }, [clinicName, user.email, user.type]);
 
   const userRoleText = user.type === "clinic" ? "Consultorio/Clínica" : "Paciente";
@@ -115,7 +115,7 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
 
           {isUserMenuOpen && (
             <div className={styles.dropdown} role="menu" aria-label="Opciones de usuario">
-              <button type="button" className={styles.dropdownItem} role="menuitem" onClick={() => onNavigate(user.type === "clinic" ? "/admin/settings" : "/patient")}>
+              <button type="button" className={styles.dropdownItem} role="menuitem" onClick={() => onNavigate("/profile")}>
                 Perfil
               </button>
               <button type="button" className={styles.dropdownItem} role="menuitem" onClick={onLogout}>

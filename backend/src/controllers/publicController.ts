@@ -25,8 +25,48 @@ function setNoCacheHeaders(res: Response) {
   res.removeHeader("ETag");
 }
 
+
+
+function buildPublicClinicPayload(clinic: any) {
+  const visibility = {
+    phone: true,
+    whatsapp: true,
+    website: true,
+    address: true,
+    city: true,
+    province: true,
+    postalCode: true,
+    description: true,
+    businessHoursNote: true,
+    ...(clinic.publicVisibility ?? {}),
+  };
+
+  return {
+    name: clinic.name,
+    slug: clinic.slug,
+    ...(visibility.phone && clinic.phone ? { phone: clinic.phone } : {}),
+    ...(visibility.whatsapp && clinic.whatsapp ? { whatsapp: clinic.whatsapp } : {}),
+    ...(visibility.website && clinic.website ? { website: clinic.website } : {}),
+    ...(visibility.address && clinic.address ? { address: clinic.address } : {}),
+    ...(visibility.city && clinic.city ? { city: clinic.city } : {}),
+    ...(visibility.province && clinic.province ? { province: clinic.province } : {}),
+    ...(visibility.postalCode && clinic.postalCode ? { postalCode: clinic.postalCode } : {}),
+    ...(visibility.description && clinic.description ? { description: clinic.description } : {}),
+    ...(visibility.businessHoursNote && clinic.businessHoursNote ? { businessHoursNote: clinic.businessHoursNote } : {}),
+  };
+}
+
 function isDevEnvironment() {
   return process.env.NODE_ENV !== "production";
+}
+
+export async function getPublicClinic(req: Request, res: Response) {
+  setNoCacheHeaders(res);
+  const slug = String(req.params.slug);
+  const clinic = await Clinic.findOne({ slug }).lean();
+  if (!clinic) return fail(res, "Clínica no encontrada", 404);
+
+  return ok(res, buildPublicClinicPayload(clinic));
 }
 
 export async function getClinicAvailability(req: Request, res: Response) {
@@ -63,7 +103,7 @@ export async function getClinicAvailability(req: Request, res: Response) {
     : undefined;
 
   return ok(res, {
-    clinic: { name: clinic.name, slug: clinic.slug, phone: clinic.phone, address: clinic.address, city: clinic.city },
+    clinic: buildPublicClinicPayload(clinic),
     slots: slots.map((s) => ({
       startAt: s.startAt.toISOString(),
       endAt: s.endAt.toISOString(),
@@ -89,12 +129,13 @@ export async function getClinicAvailabilityById(req: Request, res: Response) {
   });
 
   return ok(res, {
-    clinic: { name: clinic.name, slug: clinic.slug, phone: clinic.phone, address: clinic.address, city: clinic.city },
+    clinic: buildPublicClinicPayload(clinic),
     slots: slots.map((s) => ({ startAt: s.startAt.toISOString(), endAt: s.endAt.toISOString(), professionalId: s.professionalId })),
   });
 }
 
 export async function listPublicSpecialties(req: Request, res: Response) {
+  setNoCacheHeaders(res);
   const slug = String(req.params.slug);
   const clinic = await Clinic.findOne({ slug }).select({ _id: 1 }).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);

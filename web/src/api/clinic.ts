@@ -71,3 +71,5 @@ export const listPublicProfessionals = (slug: string) => {
 
   return apiFetch<Professional[]>(`/public/clinics/${slug}/professionals?${params.toString()}`, { cache: "no-store" });
 };
+
+export const getPublicClinic = (slug: string) => apiFetch<Partial<Clinic>>(`/public/clinics/${slug}`, { cache: "no-store" });
