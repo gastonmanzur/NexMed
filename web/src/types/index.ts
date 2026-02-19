@@ -1,6 +1,18 @@
 export type Interval = { start: string; end: string };
 export type WeeklyDay = { dayOfWeek: number; enabled: boolean; intervals: Interval[] };
 
+export type ClinicPublicVisibility = {
+  phone: boolean;
+  whatsapp: boolean;
+  website: boolean;
+  address: boolean;
+  city: boolean;
+  province: boolean;
+  postalCode: boolean;
+  description: boolean;
+  businessHoursNote: boolean;
+};
+
 export type Clinic = {
   _id?: string;
   id?: string;
@@ -9,8 +21,23 @@ export type Clinic = {
   email: string;
   slug: string;
   phone: string;
+  whatsapp?: string;
+  website?: string;
   address: string;
   city: string;
+  province?: string;
+  postalCode?: string;
+  description?: string;
+  businessHoursNote?: string;
+  publicVisibility?: ClinicPublicVisibility;
+  legalName?: string;
+  taxId?: string;
+  billingEmail?: string;
+  fiscalAddress?: string;
+  fiscalCity?: string;
+  fiscalProvince?: string;
+  fiscalPostalCode?: string;
+  invoiceNotes?: string;
   settings: {
     slotDurationMinutes: number;
     weeklySchedule: WeeklyDay[];
@@ -26,6 +53,8 @@ export type Patient = {
   lastName: string;
   age?: number;
   phone?: string;
+  whatsapp?: string;
+  googleSub?: string;
 };
 
 export type AuthUser = {
@@ -105,6 +134,8 @@ export type ClinicInvite = {
   active: boolean;
   label?: string;
   createdAt: string;
+  updatedAt?: string;
+  url?: string;
 };
 
 export type PatientClinic = {

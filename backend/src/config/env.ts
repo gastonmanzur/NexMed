@@ -8,6 +8,7 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET ?? "",
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  publicWebBaseUrl: process.env.PUBLIC_WEB_BASE_URL ?? process.env.CORS_ORIGIN ?? "http://localhost:5173",
 };
 
 if (!env.mongoUri) throw new Error("Missing MONGO_URI");

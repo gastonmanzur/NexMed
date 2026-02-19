@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { publicAvailability, publicCreateAppointment } from "../api/appointments";
-import { listPublicProfessionals, listPublicSpecialties } from "../api/clinic";
+import { getPublicClinic, listPublicProfessionals, listPublicSpecialties } from "../api/clinic";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
@@ -12,6 +12,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const { token } = useAuth();
   const [slots, setSlots] = useState<{ startAt: string; endAt: string; professionalId?: string }[]>([]);
   const [clinicName, setClinicName] = useState("Clínica");
+  const [clinicInfo, setClinicInfo] = useState<any>(null);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState("");
@@ -37,12 +38,14 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   }, []);
 
   const load = async (filters?: { specialtyId?: string; professionalId?: string }) => {
-    const [availability, specRows, profRows] = await Promise.all([
+    const [availability, specRows, profRows, clinicPublic] = await Promise.all([
       publicAvailability(slug, from, to, filters),
       listPublicSpecialties(slug),
       listPublicProfessionals(slug),
+      getPublicClinic(slug),
     ]);
-    setClinicName(availability.clinic.name);
+    setClinicName((clinicPublic as any).name || availability.clinic.name);
+    setClinicInfo(clinicPublic);
     setSlots(availability.slots);
     setSpecialties(specRows);
     setProfessionals(profRows);
@@ -106,6 +109,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     <div className="page">
       <Card>
         <h2>Reservá tu turno - {clinicName}</h2>
+        {clinicInfo && <p>{[clinicInfo.description, clinicInfo.phone, clinicInfo.whatsapp, clinicInfo.website, [clinicInfo.address, clinicInfo.city, clinicInfo.province].filter(Boolean).join(", "), clinicInfo.businessHoursNote].filter(Boolean).join(" · ")}</p>}
         <div className="grid-2">
           <select className="input" value={selectedSpecialtyId} onChange={(e) => setSelectedSpecialtyId(e.target.value)}>
             <option value="">Todas las especialidades</option>

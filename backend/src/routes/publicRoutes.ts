@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createPublicAppointment,
   getClinicAvailability,
+  getPublicClinic,
   getClinicAvailabilityById,
   listMyAppointments,
   listPublicProfessionals,
@@ -15,6 +16,7 @@ import { publicPeopleQuerySchema } from "../schemas/clinicManagementSchemas";
 
 const router = Router();
 
+router.get("/clinics/:slug", getPublicClinic);
 router.get("/clinics/:slug/availability", validateQuery(availabilityQuerySchema), getClinicAvailability);
 router.get("/clinics/by-id/:clinicId/availability", validateQuery(availabilityQuerySchema), getClinicAvailabilityById);
 router.get("/clinics/:slug/specialties", listPublicSpecialties);

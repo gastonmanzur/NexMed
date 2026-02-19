@@ -9,6 +9,7 @@ export interface PatientDocument {
   lastName: string;
   age?: number;
   phone?: string;
+  whatsapp?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +23,7 @@ const patientSchema = new Schema<PatientDocument>(
     lastName: { type: String, required: true },
     age: { type: Number, required: false, min: 0, max: 120 },
     phone: { type: String, required: false, default: "" },
+    whatsapp: { type: String, required: false, default: "" },
   },
   { timestamps: true }
 );
