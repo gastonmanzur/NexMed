@@ -1,13 +1,10 @@
 import { Types } from "mongoose";
 import { Appointment } from "../models/Appointment";
-import { WeeklyScheduleDay } from "../models/Clinic";
 import { Professional } from "../models/Professional";
 import { ProfessionalAvailability } from "../models/ProfessionalAvailability";
 import { ProfessionalTimeOff } from "../models/ProfessionalTimeOff";
 
 type Slot = { startAt: Date; endAt: Date; professionalId?: string };
-type IntervalLike = { start: string; end: string };
-
 type ProfessionalSlotConfig = {
   professionalId: string;
   weeklyBlocks: { weekday: number; startTime: string; endTime: string; slotMinutes: number }[];
@@ -22,15 +19,14 @@ function minutesFromTime(value: string) {
 
 function addDays(base: Date, days: number) {
   const next = new Date(base);
-  next.setUTCDate(base.getUTCDate() + days);
+  next.setDate(base.getDate() + days);
   return next;
 }
 
 function atClinicMinutes(date: Date, minutes: number) {
-  // `date` is expected to represent clinic-local midnight as a UTC instant (03:00Z for AR timezone).
-  const d = new Date(date);
-  d.setUTCMinutes(minutes);
-  return d;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, mins, 0, 0);
 }
 
 function hasOverlap(timeOff: { startTime?: string; endTime?: string }, startMin: number, endMin: number) {
@@ -44,12 +40,10 @@ export async function buildAvailableSlots(params: {
   clinicId: Types.ObjectId;
   from: Date;
   to: Date;
-  weeklySchedule: WeeklyScheduleDay[];
-  slotDurationMinutes: number;
   professionalId?: string;
   specialtyId?: string;
 }) {
-  const { clinicId, from, to, weeklySchedule, slotDurationMinutes, professionalId, specialtyId } = params;
+  const { clinicId, from, to, professionalId, specialtyId } = params;
 
   const professionalFilter: any = { clinicId, isActive: true };
   if (professionalId) professionalFilter._id = professionalId;
@@ -124,35 +118,7 @@ export async function buildAvailableSlots(params: {
     timeOffByKey.set(key, list);
   }
 
-  if (professionals.length > 0) {
-    return computeProfessionalSlots({ from, to, professionalConfigs, timeOffByKey, bookedSet });
-  }
-
-  const slots: Slot[] = [];
-  let cursor = new Date(from);
-
-  while (cursor < to) {
-    const dayCfg = weeklySchedule.find((d) => d.dayOfWeek === cursor.getUTCDay());
-
-    if (dayCfg?.enabled) {
-      for (const interval of dayCfg.intervals as IntervalLike[]) {
-        const startMin = minutesFromTime(interval.start);
-        const endMin = minutesFromTime(interval.end);
-        for (let m = startMin; m + slotDurationMinutes <= endMin; m += slotDurationMinutes) {
-          const startAt = atClinicMinutes(cursor, m);
-          const endAt = atClinicMinutes(cursor, m + slotDurationMinutes);
-          const iso = startAt.toISOString();
-          if (startAt >= from && startAt < to && !bookedSet.has(`${iso}::`)) {
-            slots.push({ startAt, endAt });
-          }
-        }
-      }
-    }
-
-    cursor = addDays(cursor, 1);
-  }
-
-  return slots;
+  return computeProfessionalSlots({ from, to, professionalConfigs, timeOffByKey, bookedSet });
 }
 
 export function computeProfessionalSlots(params: {
@@ -169,14 +135,14 @@ export function computeProfessionalSlots(params: {
 
   while (cursor < to) {
     for (const cfg of professionalConfigs) {
-      const blocks = cfg.weeklyBlocks.filter((b) => b.weekday === cursor.getUTCDay());
-      const dateKey = cursor.toISOString().slice(0, 10);
+      const blocks = cfg.weeklyBlocks.filter((b) => b.weekday === cursor.getDay());
+      const dateKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
       const offList = timeOffByKey.get(`${cfg.professionalId}::${dateKey}`) ?? [];
 
       if (!loggedDebug && process.env.NODE_ENV !== "production") {
         console.debug("[availability] matched blocks", {
           date: dateKey,
-          weekday: cursor.getUTCDay(),
+          weekday: cursor.getDay(),
           professionalId: cfg.professionalId,
           blocks,
         });

@@ -70,4 +70,5 @@ export const createTimeOffSchema = z
 
 export const publicPeopleQuerySchema = z.object({
   includeSpecialties: z.union([z.literal("true"), z.literal("false")]).optional(),
+  ts: z.string().optional(),
 });
