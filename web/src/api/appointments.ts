@@ -1,8 +1,18 @@
 import { apiFetch } from "./client";
 import { Appointment } from "../types";
 
-export const listAppointments = (token: string, from: string, to: string, q = "") =>
-  apiFetch<Appointment[]>(`/appointments?from=${from}&to=${to}&q=${encodeURIComponent(q)}`, {}, token);
+export const listAppointments = (
+  token: string,
+  from: string,
+  to: string,
+  q = "",
+  professionalId?: string
+) => {
+  const params = new URLSearchParams({ from, to, q });
+  if (professionalId) params.set("professionalId", professionalId);
+
+  return apiFetch<Appointment[]>(`/appointments?${params.toString()}`, {}, token);
+};
 
 export const cancelAppointment = (token: string, id: string) =>
   apiFetch<Appointment>(`/appointments/${id}/cancel`, { method: "PATCH" }, token);

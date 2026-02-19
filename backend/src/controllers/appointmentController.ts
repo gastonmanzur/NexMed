@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { Appointment } from "../models/Appointment";
+import { Types } from "mongoose";
+import { Professional } from "../models/Professional";
 import { fail, ok } from "../utils/http";
 
 function dateOnlyToUtcStart(value: string) {
@@ -8,10 +10,18 @@ function dateOnlyToUtcStart(value: string) {
 
 export async function listAppointments(req: Request, res: Response) {
   const clinicId = req.auth?.id;
-  const query = (res.locals.validated?.query ?? req.query) as { from: string; to: string; q?: string };
+  if (!clinicId) return fail(res, "No autorizado", 401);
+
+  const query = (res.locals.validated?.query ?? req.query) as {
+    from: string;
+    to: string;
+    q?: string;
+    professionalId?: string;
+  };
   const from = dateOnlyToUtcStart(String(query.from));
   const to = dateOnlyToUtcStart(String(query.to));
   const q = String(query.q ?? "").trim();
+  const professionalId = query.professionalId ? String(query.professionalId) : "";
 
   const filter: any = {
     clinicId,
@@ -22,8 +32,48 @@ export async function listAppointments(req: Request, res: Response) {
     filter.patientPhone = { $regex: q, $options: "i" };
   }
 
-  const appointments = await Appointment.find(filter).sort({ startAt: 1 }).lean();
-  return ok(res, appointments);
+  if (professionalId && Types.ObjectId.isValid(professionalId)) {
+    filter.professionalId = professionalId;
+  }
+
+  const appointments = await Appointment.find(filter)
+    .select("startAt endAt patientFullName patientPhone note status professionalId specialtyId clinicId clinicSlug")
+    .sort({ startAt: 1 })
+    .lean();
+
+  const professionalIds = [
+    ...new Set(
+      appointments
+        .map((appointment) => appointment.professionalId)
+        .filter((id): id is Types.ObjectId => Boolean(id))
+        .map((id) => id.toString())
+    ),
+  ];
+
+  const professionals = professionalIds.length
+    ? await Professional.find({ _id: { $in: professionalIds }, clinicId: new Types.ObjectId(clinicId) })
+        .select("firstName lastName displayName")
+        .lean()
+    : [];
+
+  const professionalNameById = new Map(
+    professionals.map((professional) => {
+      const fullName = `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim();
+      return [String(professional._id), professional.displayName || fullName || null] as const;
+    })
+  );
+
+  const mappedAppointments = appointments.map((appointment) => {
+    const professionalId = appointment.professionalId ? String(appointment.professionalId) : null;
+
+    return {
+      ...appointment,
+      professionalId,
+      professionalName: professionalId ? professionalNameById.get(professionalId) ?? null : null,
+    };
+  });
+
+  return ok(res, mappedAppointments);
 }
 
 export async function cancelAppointment(req: Request, res: Response) {

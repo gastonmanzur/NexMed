@@ -22,6 +22,7 @@ export const listAppointmentsQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   q: z.string().optional(),
+  professionalId: z.string().min(1).optional(),
 });
 
 export const rescheduleMyAppointmentSchema = z.object({

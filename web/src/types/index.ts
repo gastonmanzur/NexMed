@@ -41,7 +41,8 @@ export type Appointment = {
   _id: string;
   clinicId: string;
   clinicSlug?: string;
-  professionalId?: string;
+  professionalId?: string | null;
+  professionalName?: string | null;
   specialtyId?: string;
   startAt: string;
   endAt: string;
