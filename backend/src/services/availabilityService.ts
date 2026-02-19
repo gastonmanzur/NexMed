@@ -13,6 +13,8 @@ type ProfessionalSlotConfig = {
   weeklyBlocks: { weekday: number; startTime: string; endTime: string; slotMinutes: number }[];
 };
 
+type TimeOffByKey = Map<string, { startTime?: string; endTime?: string }[]>;
+
 function minutesFromTime(value: string) {
   const [h = 0, m = 0] = value.split(":").map(Number);
   return h * 60 + m;
@@ -24,8 +26,9 @@ function addDays(base: Date, days: number) {
   return next;
 }
 
-function atUtcMinutes(date: Date, minutes: number) {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+function atClinicMinutes(date: Date, minutes: number) {
+  // `date` is expected to represent clinic-local midnight as a UTC instant (03:00Z for AR timezone).
+  const d = new Date(date);
   d.setUTCMinutes(minutes);
   return d;
 }
@@ -121,43 +124,12 @@ export async function buildAvailableSlots(params: {
     timeOffByKey.set(key, list);
   }
 
-  const slots: Slot[] = [];
-
-  if (professionalConfigs.length > 0) {
-    let cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
-
-    while (cursor < to) {
-      for (const cfg of professionalConfigs) {
-        const blocks = cfg.weeklyBlocks.filter((b) => b.weekday === cursor.getUTCDay());
-        const dateKey = cursor.toISOString().slice(0, 10);
-        const offList = timeOffByKey.get(`${cfg.professionalId}::${dateKey}`) ?? [];
-
-        for (const block of blocks) {
-          const startMin = minutesFromTime(block.startTime);
-          const endMin = minutesFromTime(block.endTime);
-
-          for (let m = startMin; m + block.slotMinutes <= endMin; m += block.slotMinutes) {
-            const slotStart = atUtcMinutes(cursor, m);
-            const slotEnd = atUtcMinutes(cursor, m + block.slotMinutes);
-
-            if (slotStart < from || slotStart >= to) continue;
-            if (offList.some((off) => hasOverlap(off, m, m + block.slotMinutes))) continue;
-
-            const key = `${slotStart.toISOString()}::${cfg.professionalId}`;
-            if (bookedSet.has(key)) continue;
-
-            slots.push({ startAt: slotStart, endAt: slotEnd, professionalId: cfg.professionalId });
-          }
-        }
-      }
-
-      cursor = addDays(cursor, 1);
-    }
-
-    return slots;
+  if (professionals.length > 0) {
+    return computeProfessionalSlots({ from, to, professionalConfigs, timeOffByKey, bookedSet });
   }
 
-  let cursor = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+  const slots: Slot[] = [];
+  let cursor = new Date(from);
 
   while (cursor < to) {
     const dayCfg = weeklySchedule.find((d) => d.dayOfWeek === cursor.getUTCDay());
@@ -167,12 +139,65 @@ export async function buildAvailableSlots(params: {
         const startMin = minutesFromTime(interval.start);
         const endMin = minutesFromTime(interval.end);
         for (let m = startMin; m + slotDurationMinutes <= endMin; m += slotDurationMinutes) {
-          const startAt = atUtcMinutes(cursor, m);
-          const endAt = atUtcMinutes(cursor, m + slotDurationMinutes);
+          const startAt = atClinicMinutes(cursor, m);
+          const endAt = atClinicMinutes(cursor, m + slotDurationMinutes);
           const iso = startAt.toISOString();
           if (startAt >= from && startAt < to && !bookedSet.has(`${iso}::`)) {
             slots.push({ startAt, endAt });
           }
+        }
+      }
+    }
+
+    cursor = addDays(cursor, 1);
+  }
+
+  return slots;
+}
+
+export function computeProfessionalSlots(params: {
+  from: Date;
+  to: Date;
+  professionalConfigs: ProfessionalSlotConfig[];
+  timeOffByKey: TimeOffByKey;
+  bookedSet: Set<string>;
+}) {
+  const { from, to, professionalConfigs, timeOffByKey, bookedSet } = params;
+  const slots: Slot[] = [];
+  let cursor = new Date(from);
+  let loggedDebug = false;
+
+  while (cursor < to) {
+    for (const cfg of professionalConfigs) {
+      const blocks = cfg.weeklyBlocks.filter((b) => b.weekday === cursor.getUTCDay());
+      const dateKey = cursor.toISOString().slice(0, 10);
+      const offList = timeOffByKey.get(`${cfg.professionalId}::${dateKey}`) ?? [];
+
+      if (!loggedDebug && process.env.NODE_ENV !== "production") {
+        console.debug("[availability] matched blocks", {
+          date: dateKey,
+          weekday: cursor.getUTCDay(),
+          professionalId: cfg.professionalId,
+          blocks,
+        });
+        loggedDebug = true;
+      }
+
+      for (const block of blocks) {
+        const startMin = minutesFromTime(block.startTime);
+        const endMin = minutesFromTime(block.endTime);
+
+        for (let m = startMin; m + block.slotMinutes <= endMin; m += block.slotMinutes) {
+          const slotStart = atClinicMinutes(cursor, m);
+          const slotEnd = atClinicMinutes(cursor, m + block.slotMinutes);
+
+          if (slotStart < from || slotStart >= to) continue;
+          if (offList.some((off) => hasOverlap(off, m, m + block.slotMinutes))) continue;
+
+          const key = `${slotStart.toISOString()}::${cfg.professionalId}`;
+          if (bookedSet.has(key)) continue;
+
+          slots.push({ startAt: slotStart, endAt: slotEnd, professionalId: cfg.professionalId });
         }
       }
     }

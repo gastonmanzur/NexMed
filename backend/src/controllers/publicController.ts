@@ -7,8 +7,9 @@ import { buildAvailableSlots } from "../services/availabilityService";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { fail, ok } from "../utils/http";
 
-function dateOnlyToUtcStart(value: string) {
-  return new Date(`${value}T00:00:00.000Z`);
+function dateOnlyToClinicStart(value: string) {
+  // Clinic timezone: America/Argentina/Buenos_Aires (UTC-03:00)
+  return new Date(`${value}T03:00:00.000Z`);
 }
 
 export async function getClinicAvailability(req: Request, res: Response) {
@@ -22,8 +23,8 @@ export async function getClinicAvailability(req: Request, res: Response) {
   const clinic = await Clinic.findOne({ slug }).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
-  const from = dateOnlyToUtcStart(String(query.from));
-  const to = dateOnlyToUtcStart(String(query.to));
+  const from = dateOnlyToClinicStart(String(query.from));
+  const to = dateOnlyToClinicStart(String(query.to));
   const professionalId = query.professionalId ? String(query.professionalId) : undefined;
   const specialtyId = query.specialtyId ? String(query.specialtyId) : undefined;
 
@@ -52,8 +53,8 @@ export async function getClinicAvailabilityById(req: Request, res: Response) {
   const clinic = await Clinic.findById(req.params.clinicId).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
-  const from = dateOnlyToUtcStart(String(query.from));
-  const to = dateOnlyToUtcStart(String(query.to));
+  const from = dateOnlyToClinicStart(String(query.from));
+  const to = dateOnlyToClinicStart(String(query.to));
 
   const slots = await buildAvailableSlots({
     clinicId: clinic._id,
