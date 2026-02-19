@@ -1,0 +1,158 @@
+:root {
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --text: #111827;
+  --text-soft: #1f2937;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --hover: #f3f4f6;
+  --focus: #111827;
+  --shadow: 0 8px 20px rgba(17, 24, 39, 0.06);
+}
+
+.page-container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2vw, 1.75rem);
+  color: var(--text);
+}
+
+.page-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.ui-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.ui-grid-2,
+.ui-grid-3,
+.ui-grid-4 {
+  display: grid;
+  gap: 0.9rem;
+}
+.ui-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ui-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ui-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.ui-form-row { margin-bottom: 0.75rem; }
+.ui-label { display: block; color: var(--text-soft); font-size: 0.9rem; margin-bottom: 0.35rem; font-weight: 500; }
+
+.ui-input,
+.ui-select,
+.ui-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.72rem;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: #fff;
+}
+
+.ui-textarea { min-height: 88px; resize: vertical; }
+
+.ui-input:focus-visible,
+.ui-select:focus-visible,
+.ui-textarea:focus-visible,
+.ui-button:focus-visible,
+.ui-link-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.ui-button {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.56rem 0.82rem;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.ui-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.ui-button-primary { background: #111827; color: #fff; border-color: #111827; }
+.ui-button-primary:hover:not(:disabled) { background: #1f2937; }
+.ui-button-secondary { background: #fff; color: #111827; }
+.ui-button-secondary:hover:not(:disabled) { background: var(--hover); }
+.ui-button-danger { background: #fff; color: #991b1b; border-color: #fca5a5; }
+.ui-button-danger:hover:not(:disabled) { background: #fef2f2; }
+
+.ui-link-button {
+  border: 0;
+  background: transparent;
+  color: #1f2937;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 8px;
+}
+.ui-link-button:hover { background: var(--hover); }
+
+.ui-table-wrap { overflow-x: auto; }
+.ui-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 760px; }
+.ui-table th,
+.ui-table td { padding: 0.75rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+.ui-table th { color: var(--muted); font-weight: 600; background: #fcfcfd; position: sticky; top: 0; }
+.ui-table tbody tr:hover { background: var(--hover); }
+
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  background: #f9fafb;
+  color: var(--text-soft);
+}
+.ui-badge-muted { color: var(--muted); }
+.ui-badge-success { background: #f3f4f6; color: #111827; }
+.ui-badge-danger { background: #f9fafb; color: #4b5563; }
+
+.ui-empty {
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  color: var(--muted);
+}
+
+.ui-skeleton {
+  height: 1rem;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 40%, #f3f4f6 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+}
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+@media (max-width: 900px) {
+  .ui-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ui-grid-3 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 680px) {
+  .page-container { padding: 0.9rem; }
+  .page-header { flex-direction: column; }
+  .ui-grid-2, .ui-grid-4 { grid-template-columns: 1fr; }
+  .ui-card { padding: 0.85rem; }
+}

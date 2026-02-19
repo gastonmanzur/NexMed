@@ -1,13 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import {
-  createProfessional,
-  listProfessionals,
-  listSpecialties,
-  updateProfessional,
-} from "../api/clinic";
-import { Button } from "../components/Button";
-import { Card } from "../components/Card";
-import { Input } from "../components/Input";
+import { createProfessional, listProfessionals, listSpecialties, updateProfessional } from "../api/clinic";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
+import { PageHeader } from "../components/ui/Page";
 import { useAuth } from "../hooks/useAuth";
 import { Professional, Specialty } from "../types";
 
@@ -16,6 +14,7 @@ export function AdminProfessionalsPage() {
   const [rows, setRows] = useState<Professional[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [editing, setEditing] = useState<Professional | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", specialtyIds: [] as string[] });
   const [error, setError] = useState("");
 
@@ -34,23 +33,20 @@ export function AdminProfessionalsPage() {
 
   const toggleSpec = (id: string, target: { specialtyIds: string[] }) => {
     const has = target.specialtyIds.includes(id);
-    const next = has ? target.specialtyIds.filter((x) => x !== id) : [...target.specialtyIds, id];
-    if (next.length === 0) {
-      setError("Debe tener al menos una especialidad");
-      return target.specialtyIds;
-    }
-    return next;
+    return has ? target.specialtyIds.filter((x) => x !== id) : [...target.specialtyIds, id];
   };
 
   const onCreate = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) return;
     setError("");
+    if (!form.firstName || !form.lastName) return setError("Nombre y apellido son obligatorios");
     if (form.specialtyIds.length === 0) return setError("Debe seleccionar al menos una especialidad");
 
     try {
       await createProfessional(token, form);
       setForm({ firstName: "", lastName: "", email: "", phone: "", specialtyIds: [] });
+      setShowCreate(false);
       await load();
     } catch (err: any) {
       setError(err.message);
@@ -59,76 +55,82 @@ export function AdminProfessionalsPage() {
 
   return (
     <>
-      <Card>
-        <h3>Profesionales</h3>
-        <form onSubmit={onCreate}>
-          <div className="grid-2">
-            <Input placeholder="Nombre" value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))} />
-            <Input placeholder="Apellido" value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))} />
-            <Input placeholder="Email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
-            <Input placeholder="Teléfono" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
-          </div>
-          <div className="form-row" style={{ marginTop: 8 }}>
-            {specialties.map((s) => (
-              <label key={s._id} style={{ marginRight: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={form.specialtyIds.includes(s._id)}
-                  onChange={() => setForm((p) => ({ ...p, specialtyIds: toggleSpec(s._id, p) }))}
-                /> {s.name}
-              </label>
-            ))}
-          </div>
-          <Button>Crear profesional</Button>
-        </form>
-        {error && <p className="error">{error}</p>}
-      </Card>
+      <PageHeader
+        title="Profesionales"
+        subtitle="Administrá tu equipo médico"
+        actions={<Button onClick={() => setShowCreate((v) => !v)}>Nuevo profesional</Button>}
+      />
+
+      {showCreate && (
+        <Card className="ui-form-row">
+          <h3>Nuevo profesional</h3>
+          <form onSubmit={onCreate}>
+            <div className="ui-grid-2">
+              <div><label className="ui-label">Nombre</label><Input value={form.firstName} onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))} required /></div>
+              <div><label className="ui-label">Apellido</label><Input value={form.lastName} onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))} required /></div>
+              <div><label className="ui-label">Email</label><Input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} /></div>
+              <div><label className="ui-label">Teléfono</label><Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
+            </div>
+            <div className="ui-form-row" style={{ marginTop: "0.7rem" }}>
+              <label className="ui-label">Especialidades</label>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                {specialties.map((s) => (
+                  <button key={s._id} type="button" className="ui-link-button" style={{ border: form.specialtyIds.includes(s._id) ? "1px solid #111827" : "1px solid #e5e7eb" }} onClick={() => setForm((p) => ({ ...p, specialtyIds: toggleSpec(s._id, p) }))}>{s.name}</button>
+                ))}
+              </div>
+            </div>
+            <Button>Crear profesional</Button>
+          </form>
+        </Card>
+      )}
 
       <Card>
-        <table className="table">
-          <thead>
-            <tr><th>Nombre</th><th>Especialidades</th><th>Estado</th><th>Acciones</th></tr>
-          </thead>
-          <tbody>
+        {rows.length === 0 ? (
+          <EmptyState title="No hay profesionales cargados" description="Creá el primer profesional para habilitar agendas y turnos." />
+        ) : (
+          <div style={{ display: "grid", gap: "0.7rem" }}>
             {rows.map((row) => (
-              <tr key={row._id}>
-                <td>{row.displayName || `${row.firstName} ${row.lastName}`}</td>
-                <td>{row.specialtyIds.map((id) => specialtyMap.get(id) ?? id).join(", ")}</td>
-                <td>{row.isActive ? "Activo" : "Inactivo"}</td>
-                <td>
-                  <button onClick={() => setEditing(row)}>Editar</button>{" "}
-                  <button onClick={async () => token && (await updateProfessional(token, row._id, { isActive: !row.isActive }).then(load))}>
-                    {row.isActive ? "Desactivar" : "Activar"}
-                  </button>
-                </td>
-              </tr>
+              <div key={row._id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: "0.8rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "0.7rem", flexWrap: "wrap" }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "1rem" }}>{row.displayName || `${row.firstName} ${row.lastName}`}</h3>
+                    <p style={{ margin: "0.3rem 0 0", color: "#6b7280" }}>{row.email || "Sin email"} · {row.phone || "Sin teléfono"}</p>
+                    <div style={{ marginTop: "0.45rem", display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                      {row.specialtyIds.map((id) => <Badge key={id} variant="muted">{specialtyMap.get(id) ?? id}</Badge>)}
+                    </div>
+                  </div>
+                  <Badge variant={row.isActive ? "success" : "muted"}>{row.isActive ? "Activo" : "Inactivo"}</Badge>
+                </div>
+                <div style={{ display: "flex", gap: "0.45rem", marginTop: "0.65rem", flexWrap: "wrap" }}>
+                  <Button variant="secondary" onClick={() => setEditing(row)}>Editar</Button>
+                  <Button variant="secondary" onClick={async () => token && (await updateProfessional(token, row._id, { isActive: !row.isActive }).then(load))}>{row.isActive ? "Desactivar" : "Activar"}</Button>
+                  <Button variant="secondary" onClick={() => (window.location.href = "/admin/schedules")}>Horarios</Button>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        )}
       </Card>
 
       {editing && (
-        <Card>
-          <h4>Editar profesional</h4>
-          <div className="grid-2">
-            <Input value={editing.firstName} onChange={(e) => setEditing({ ...editing, firstName: e.target.value })} />
-            <Input value={editing.lastName} onChange={(e) => setEditing({ ...editing, lastName: e.target.value })} />
-            <Input value={editing.email || ""} onChange={(e) => setEditing({ ...editing, email: e.target.value })} />
-            <Input value={editing.phone || ""} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} />
+        <Card style={{ marginTop: "1rem" }}>
+          <h3>Editar profesional</h3>
+          <div className="ui-grid-2">
+            <div><label className="ui-label">Nombre</label><Input value={editing.firstName} onChange={(e) => setEditing({ ...editing, firstName: e.target.value })} /></div>
+            <div><label className="ui-label">Apellido</label><Input value={editing.lastName} onChange={(e) => setEditing({ ...editing, lastName: e.target.value })} /></div>
+            <div><label className="ui-label">Email</label><Input value={editing.email || ""} onChange={(e) => setEditing({ ...editing, email: e.target.value })} /></div>
+            <div><label className="ui-label">Teléfono</label><Input value={editing.phone || ""} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} /></div>
           </div>
-          <div className="form-row" style={{ marginTop: 8 }}>
-            {specialties.map((s) => (
-              <label key={s._id} style={{ marginRight: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={editing.specialtyIds.includes(s._id)}
-                  onChange={() => setEditing((p) => (p ? { ...p, specialtyIds: toggleSpec(s._id, p) } : p))}
-                /> {s.name}
-              </label>
-            ))}
+          <div className="ui-form-row" style={{ marginTop: "0.7rem" }}>
+            <label className="ui-label">Especialidades</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
+              {specialties.map((s) => (
+                <button key={s._id} type="button" className="ui-link-button" style={{ border: editing.specialtyIds.includes(s._id) ? "1px solid #111827" : "1px solid #e5e7eb" }} onClick={() => setEditing((p) => (p ? { ...p, specialtyIds: toggleSpec(s._id, p) } : p))}>{s.name}</button>
+              ))}
+            </div>
           </div>
-          <Button
-            onClick={async () => {
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <Button onClick={async () => {
               if (!token || !editing) return;
               await updateProfessional(token, editing._id, {
                 firstName: editing.firstName,
@@ -140,11 +142,13 @@ export function AdminProfessionalsPage() {
               });
               setEditing(null);
               await load();
-            }}
-          >Guardar</Button>
-          <button onClick={() => setEditing(null)} style={{ marginLeft: 8 }}>Cancelar</button>
+            }}>Guardar</Button>
+            <Button variant="secondary" onClick={() => setEditing(null)}>Cancelar</Button>
+          </div>
         </Card>
       )}
+
+      {error && <p style={{ color: "#991b1b" }}>{error}</p>}
     </>
   );
 }

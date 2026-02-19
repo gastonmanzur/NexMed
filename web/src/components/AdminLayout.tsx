@@ -1,5 +1,6 @@
 import { useAuth } from "../hooks/useAuth";
 import { Navbar } from "./Navbar";
+import { PageContainer } from "./ui/Page";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { clinic, user, logout } = useAuth();
@@ -9,7 +10,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar user={user} clinicName={clinic?.name} onLogout={logout} />
-      <div className="page">{children}</div>
+      <PageContainer>{children}</PageContainer>
     </>
   );
 }
