@@ -8,11 +8,29 @@ import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { fail, ok } from "../utils/http";
 
 function dateOnlyToClinicStart(value: string) {
-  // Clinic timezone: America/Argentina/Buenos_Aires (UTC-03:00)
-  return new Date(`${value}T03:00:00.000Z`);
+  const [yearRaw, monthRaw, dayRaw] = value.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
+
+function setNoCacheHeaders(res: Response) {
+  res.set({
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+  });
+  res.removeHeader("ETag");
+}
+
+function isDevEnvironment() {
+  return process.env.NODE_ENV !== "production";
 }
 
 export async function getClinicAvailability(req: Request, res: Response) {
+  setNoCacheHeaders(res);
   const query = (res.locals.validated?.query ?? req.query) as {
     from: string;
     to: string;
@@ -32,11 +50,17 @@ export async function getClinicAvailability(req: Request, res: Response) {
     clinicId: clinic._id,
     from,
     to,
-    weeklySchedule: clinic.settings.weeklySchedule,
-    slotDurationMinutes: clinic.settings.slotDurationMinutes,
     ...(professionalId ? { professionalId } : {}),
     ...(specialtyId ? { specialtyId } : {}),
   });
+
+  const debug = isDevEnvironment()
+    ? {
+        clinicId: String(clinic._id),
+        from: query.from,
+        to: query.to,
+      }
+    : undefined;
 
   return ok(res, {
     clinic: { name: clinic.name, slug: clinic.slug, phone: clinic.phone, address: clinic.address, city: clinic.city },
@@ -45,10 +69,12 @@ export async function getClinicAvailability(req: Request, res: Response) {
       endAt: s.endAt.toISOString(),
       professionalId: s.professionalId,
     })),
+    ...(debug ? { debug } : {}),
   });
 }
 
 export async function getClinicAvailabilityById(req: Request, res: Response) {
+  setNoCacheHeaders(res);
   const query = (res.locals.validated?.query ?? req.query) as { from: string; to: string };
   const clinic = await Clinic.findById(req.params.clinicId).lean();
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
@@ -60,8 +86,6 @@ export async function getClinicAvailabilityById(req: Request, res: Response) {
     clinicId: clinic._id,
     from,
     to,
-    weeklySchedule: clinic.settings.weeklySchedule,
-    slotDurationMinutes: clinic.settings.slotDurationMinutes,
   });
 
   return ok(res, {
@@ -80,6 +104,7 @@ export async function listPublicSpecialties(req: Request, res: Response) {
 }
 
 export async function listPublicProfessionals(req: Request, res: Response) {
+  setNoCacheHeaders(res);
   const query = (res.locals.validated?.query ?? req.query) as { includeSpecialties?: string };
   const slug = String(req.params.slug);
   const clinic = await Clinic.findOne({ slug }).select({ _id: 1 }).lean();
@@ -147,8 +172,6 @@ export async function createPublicAppointment(req: Request, res: Response) {
     clinicId: clinic._id,
     from,
     to,
-    weeklySchedule: clinic.settings.weeklySchedule,
-    slotDurationMinutes: clinic.settings.slotDurationMinutes,
     ...(professionalId ? { professionalId } : {}),
     ...(specialtyId ? { specialtyId } : {}),
   });
@@ -223,8 +246,6 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     clinicId: clinic._id,
     from,
     to,
-    weeklySchedule: clinic.settings.weeklySchedule,
-    slotDurationMinutes: clinic.settings.slotDurationMinutes,
     ...(appointmentProfessionalId ? { professionalId: appointmentProfessionalId } : {}),
     ...(appointmentSpecialtyId ? { specialtyId: appointmentSpecialtyId } : {}),
   });

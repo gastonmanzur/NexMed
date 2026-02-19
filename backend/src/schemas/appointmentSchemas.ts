@@ -5,6 +5,7 @@ export const availabilityQuerySchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   professionalId: z.string().min(1).optional(),
   specialtyId: z.string().min(1).optional(),
+  ts: z.string().optional(),
 });
 
 export const createPublicAppointmentSchema = z.object({
@@ -14,6 +15,7 @@ export const createPublicAppointmentSchema = z.object({
   note: z.string().max(500).optional(),
   professionalId: z.string().min(1).optional(),
   specialtyId: z.string().min(1).optional(),
+  ts: z.string().optional(),
 });
 
 export const listAppointmentsQuerySchema = z.object({

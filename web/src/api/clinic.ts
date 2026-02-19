@@ -63,5 +63,11 @@ export const deleteProfessionalTimeOff = (token: string, id: string, timeoffId: 
   apiFetch<ProfessionalTimeOff>(`/clinics/professionals/${id}/timeoff/${timeoffId}`, { method: "DELETE" }, token);
 
 export const listPublicSpecialties = (slug: string) => apiFetch<Specialty[]>(`/public/clinics/${slug}/specialties`);
-export const listPublicProfessionals = (slug: string) =>
-  apiFetch<Professional[]>(`/public/clinics/${slug}/professionals?includeSpecialties=true`);
+export const listPublicProfessionals = (slug: string) => {
+  const params = new URLSearchParams({ includeSpecialties: "true" });
+  if (import.meta.env.DEV) {
+    params.set("ts", String(Date.now()));
+  }
+
+  return apiFetch<Professional[]>(`/public/clinics/${slug}/professionals?${params.toString()}`, { cache: "no-store" });
+};

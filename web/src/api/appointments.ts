@@ -17,8 +17,13 @@ export const publicAvailability = (
   if (filters?.professionalId) params.set("professionalId", filters.professionalId);
   if (filters?.specialtyId) params.set("specialtyId", filters.specialtyId);
 
+  if (import.meta.env.DEV) {
+    params.set("ts", String(Date.now()));
+  }
+
   return apiFetch<{ clinic: { name: string; slug: string }; slots: { startAt: string; endAt: string; professionalId?: string }[] }>(
-    `/public/clinics/${slug}/availability?${params.toString()}`
+    `/public/clinics/${slug}/availability?${params.toString()}`,
+    { cache: "no-store" }
   );
 };
 
