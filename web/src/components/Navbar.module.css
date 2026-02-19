@@ -3,9 +3,9 @@
   top: 0;
   z-index: 80;
   width: 100%;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+  background: hwb(211 9% 74%);
+  border-bottom: 1px solid hsl(240, 11%, 98%);
+  box-shadow: 0 1px 2px hsl(222, 47%, 90%);
 }
 
 .navbar {
@@ -20,7 +20,7 @@
 
 .brand {
   text-decoration: none;
-  color: #111827;
+  color: hsl(222, 47%, 90%);
   display: inline-flex;
   flex-direction: column;
   line-height: 1.1;
@@ -32,7 +32,7 @@
 }
 
 .brandSubtitle {
-  color: #6b7280;
+  color: #f6edf3;
   font-size: 0.78rem;
 }
 
@@ -47,7 +47,7 @@
 
 .link,
 .mobileLink {
-  color: #1f2937;
+  color: #f6edf3;
   text-decoration: none;
   border-radius: 999px;
   padding: 0.46rem 0.78rem;
