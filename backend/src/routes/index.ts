@@ -7,6 +7,7 @@ import patientClinicRoutes from "./patientClinicRoutes";
 import profileRoutes from "./profileRoutes";
 import clinicInviteRoutes from "./clinicInviteRoutes";
 import patientNotificationRoutes from "./patientNotificationRoutes";
+import devRoutes from "./devRoutes";
 
 const router = Router();
 
@@ -19,5 +20,8 @@ router.use("/patient/clinics", patientClinicRoutes);
 router.use("/profile", profileRoutes);
 router.use("/clinic", clinicInviteRoutes);
 router.use("/patient/notifications", patientNotificationRoutes);
+if (process.env.NODE_ENV !== "production") {
+  router.use("/dev", devRoutes);
+}
 
 export default router;

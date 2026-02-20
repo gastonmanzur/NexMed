@@ -5,6 +5,7 @@ import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
 import { ClinicNotificationSettings, NotificationRule } from "../types";
+import { REMINDER_TEST_MODE } from "../config/env";
 
 function defaultSettings(): ClinicNotificationSettings {
   return {
@@ -76,6 +77,11 @@ export function AdminNotificationsPage() {
   return (
     <Card>
       <h2>Notificaciones</h2>
+      {REMINDER_TEST_MODE && (
+        <p style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 8, padding: 8, marginBottom: 12 }}>
+          Modo prueba activo (recordatorios en segundos)
+        </p>
+      )}
       <label className="form-row">
         <input
           type="checkbox"

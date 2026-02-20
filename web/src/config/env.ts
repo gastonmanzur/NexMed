@@ -47,3 +47,5 @@ export const logGoogleClientIdStatusOnce = () => {
   hasLoggedGoogleClientStatus = true;
   console.info(`VITE_GOOGLE_CLIENT_ID loaded: ${Boolean(GOOGLE_CLIENT_ID)}`);
 };
+
+export const REMINDER_TEST_MODE = getViteEnv("VITE_REMINDER_TEST_MODE") === "true";

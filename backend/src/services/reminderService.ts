@@ -6,6 +6,7 @@ import {
   ClinicNotificationSettingsDocument,
 } from "../models/ClinicNotificationSettings";
 import { Clinic } from "../models/Clinic";
+import { env } from "../config/env";
 import { Reminder } from "../models/Reminder";
 import { Patient } from "../models/Patient";
 import { Professional } from "../models/Professional";
@@ -36,9 +37,46 @@ export async function getOrCreateClinicNotificationSettings(clinicId: string | T
   return settings;
 }
 
+function computeScheduledDate(startAt: Date, offsetValue: number, unit: ClinicNotificationRule["offsetUnit"]) {
+  const date = new Date(startAt);
+
+  switch (unit) {
+    case "days":
+      date.setDate(date.getDate() - offsetValue);
+      break;
+    case "hours":
+      date.setHours(date.getHours() - offsetValue);
+      break;
+    case "minutes":
+      date.setMinutes(date.getMinutes() - offsetValue);
+      break;
+    case "seconds":
+      date.setSeconds(date.getSeconds() - offsetValue);
+      break;
+  }
+
+  return date;
+}
+
+function getEffectiveOffset(rule: ClinicNotificationRule) {
+  if (!env.reminderTestMode) {
+    return { value: rule.offsetValue, unit: rule.offsetUnit };
+  }
+
+  if (rule.offsetUnit === "days") {
+    return { value: rule.offsetValue * 10, unit: "seconds" as const };
+  }
+
+  if (rule.offsetUnit === "hours") {
+    return { value: rule.offsetValue * 5, unit: "seconds" as const };
+  }
+
+  return { value: rule.offsetValue, unit: rule.offsetUnit };
+}
+
 function computeScheduledFor(startAt: Date, rule: ClinicNotificationRule) {
-  const ms = rule.offsetUnit === "days" ? rule.offsetValue * 24 * 60 * 60 * 1000 : rule.offsetValue * 60 * 60 * 1000;
-  return new Date(startAt.getTime() - ms);
+  const effective = getEffectiveOffset(rule);
+  return computeScheduledDate(startAt, effective.value, effective.unit);
 }
 
 async function buildPayloadSnapshot(appointment: AppointmentDocument) {
