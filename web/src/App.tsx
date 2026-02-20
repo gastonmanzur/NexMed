@@ -8,7 +8,9 @@ import { AdminSettingsPage } from "./pages/AdminSettingsPage";
 import { AdminSpecialtiesPage } from "./pages/AdminSpecialtiesPage";
 import { JoinClinicPage } from "./pages/JoinClinicPage";
 import { LoginPage } from "./pages/LoginPage";
-import { PatientPage } from "./pages/PatientPage";
+import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage";
+import { PatientClinicsPage } from "./pages/patient/PatientClinicsPage";
+import { PatientReschedulePage } from "./pages/patient/PatientReschedulePage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -38,10 +40,12 @@ function App() {
   if (path === "/profile") return <ProfilePage />;
 
   if (user.type === "patient") {
-    if (path !== "/patient") {
-      window.history.replaceState({}, "", "/patient");
-    }
-    return <PatientPage />;
+    if (path === "/patient" || path === "/patient/appointments") return <PatientAppointmentsPage />;
+    if (path === "/patient/clinics") return <PatientClinicsPage />;
+    if (path === "/patient/reschedule") return <PatientReschedulePage />;
+
+    window.history.replaceState({}, "", "/patient/appointments");
+    return <PatientAppointmentsPage />;
   }
 
   let content = <AdminDashboardPage />;

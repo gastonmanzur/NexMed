@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createPublicAppointment,
+  cancelMyAppointment,
   getClinicAvailability,
   getPublicClinic,
   getClinicAvailabilityById,
@@ -23,6 +24,7 @@ router.get("/clinics/:slug/specialties", listPublicSpecialties);
 router.get("/clinics/:slug/professionals", validateQuery(publicPeopleQuerySchema), listPublicProfessionals);
 router.post("/clinics/:slug/appointments", authOptional, validateBody(createPublicAppointmentSchema), createPublicAppointment);
 router.get("/me/appointments", authRequired, patientOnly, listMyAppointments);
+router.patch("/me/appointments/:id/cancel", authRequired, patientOnly, cancelMyAppointment);
 router.post("/me/appointments/:id/reschedule", authRequired, patientOnly, validateBody(rescheduleMyAppointmentSchema), rescheduleMyAppointment);
 
 export default router;

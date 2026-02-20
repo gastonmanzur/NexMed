@@ -19,10 +19,15 @@ const clinicNavItems: NavItem[] = [
   { label: "Horarios", href: "/admin/schedules" },
 ];
 
-const patientNavItems: NavItem[] = [{ label: "Mis turnos", href: "/patient" }];
+const patientNavItems: NavItem[] = [
+  { label: "Mis Clínicas", href: "/patient/clinics" },
+  { label: "Mis Turnos", href: "/patient/appointments" },
+  { label: "Reprogramar Turnos", href: "/patient/reschedule" },
+];
 
 function isActiveLink(pathname: string, href: string) {
   if (href === "/admin") return pathname === "/admin";
+  if (href === "/patient/reschedule") return pathname === "/patient/reschedule";
   return pathname === href;
 }
 
@@ -70,7 +75,7 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
   return (
     <header className={styles.wrapper}>
       <nav className={styles.navbar} aria-label="Navegación principal">
-        <a href={user.type === "clinic" ? "/admin" : "/patient"} className={styles.brand}>
+        <a href={user.type === "clinic" ? "/admin" : "/patient/appointments"} className={styles.brand}>
           <span className={styles.brandTitle}>NexMed</span>
           <span className={styles.brandSubtitle}>{userRoleText}</span>
         </a>

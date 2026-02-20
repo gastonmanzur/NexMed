@@ -262,6 +262,19 @@ export async function listMyAppointments(req: Request, res: Response) {
   return ok(res, appointments);
 }
 
+export async function cancelMyAppointment(req: Request, res: Response) {
+  const patientId = req.auth!.id;
+  const appointmentId = String(req.params.id);
+
+  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: "confirmed" });
+  if (!appointment) return fail(res, "Turno no encontrado", 404);
+
+  appointment.status = "cancelled";
+  await appointment.save();
+
+  return ok(res, appointment);
+}
+
 export async function rescheduleMyAppointment(req: Request, res: Response) {
   const body = (res.locals.validated?.body ?? req.body) as { startAt: string };
   const patientId = req.auth!.id;
