@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { Clinic, ClinicInvite, Professional, ProfessionalAvailabilityPayload, ProfessionalTimeOff, Specialty } from "../types";
+import { Clinic, ClinicInvite, ClinicNotificationSettings, Professional, ProfessionalAvailabilityPayload, ProfessionalTimeOff, Specialty } from "../types";
 
 export const updateSettings = (token: string, settings: Clinic["settings"]) =>
   apiFetch<Clinic["settings"]>(
@@ -73,3 +73,26 @@ export const listPublicProfessionals = (slug: string) => {
 };
 
 export const getPublicClinic = (slug: string) => apiFetch<Partial<Clinic>>(`/public/clinics/${slug}`, { cache: "no-store" });
+
+
+export const getNotificationSettings = (token: string) =>
+  apiFetch<ClinicNotificationSettings>("/clinic/notifications/settings", {}, token);
+
+export const updateNotificationSettings = (token: string, body: Omit<ClinicNotificationSettings, "clinicId" | "_id">) =>
+  apiFetch<ClinicNotificationSettings>("/clinic/notifications/settings", { method: "PUT", body: JSON.stringify(body) }, token);
+
+export const previewNotificationSchedule = (token: string, appointmentId: string) =>
+  apiFetch<{
+    appointmentId: string;
+    startAt: string;
+    preview: {
+      ruleId: string;
+      label: string;
+      scheduledFor: string;
+      skipped: boolean;
+      channel: "inApp" | "email";
+      offsetValue: number;
+      offsetUnit: "days" | "hours";
+    }[];
+  }>(`/clinic/notifications/preview?appointmentId=${encodeURIComponent(appointmentId)}`, {}, token);
+

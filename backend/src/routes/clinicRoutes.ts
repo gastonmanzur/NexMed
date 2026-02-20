@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { getMe, updateSettings } from "../controllers/clinicController";
 import {
+  getClinicNotificationSettings,
+  previewClinicNotificationSchedule,
+  updateClinicNotificationSettings,
+} from "../controllers/notificationController";
+import {
   createProfessional,
   createProfessionalTimeOff,
   createSpecialty,
@@ -16,8 +21,9 @@ import {
   updateSpecialty,
 } from "../controllers/clinicManagementController";
 import { authRequired, clinicOnly } from "../middlewares/auth";
-import { validateBody, validateParams } from "../middlewares/validate";
+import { validateBody, validateParams, validateQuery } from "../middlewares/validate";
 import { updateSettingsSchema } from "../schemas/clinicSchemas";
+import { notificationPreviewQuerySchema, updateNotificationSettingsSchema } from "../schemas/notificationSchemas";
 import {
   createProfessionalSchema,
   createSpecialtySchema,
@@ -33,6 +39,9 @@ const router = Router();
 
 router.get("/me", authRequired, clinicOnly, getMe);
 router.put("/me/settings", authRequired, clinicOnly, validateBody(updateSettingsSchema), updateSettings);
+router.get("/notifications/settings", authRequired, clinicOnly, getClinicNotificationSettings);
+router.put("/notifications/settings", authRequired, clinicOnly, validateBody(updateNotificationSettingsSchema), updateClinicNotificationSettings);
+router.get("/notifications/preview", authRequired, clinicOnly, validateQuery(notificationPreviewQuerySchema), previewClinicNotificationSchedule);
 router.get("/specialties", authRequired, clinicOnly, listSpecialties);
 router.post("/specialties", authRequired, clinicOnly, validateBody(createSpecialtySchema), createSpecialty);
 router.put("/specialties/:id", authRequired, clinicOnly, validateParams(idParamSchema), validateBody(updateSpecialtySchema), updateSpecialty);

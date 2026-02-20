@@ -149,3 +149,36 @@ export type PatientClinic = {
   createdAt: string;
   lastSeenAt: string;
 };
+
+
+export type NotificationRule = {
+  id: string;
+  enabled: boolean;
+  offsetValue: number;
+  offsetUnit: "days" | "hours";
+  channel: "inApp" | "email";
+};
+
+export type ClinicNotificationSettings = {
+  _id?: string;
+  clinicId: string;
+  timezone: string;
+  remindersEnabled: boolean;
+  rules: NotificationRule[];
+};
+
+export type PatientNotification = {
+  _id: string;
+  appointmentId: string;
+  scheduledFor: string;
+  sentAt?: string;
+  payloadSnapshot: {
+    clinicName: string;
+    patientName: string;
+    startAt: string;
+    professionalName?: string;
+    address?: string;
+    city?: string;
+    phone?: string;
+  };
+};

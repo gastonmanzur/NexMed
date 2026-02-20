@@ -17,17 +17,21 @@ const clinicNavItems: NavItem[] = [
   { label: "Especialidades", href: "/admin/specialties" },
   { label: "Profesionales", href: "/admin/professionals" },
   { label: "Horarios", href: "/admin/schedules" },
+  { label: "Notificaciones", href: "/clinic/notifications" },
 ];
 
 const patientNavItems: NavItem[] = [
   { label: "Mis Clínicas", href: "/patient/clinics" },
   { label: "Mis Turnos", href: "/patient/appointments" },
   { label: "Reprogramar Turnos", href: "/patient/reschedule" },
+  { label: "Notificaciones", href: "/patient/notifications" },
 ];
 
 function isActiveLink(pathname: string, href: string) {
   if (href === "/admin") return pathname === "/admin";
   if (href === "/patient/reschedule") return pathname === "/patient/reschedule";
+  if (href === "/clinic/notifications") return pathname === "/clinic/notifications";
+  if (href === "/patient/notifications") return pathname === "/patient/notifications";
   return pathname === href;
 }
 
