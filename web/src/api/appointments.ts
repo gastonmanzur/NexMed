@@ -42,6 +42,21 @@ export const publicAvailabilityByClinicId = (clinicId: string, from: string, to:
     `/public/clinics/by-id/${clinicId}/availability?from=${from}&to=${to}`
   );
 
+export const publicAvailabilityByClinicIdWithFilters = (
+  clinicId: string,
+  from: string,
+  to: string,
+  filters?: { professionalId?: string; specialtyId?: string }
+) => {
+  const params = new URLSearchParams({ from, to });
+  if (filters?.professionalId) params.set("professionalId", filters.professionalId);
+  if (filters?.specialtyId) params.set("specialtyId", filters.specialtyId);
+
+  return apiFetch<{ clinic: { name: string; slug: string }; slots: { startAt: string; endAt: string }[] }>(
+    `/public/clinics/by-id/${clinicId}/availability?${params.toString()}`
+  );
+};
+
 export const publicCreateAppointment = (
   slug: string,
   body: {
@@ -56,6 +71,9 @@ export const publicCreateAppointment = (
 ) => apiFetch<Appointment>(`/public/clinics/${slug}/appointments`, { method: "POST", body: JSON.stringify(body) }, token);
 
 export const listMyAppointments = (token: string) => apiFetch<Appointment[]>(`/public/me/appointments`, {}, token);
+
+export const cancelMyAppointment = (token: string, id: string) =>
+  apiFetch<Appointment>(`/public/me/appointments/${id}/cancel`, { method: "PATCH" }, token);
 
 export const rescheduleMyAppointment = (token: string, id: string, body: { startAt: string }) =>
   apiFetch<{ cancelledAppointmentId: string; appointment: Appointment }>(
