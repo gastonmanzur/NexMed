@@ -5,6 +5,7 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Icon } from "../components/ui/Icon";
 import { Input } from "../components/ui/Input";
 import { PageHeader } from "../components/ui/Page";
 import { Select } from "../components/ui/Select";
@@ -56,47 +57,22 @@ export function AdminAppointmentsPage() {
 
       <Card className="ui-form-row">
         <div className="ui-grid-4">
-          <div>
-            <label className="ui-label" htmlFor="from">Desde</label>
-            <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div>
-            <label className="ui-label" htmlFor="to">Hasta</label>
-            <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
-          <div>
-            <label className="ui-label" htmlFor="professional">Profesional</label>
-            <Select id="professional" value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}>
-              <option value="">Todos los profesionales</option>
-              {professionals.map((professional) => (
-                <option key={professional._id} value={professional._id}>{professional.displayName || `${professional.firstName} ${professional.lastName}`.trim()}</option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className="ui-label" htmlFor="status">Estado</label>
-            <Select id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="all">Todos</option>
-              <option value="confirmed">Confirmado</option>
-              <option value="cancelled">Cancelado</option>
-            </Select>
-          </div>
+          <div className="ui-input-with-icon"><label className="ui-label" htmlFor="from">Desde</label><span className="ui-input-leading-icon"><Icon name="calendar-days" size={16} /></span><Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div className="ui-input-with-icon"><label className="ui-label" htmlFor="to">Hasta</label><span className="ui-input-leading-icon"><Icon name="calendar-days" size={16} /></span><Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+          <div className="ui-input-with-icon"><label className="ui-label" htmlFor="professional">Profesional</label><span className="ui-input-leading-icon"><Icon name="filter" size={16} /></span><Select id="professional" value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}><option value="">Todos los profesionales</option>{professionals.map((professional) => <option key={professional._id} value={professional._id}>{professional.displayName || `${professional.firstName} ${professional.lastName}`.trim()}</option>)}</Select></div>
+          <div className="ui-input-with-icon"><label className="ui-label" htmlFor="status">Estado</label><span className="ui-input-leading-icon"><Icon name="filter" size={16} /></span><Select id="status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="all">Todos</option><option value="confirmed">Confirmado</option><option value="cancelled">Cancelado</option></Select></div>
         </div>
         <div style={{ display: "flex", gap: "0.55rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
-          <Input placeholder="Buscar por teléfono o nombre" value={q} onChange={(e) => setQ(e.target.value)} />
-          <Button onClick={load}>Aplicar filtros</Button>
+          <div className="ui-input-with-icon" style={{ flex: 1, minWidth: 250 }}><span className="ui-input-leading-icon"><Icon name="search" size={16} /></span><Input placeholder="Buscar por teléfono o nombre" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <Button onClick={load}><Icon name="filter" />Aplicar filtros</Button>
         </div>
       </Card>
 
       <Card>
         {loading ? (
-          <div style={{ display: "grid", gap: "0.6rem" }}>
-            <Skeleton height="1.4rem" />
-            <Skeleton height="1.4rem" />
-            <Skeleton height="1.4rem" />
-          </div>
+          <Skeleton variant="table" rows={8} />
         ) : visibleItems.length === 0 ? (
-          <EmptyState title="No hay turnos para los filtros seleccionados" description="Probá ajustar el rango de fechas o el profesional." />
+          <EmptyState icon={<Icon name="calendar-x" size={20} />} title="No hay turnos para los filtros seleccionados" description="Probá ajustar el rango de fechas o el profesional." />
         ) : (
           <Table>
             <thead><tr><th>Fecha/hora</th><th>Paciente</th><th>Profesional</th><th>Especialidad</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -107,8 +83,8 @@ export function AdminAppointmentsPage() {
                   <td>{a.patientFullName}<br /><span style={{ color: "#6b7280" }}>{a.patientPhone}</span></td>
                   <td>{a.professionalName ?? "—"}</td>
                   <td>{(a.specialtyId && specialtiesById.get(a.specialtyId)) || "—"}</td>
-                  <td><Badge variant={a.status === "confirmed" ? "success" : "muted"}>{a.status === "confirmed" ? "Confirmado" : "Cancelado"}</Badge></td>
-                  <td>{a.status === "confirmed" && <Button variant="secondary" onClick={async () => { await cancelAppointment(token!, a._id); load(); }}>Cancelar</Button>}</td>
+                  <td><Badge variant={a.status === "confirmed" ? "success" : "muted"}>{a.status === "confirmed" ? <><Icon name="calendar-check" size={16} />Confirmado</> : <><Icon name="ban" size={16} />Cancelado</>}</Badge></td>
+                  <td>{a.status === "confirmed" && <Button variant="secondary" title="Cancelar turno" aria-label="Cancelar turno" onClick={async () => { await cancelAppointment(token!, a._id); load(); }}><Icon name="trash" size={16} /></Button>}</td>
                 </tr>
               ))}
             </tbody>
