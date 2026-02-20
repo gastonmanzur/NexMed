@@ -2,8 +2,9 @@ import { Types } from "mongoose";
 import { ClinicNotificationSettings } from "../models/ClinicNotificationSettings";
 import { Reminder } from "../models/Reminder";
 import { sendReminderEmail } from "../services/mailer";
+import { env } from "../config/env";
 
-const POLL_MS = 30_000;
+const POLL_MS = env.reminderTestMode ? 5_000 : 30_000;
 const BATCH_SIZE = 50;
 let started = false;
 let timer: NodeJS.Timeout | null = null;
@@ -24,6 +25,7 @@ async function processReminder(reminderId: Types.ObjectId) {
     }
 
     await Reminder.updateOne({ _id: locked._id, status: "sending" }, { status: "sent", sentAt: new Date(), errorMessage: "" });
+    console.log(`[REMINDER] Sent → appointment=${locked.appointmentId} patient=${locked.patientId ?? "n/a"} rule=${locked.ruleId} scheduledFor=${locked.scheduledFor.toISOString()}`);
   } catch (error: any) {
     await Reminder.updateOne(
       { _id: locked._id, status: "sending" },
@@ -47,6 +49,10 @@ async function tick() {
 export function startReminderScheduler() {
   if (started) return;
   started = true;
+
+  if (env.reminderTestMode) {
+    console.log("[REMINDER TEST MODE ACTIVE]");
+  }
 
   timer = setInterval(() => {
     tick().catch((error) => {

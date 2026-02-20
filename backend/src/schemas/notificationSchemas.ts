@@ -29,3 +29,8 @@ export const updateNotificationSettingsSchema = z.object({
 export const notificationPreviewQuerySchema = z.object({
   appointmentId: z.string().trim().min(1),
 });
+
+
+export const triggerAppointmentRemindersNowParamsSchema = z.object({
+  appointmentId: z.string().trim().min(1),
+});

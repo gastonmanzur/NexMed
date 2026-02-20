@@ -1,6 +1,6 @@
 import { Schema, Types, model } from "mongoose";
 
-export type ReminderOffsetUnit = "days" | "hours";
+export type ReminderOffsetUnit = "days" | "hours" | "minutes" | "seconds";
 export type ReminderChannel = "inApp" | "email";
 
 export interface ClinicNotificationRule {
@@ -26,7 +26,7 @@ const reminderRuleSchema = new Schema<ClinicNotificationRule>(
     id: { type: String, required: true },
     enabled: { type: Boolean, default: true },
     offsetValue: { type: Number, required: true, min: 1 },
-    offsetUnit: { type: String, enum: ["days", "hours"], required: true },
+    offsetUnit: { type: String, enum: ["days", "hours", "minutes", "seconds"], required: true },
     channel: { type: String, enum: ["inApp", "email"], required: true },
   },
   { _id: false }

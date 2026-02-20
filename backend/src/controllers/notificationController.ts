@@ -62,3 +62,24 @@ export async function previewClinicNotificationSchedule(req: Request, res: Respo
 
   return ok(res, { appointmentId: appointment._id, startAt: appointment.startAt, preview });
 }
+
+
+export async function triggerAppointmentRemindersNow(req: Request, res: Response) {
+  if (process.env.NODE_ENV === "production") {
+    return fail(res, "No disponible en producción", 404);
+  }
+
+  const params = (res.locals.validated?.params ?? req.params) as { appointmentId: string };
+
+  const result = await Reminder.updateMany(
+    { appointmentId: params.appointmentId, status: { $in: ["scheduled", "failed"] } },
+    { scheduledFor: new Date(), status: "scheduled", errorMessage: "" }
+  );
+
+  return ok(res, {
+    appointmentId: params.appointmentId,
+    matchedCount: result.matchedCount,
+    modifiedCount: result.modifiedCount,
+    forcedAt: new Date(),
+  });
+}

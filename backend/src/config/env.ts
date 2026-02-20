@@ -14,6 +14,7 @@ export const env = {
   smtpUser: process.env.SMTP_USER ?? "",
   smtpPass: process.env.SMTP_PASS ?? "",
   smtpFrom: process.env.SMTP_FROM ?? "",
+  reminderTestMode: process.env.REMINDER_TEST_MODE === "true",
 };
 
 if (!env.mongoUri) throw new Error("Missing MONGO_URI");
