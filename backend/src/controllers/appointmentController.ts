@@ -3,6 +3,7 @@ import { Appointment } from "../models/Appointment";
 import { Types } from "mongoose";
 import { Professional } from "../models/Professional";
 import { fail, ok } from "../utils/http";
+import { cancelScheduledAppointmentReminders } from "../services/reminderService";
 
 function dateOnlyToUtcStart(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
@@ -86,5 +87,6 @@ export async function cancelAppointment(req: Request, res: Response) {
   ).lean();
 
   if (!appointment) return fail(res, "Turno no encontrado", 404);
+  await cancelScheduledAppointmentReminders(appointment._id);
   return ok(res, appointment);
 }

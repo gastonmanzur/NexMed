@@ -5,12 +5,14 @@ import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminProfessionalsPage } from "./pages/AdminProfessionalsPage";
 import { AdminSchedulesPage } from "./pages/AdminSchedulesPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
+import { AdminNotificationsPage } from "./pages/AdminNotificationsPage";
 import { AdminSpecialtiesPage } from "./pages/AdminSpecialtiesPage";
 import { JoinClinicPage } from "./pages/JoinClinicPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage";
 import { PatientClinicsPage } from "./pages/patient/PatientClinicsPage";
 import { PatientReschedulePage } from "./pages/patient/PatientReschedulePage";
+import { PatientNotificationsPage } from "./pages/patient/PatientNotificationsPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -43,6 +45,7 @@ function App() {
     if (path === "/patient" || path === "/patient/appointments") return <PatientAppointmentsPage />;
     if (path === "/patient/clinics") return <PatientClinicsPage />;
     if (path === "/patient/reschedule") return <PatientReschedulePage />;
+    if (path === "/patient/notifications") return <PatientNotificationsPage />;
 
     window.history.replaceState({}, "", "/patient/appointments");
     return <PatientAppointmentsPage />;
@@ -54,7 +57,8 @@ function App() {
   if (path === "/admin/specialties") content = <AdminSpecialtiesPage />;
   if (path === "/admin/professionals") content = <AdminProfessionalsPage />;
   if (path === "/admin/schedules") content = <AdminSchedulesPage />;
-  if (!["/admin", "/admin/settings", "/admin/appointments", "/admin/specialties", "/admin/professionals", "/admin/schedules"].includes(path)) {
+  if (path === "/clinic/notifications") content = <AdminNotificationsPage />;
+  if (!["/admin", "/admin/settings", "/admin/appointments", "/admin/specialties", "/admin/professionals", "/admin/schedules", "/clinic/notifications"].includes(path)) {
     window.history.replaceState({}, "", "/admin");
   }
 

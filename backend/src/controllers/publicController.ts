@@ -5,6 +5,7 @@ import { Professional } from "../models/Professional";
 import { Specialty } from "../models/Specialty";
 import { buildAvailableSlots } from "../services/availabilityService";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
+import { cancelScheduledAppointmentReminders, scheduleAppointmentReminders } from "../services/reminderService";
 import { fail, ok } from "../utils/http";
 
 function dateOnlyToClinicStart(value: string) {
@@ -244,6 +245,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
   }
 
   const appointment = await Appointment.create(appointmentPayload);
+  await scheduleAppointmentReminders(appointment);
 
   if (req.auth?.type === "patient") {
     await upsertPatientClinicLink({
@@ -271,6 +273,7 @@ export async function cancelMyAppointment(req: Request, res: Response) {
 
   appointment.status = "cancelled";
   await appointment.save();
+  await cancelScheduledAppointmentReminders(appointment._id);
 
   return ok(res, appointment);
 }
@@ -313,6 +316,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   if (alreadyBooked) return fail(res, "Turno no disponible", 409);
 
   await Appointment.findByIdAndUpdate(appointmentId, { status: "cancelled" });
+  await cancelScheduledAppointmentReminders(appointmentId);
 
   const newAppointmentPayload: any = {
     clinicId: clinic._id,
@@ -332,6 +336,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   }
 
   const newAppointment = await Appointment.create(newAppointmentPayload);
+  await scheduleAppointmentReminders(newAppointment);
 
   return ok(res, { cancelledAppointmentId: appointmentId, appointment: newAppointment });
 }
