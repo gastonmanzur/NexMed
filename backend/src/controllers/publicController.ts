@@ -8,6 +8,7 @@ import { Specialty } from "../models/Specialty";
 import { buildSlots, CLINIC_TIMEZONE, getClinicLocalParts } from "../services/availabilityService";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { cancelScheduledAppointmentReminders, scheduleAppointmentReminders } from "../services/reminderService";
+import { updateAppointmentStatus } from "../services/appointmentStatusService";
 import { fail, ok } from "../utils/http";
 import { alignToGrid, buildSlotKey, normalizeStartAt, SlotValidationError } from "../utils/slots";
 
@@ -393,11 +394,10 @@ export async function cancelMyAppointment(req: Request, res: Response) {
   const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked", "confirmed"] } });
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
-  appointment.status = "canceled";
-  await appointment.save();
+  const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "patient_cancel", "patient_cancel_endpoint");
   await cancelScheduledAppointmentReminders(appointment._id);
 
-  return ok(res, appointment);
+  return ok(res, updatedAppointment);
 }
 
 export async function rescheduleMyAppointment(req: Request, res: Response) {
@@ -475,7 +475,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     throw error;
   }
 
-  await Appointment.findByIdAndUpdate(appointmentId, { status: "canceled" });
+  await updateAppointmentStatus(appointmentId, "canceled", "patient_reschedule", "patient_reschedule_endpoint");
   await cancelScheduledAppointmentReminders(appointmentId);
   await scheduleAppointmentReminders(newAppointment);
 

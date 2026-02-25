@@ -34,11 +34,11 @@ export function AdminDashboardPage() {
   }, [token]);
 
   const today = fmtDate(new Date());
-  const todayCount = useMemo(() => appointments.filter((a) => a.startAt.slice(0, 10) === today && a.status === "confirmed").length, [appointments, today]);
-  const weekCount = useMemo(() => appointments.filter((a) => a.status === "confirmed").length, [appointments]);
+  const todayCount = useMemo(() => appointments.filter((a) => a.startAt.slice(0, 10) === today && a.status !== "canceled").length, [appointments, today]);
+  const weekCount = useMemo(() => appointments.filter((a) => a.status !== "canceled").length, [appointments]);
 
   const statCards = [
-    { label: "Turnos de hoy", value: todayCount, hint: "Confirmados para hoy", icon: "calendar-check" as const },
+    { label: "Turnos de hoy", value: todayCount, hint: "Reservados para hoy", icon: "calendar-check" as const },
     { label: "Próximos 7 días", value: weekCount, hint: "Agenda activa semanal", icon: "calendar-days" as const },
     { label: "Profesionales activos", value: professionalCount, hint: "Equipo disponible", icon: "users" as const },
     { label: "Especialidades", value: specialtyCount, hint: "Oferta médica actual", icon: "tags" as const },

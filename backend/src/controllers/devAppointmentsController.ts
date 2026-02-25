@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { PipelineStage } from "mongoose";
 import { Appointment } from "../models/Appointment";
+import { updateAppointmentStatus } from "../services/appointmentStatusService";
 import { fail, ok } from "../utils/http";
 import { normalizeStartAt } from "../utils/slots";
 
@@ -81,10 +82,13 @@ export async function dedupAppointments(req: Request, res: Response) {
     if (!duplicates.length) continue;
 
     const duplicateIds = duplicates.map((item: { _id: string }) => item._id);
-    const result = await Appointment.updateMany({ _id: { $in: duplicateIds } }, { status: "canceled" });
+
+    for (const duplicateId of duplicateIds) {
+      await updateAppointmentStatus(duplicateId, "canceled", "dev_dedup", "dev_dedup_endpoint");
+      cancelledCount += 1;
+    }
 
     groupsProcessed += 1;
-    cancelledCount += result.modifiedCount;
   }
 
   return ok(res, {

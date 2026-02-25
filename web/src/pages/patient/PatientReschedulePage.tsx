@@ -39,7 +39,7 @@ export function PatientReschedulePage() {
   }, [clinics]);
 
   const upcomingAppointments = useMemo(
-    () => appointments.filter((appointment) => appointment.status === "confirmed" && isUpcoming(appointment.startAt)),
+    () => appointments.filter((appointment) => appointment.status !== "canceled" && isUpcoming(appointment.startAt)),
     [appointments]
   );
 
@@ -56,7 +56,7 @@ export function PatientReschedulePage() {
       return;
     }
 
-    const firstAvailable = appointmentData.find((appointment) => appointment.status === "confirmed" && isUpcoming(appointment.startAt));
+    const firstAvailable = appointmentData.find((appointment) => appointment.status !== "canceled" && isUpcoming(appointment.startAt));
     if (firstAvailable) {
       setSelectedAppointmentId(firstAvailable._id);
     }

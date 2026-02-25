@@ -28,7 +28,7 @@ export function PatientPage() {
   const loadAppointments = async () => {
     if (!token) return;
     const data = await listMyAppointments(token);
-    setAppointments(data.filter((a) => a.status === "confirmed"));
+    setAppointments(data.filter((a) => a.status !== "canceled"));
     if (!selectedAppointmentId && data.length) setSelectedAppointmentId(data[0]._id);
   };
 
@@ -94,7 +94,7 @@ export function PatientPage() {
         </Card>
         <Card>
           <h3>Mis turnos</h3>
-          {!appointments.length && <p>No tenés turnos confirmados.</p>}
+          {!appointments.length && <p>No tenés turnos reservados.</p>}
           {appointments.map((a) => (
             <label key={a._id} className="form-row" style={{ display: "block" }}>
               <input

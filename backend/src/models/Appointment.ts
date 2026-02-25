@@ -1,6 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 
-export type AppointmentStatus = "booked" | "confirmed" | "canceled" | "cancelled";
+export type AppointmentStatus = "booked" | "confirmed" | "canceled";
 
 export interface AppointmentDocument {
   _id: Types.ObjectId;
@@ -31,7 +31,7 @@ const appointmentSchema = new Schema<AppointmentDocument>(
     patientFullName: { type: String, required: true },
     patientPhone: { type: String, required: true, index: true },
     note: { type: String },
-    status: { type: String, enum: ["booked", "confirmed", "canceled", "cancelled"], default: "booked", index: true },
+    status: { type: String, enum: ["booked", "confirmed", "canceled"], default: "booked", index: true },
   },
   { timestamps: true }
 );
@@ -47,5 +47,34 @@ appointmentSchema.index(
     },
   }
 );
+
+function isDevEnvironment() {
+  return process.env.NODE_ENV !== "production";
+}
+
+appointmentSchema.pre("save", function logStatusChangeOnSave() {
+  if (!isDevEnvironment() || !this.isModified("status")) return;
+
+  console.info("[appointment-status-change:model-save]", {
+    appointmentId: String(this._id),
+    newStatus: this.status,
+    stack: new Error().stack,
+  });
+});
+
+appointmentSchema.pre(["updateOne", "updateMany", "findOneAndUpdate"], function logStatusChangeOnUpdate() {
+  if (!isDevEnvironment()) return;
+
+  const query = this as any;
+  const update = query.getUpdate?.() as Record<string, any> | undefined;
+  const nextStatus = update?.status ?? update?.$set?.status;
+  if (!nextStatus) return;
+
+  console.info("[appointment-status-change:model-update]", {
+    query: query.getQuery?.(),
+    newStatus: nextStatus,
+    stack: new Error().stack,
+  });
+});
 
 export const Appointment = model<AppointmentDocument>("Appointment", appointmentSchema);
