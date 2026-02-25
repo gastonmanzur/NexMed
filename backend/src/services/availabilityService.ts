@@ -186,7 +186,7 @@ export async function buildSlots(params: {
 
   const bookedQuery: any = {
     clinicId,
-    status: "confirmed",
+    status: { $ne: "cancelled" },
     startAt: { $gte: fromUtc, $lt: toUtc },
   };
   if (professionalId) bookedQuery.professionalId = professionalId;
