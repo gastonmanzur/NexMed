@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Filter, RotateCcw, Search } from "lucide-react";
 
 import { publicAvailability, publicCreateAppointment } from "../api/appointments";
+import { ApiError } from "../api/client";
 import { getPublicClinic, listPublicProfessionals, listPublicSpecialties } from "../api/clinic";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -189,7 +190,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
           startAt: selectedSlot,
           patientFullName: fullName,
           patientPhone: phone,
-          note,
+          note: note || undefined,
           professionalId: selectedProfessionalId || undefined,
           specialtyId: selectedSpecialtyId || undefined,
         },
@@ -207,8 +208,9 @@ export function PublicBookingPage({ slug }: { slug: string }) {
       }
     } catch (err: any) {
       const message = err.message || "No se pudo reservar el turno";
-      if (message.toLowerCase().includes("409") || message.toLowerCase().includes("no disponible")) {
-        setError("Ese turno ya no está disponible. Elegí otro horario.");
+      if (err instanceof ApiError && err.status === 409) {
+        setError("Ese turno ya no está disponible. Actualizando horarios...");
+        setSelectedSlot("");
         await loadAvailability();
       } else {
         setError(message);
