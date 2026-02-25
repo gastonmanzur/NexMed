@@ -31,7 +31,7 @@ export const publicAvailability = (
     params.set("ts", String(Date.now()));
   }
 
-  return apiFetch<{ clinic: { name: string; slug: string }; slots: { startAt: string; endAt: string; professionalId?: string }[] }>(
+  return apiFetch<{ clinic: { name: string; slug: string }; slots: { startAt: string; endAt: string; professionalId?: string; professionalFullName?: string }[] }>(
     `/public/clinics/${slug}/availability?${params.toString()}`,
     { cache: "no-store" }
   );
@@ -52,7 +52,7 @@ export const publicAvailabilityByClinicIdWithFilters = (
   if (filters?.professionalId) params.set("professionalId", filters.professionalId);
   if (filters?.specialtyId) params.set("specialtyId", filters.specialtyId);
 
-  return apiFetch<{ clinic: { name: string; slug: string }; slots: { startAt: string; endAt: string }[] }>(
+  return apiFetch<{ clinic: { name: string; slug: string }; slots: { startAt: string; endAt: string; professionalId?: string; professionalFullName?: string }[] }>(
     `/public/clinics/by-id/${clinicId}/availability?${params.toString()}`
   );
 };

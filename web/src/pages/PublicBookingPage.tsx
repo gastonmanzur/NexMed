@@ -1,57 +1,43 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock3, Filter, RotateCcw, Search } from "lucide-react";
+import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock3, Filter, RotateCcw, Search, Zap } from "lucide-react";
 
 import { publicAvailability, publicCreateAppointment } from "../api/appointments";
 import { ApiError } from "../api/client";
 import { getPublicClinic, listPublicProfessionals, listPublicSpecialties } from "../api/clinic";
 import { Button } from "../components/Button";
+import { BookingFiltersPrompt } from "../components/BookingFiltersPrompt";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
+import { MobileStickyBookingBar } from "../components/MobileStickyBookingBar";
 import { Navbar } from "../components/Navbar";
 import { useAuth } from "../hooks/useAuth";
+import { RETURN_TO_KEY } from "./JoinClinicPage";
 import { Professional, Specialty } from "../types";
 
-type Slot = { startAt: string; endAt: string; professionalId?: string };
-
+type Slot = { startAt: string; endAt: string; professionalId?: string; professionalFullName?: string; specialtyId?: string };
 type CalendarDay = { date: Date; inCurrentMonth: boolean };
+type PendingBookingAction = { mode: "slot" | "first"; slotStartAt?: string };
 
+const PENDING_BOOKING_KEY = "turnos_pending_booking";
 const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
 const weekdayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
-const toDateKey = (date: Date) => {
-  const y = date.getFullYear();
-  const m = `${date.getMonth() + 1}`.padStart(2, "0");
-  const d = `${date.getDate()}`.padStart(2, "0");
-  return `${y}-${m}-${d}`;
-};
-
+const toDateKey = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
 const fromDateKey = (dateKey: string) => new Date(`${dateKey}T00:00:00`);
-
-const addDays = (date: Date, days: number) => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
+const addDays = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 const isSameDay = (a: Date, b: Date) => toDateKey(a) === toDateKey(b);
 
-const buildMapByDay = (items: Slot[]) => {
-  return items.reduce<Record<string, Slot[]>>((acc, slot) => {
-    const key = slot.startAt.slice(0, 10);
-    acc[key] = [...(acc[key] ?? []), slot].sort((a, b) => a.startAt.localeCompare(b.startAt));
-    return acc;
-  }, {});
-};
+const buildMapByDay = (items: Slot[]) => items.reduce<Record<string, Slot[]>>((acc, slot) => {
+  const key = slot.startAt.slice(0, 10);
+  acc[key] = [...(acc[key] ?? []), slot].sort((a, b) => a.startAt.localeCompare(b.startAt));
+  return acc;
+}, {});
 
 const buildMonthGrid = (month: Date): CalendarDay[] => {
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
   const offsetMonday = (firstDay.getDay() + 6) % 7;
   const start = addDays(firstDay, -offsetMonday);
-
-  return Array.from({ length: 42 }).map((_, idx) => {
-    const date = addDays(start, idx);
-    return { date, inCurrentMonth: date.getMonth() === month.getMonth() };
-  });
+  return Array.from({ length: 42 }).map((_, idx) => ({ date: addDays(start, idx), inCurrentMonth: addDays(start, idx).getMonth() === month.getMonth() }));
 };
 
 export function PublicBookingPage({ slug }: { slug: string }) {
@@ -63,13 +49,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState("");
   const [selectedProfessionalId, setSelectedProfessionalId] = useState("");
-  const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(1);
-    return d;
-  });
+  const [selectedDay, setSelectedDay] = useState<Date>();
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedSlot, setSelectedSlot] = useState("");
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -79,15 +60,20 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFilterValidation, setShowFilterValidation] = useState(false);
+  const [filterPromptOpen, setFilterPromptOpen] = useState(false);
+  const [pendingBookingAction, setPendingBookingAction] = useState<PendingBookingAction | null>(null);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 900px)").matches);
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
+  const today = useMemo(() => new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()), []);
   const from = useMemo(() => toDateKey(today), [today]);
   const to = useMemo(() => toDateKey(addDays(today, 30)), [today]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const listener = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -95,62 +81,30 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     setSelectedProfessionalId(params.get("professionalId") || "");
   }, []);
 
-  const filteredProfessionals = useMemo(() => {
-    if (!selectedSpecialtyId) return professionals;
-    return professionals.filter((p) => p.specialtyIds.includes(selectedSpecialtyId));
-  }, [professionals, selectedSpecialtyId]);
-
+  const filteredProfessionals = useMemo(() => !selectedSpecialtyId ? professionals : professionals.filter((p) => p.specialtyIds.includes(selectedSpecialtyId)), [professionals, selectedSpecialtyId]);
   useEffect(() => {
-    if (selectedProfessionalId && !filteredProfessionals.some((p) => p._id === selectedProfessionalId)) {
-      setSelectedProfessionalId("");
-    }
+    if (selectedProfessionalId && !filteredProfessionals.some((p) => p._id === selectedProfessionalId)) setSelectedProfessionalId("");
   }, [selectedProfessionalId, filteredProfessionals]);
-
-  useEffect(() => {
-    if (professionals.length === 1 && !selectedProfessionalId) {
-      setSelectedProfessionalId(professionals[0]._id);
-    }
-  }, [professionals, selectedProfessionalId]);
-
-  useEffect(() => {
-    if (specialties.length === 1 && !selectedSpecialtyId) {
-      setSelectedSpecialtyId(specialties[0]._id);
-    }
-  }, [specialties, selectedSpecialtyId]);
+  useEffect(() => { if (professionals.length === 1 && !selectedProfessionalId) setSelectedProfessionalId(professionals[0]._id); }, [professionals, selectedProfessionalId]);
+  useEffect(() => { if (specialties.length === 1 && !selectedSpecialtyId) setSelectedSpecialtyId(specialties[0]._id); }, [specialties, selectedSpecialtyId]);
 
   const groupedSlots = useMemo(() => buildMapByDay(slots), [slots]);
   const availableDays = useMemo(() => new Set(Object.keys(groupedSlots)), [groupedSlots]);
   const selectedDayKey = selectedDay ? toDateKey(selectedDay) : "";
   const selectedDaySlots = useMemo(() => (selectedDayKey ? groupedSlots[selectedDayKey] ?? [] : []), [groupedSlots, selectedDayKey]);
+  const selectedSlotData = useMemo(() => slots.find((slot) => slot.startAt === selectedSlot), [slots, selectedSlot]);
 
   const loadAvailability = async () => {
     setIsLoadingAvailability(true);
     setError("");
-
     try {
-      const [specRows, profRows, clinicPublic] = await Promise.all([
-        listPublicSpecialties(slug),
-        listPublicProfessionals(slug),
-        getPublicClinic(slug),
-      ]);
-
+      const [specRows, profRows, clinicPublic] = await Promise.all([listPublicSpecialties(slug), listPublicProfessionals(slug), getPublicClinic(slug)]);
       setSpecialties(specRows);
       setProfessionals(profRows);
       setClinicName((clinicPublic as any).name || "Clínica");
       setClinicInfo(clinicPublic);
-
-      if (!selectedSpecialtyId && !selectedProfessionalId) {
-        setSlots([]);
-        return;
-      }
-
-      const availability = await publicAvailability(slug, from, to, {
-        specialtyId: selectedSpecialtyId || undefined,
-        professionalId: selectedProfessionalId || undefined,
-      });
-
-      setClinicName((clinicPublic as any).name || availability.clinic.name);
-      setSlots(availability.slots);
+      const availability = await publicAvailability(slug, from, to, { specialtyId: selectedSpecialtyId || undefined, professionalId: selectedProfessionalId || undefined });
+      setSlots(availability.slots.sort((a, b) => a.startAt.localeCompare(b.startAt)));
     } catch (e: any) {
       setError(e.message || "No se pudo cargar la disponibilidad");
     } finally {
@@ -158,16 +112,9 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     }
   };
 
-  useEffect(() => {
-    loadAvailability();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, selectedSpecialtyId, selectedProfessionalId]);
+  useEffect(() => { loadAvailability(); }, [slug, selectedSpecialtyId, selectedProfessionalId]);
 
   useEffect(() => {
-    if (selectedSlot && !slots.some((slot) => slot.startAt === selectedSlot)) {
-      setSelectedSlot("");
-    }
-
     if (!selectedDay) {
       const firstAvailableDay = [...availableDays].sort()[0];
       if (firstAvailableDay) {
@@ -175,249 +122,190 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         setSelectedDay(parsed);
         setCalendarMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1));
       }
-      return;
     }
+  }, [availableDays, selectedDay]);
 
-    const key = toDateKey(selectedDay);
-    if (!availableDays.has(key)) {
-      setSelectedDay(undefined);
-      setSelectedSlot("");
-    }
-  }, [availableDays, selectedDay, selectedSlot, slots]);
-
-  const selectedSlotTimeText = useMemo(() => {
-    if (!selectedSlot) return "";
-    return new Date(selectedSlot).toLocaleString("es-AR", {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }, [selectedSlot]);
-
-  const monthGrid = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
   const hasFilter = Boolean(selectedProfessionalId) || Boolean(selectedSpecialtyId);
-  const canReserve = Boolean(selectedSlot) && hasFilter && !isSubmitting;
-  const showFiltersWarning = showFilterValidation && !hasFilter;
+  const selectedSlotTimeText = selectedSlot ? new Date(selectedSlot).toLocaleString("es-AR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
+  const monthGrid = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
+  const canReserveForm = Boolean(selectedSlot) && hasFilter && !isSubmitting;
 
-  useEffect(() => {
-    if (hasFilter && showFilterValidation) setShowFilterValidation(false);
-  }, [hasFilter, showFilterValidation]);
+  const storePendingAndGoLogin = (action: PendingBookingAction) => {
+    localStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(action));
+    localStorage.setItem(RETURN_TO_KEY, window.location.pathname + window.location.search);
+    window.location.href = "/login";
+  };
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setMsg("");
-    setError("");
-
-    if (!hasFilter) {
-      setShowFilterValidation(true);
-      setError("Para reservar, seleccioná al menos un profesional o una especialidad.");
-      return;
-    }
-
-    if (!selectedSlot) {
-      setError("Seleccioná un horario disponible.");
-      return;
-    }
-
+  const reserveSlot = async (slot: Slot) => {
     setIsSubmitting(true);
-    setShowFilterValidation(false);
-
+    setError("");
+    setMsg("");
     try {
-      await publicCreateAppointment(
-        slug,
-        {
-          startAt: selectedSlot,
-          patientFullName: fullName,
-          patientPhone: phone,
-          note: note || undefined,
-          professionalId: selectedProfessionalId || undefined,
-          specialtyId: selectedSpecialtyId || undefined,
-        },
-        token ?? undefined
-      );
-
+      await publicCreateAppointment(slug, {
+        startAt: slot.startAt,
+        patientFullName: fullName,
+        patientPhone: phone,
+        note: note || undefined,
+        professionalId: slot.professionalId || selectedProfessionalId || undefined,
+        specialtyId: selectedSpecialtyId || undefined,
+      }, token ?? undefined);
       setMsg("Turno reservado con éxito");
       setSelectedSlot("");
       await loadAvailability();
-
-      if (user?.type === "patient") {
-        setTimeout(() => {
-          window.location.href = "/patient/appointments";
-        }, 800);
-      }
+      if (user?.type === "patient") setTimeout(() => { window.location.href = "/patient/appointments"; }, 700);
     } catch (err: any) {
-      const message = err.message || "No se pudo reservar el turno";
       if (err instanceof ApiError && err.status === 409) {
-        if (err.code === "DUPLICATE_SLOT") {
-          setError("Ese turno ya fue reservado. Elegí otro.");
-        } else {
-          setError(err.message || "No se pudo reservar el turno");
-        }
+        setError(err.code === "DUPLICATE_SLOT" ? "Ese turno ya fue reservado. Elegí otro." : (err.message || "No se pudo reservar el turno"));
         setSelectedSlot("");
         await loadAvailability();
       } else {
-        setError(message);
+        setError(err.message || "No se pudo reservar el turno");
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const proceedBookingAction = async (action: PendingBookingAction) => {
+    const target = action.mode === "first" ? slots[0] : slots.find((slot) => slot.startAt === action.slotStartAt);
+    if (!target) return setError("No hay turnos disponibles para reservar.");
+    setSelectedSlot(target.startAt);
+
+    if (!user || user.type !== "patient") return storePendingAndGoLogin(action);
+    if (!hasFilter) {
+      setPendingBookingAction(action);
+      setFilterPromptOpen(true);
+      return;
+    }
+
+    if (isMobile) return;
+    await reserveSlot(target);
+  };
+
+  useEffect(() => {
+    if (!user || user.type !== "patient") return;
+    const raw = localStorage.getItem(PENDING_BOOKING_KEY);
+    if (!raw) return;
+    localStorage.removeItem(PENDING_BOOKING_KEY);
+    const action = JSON.parse(raw) as PendingBookingAction;
+    proceedBookingAction(action);
+  }, [user, hasFilter, slots.length]);
+
+  useEffect(() => {
+    if (!hasFilter || !pendingBookingAction) return;
+    setFilterPromptOpen(false);
+    proceedBookingAction(pendingBookingAction);
+    setPendingBookingAction(null);
+  }, [hasFilter, pendingBookingAction]);
+
+  const onSlotClick = async (slot: Slot) => {
+    setSelectedSlot(slot.startAt);
+    if (isMobile) return;
+    await proceedBookingAction({ mode: "slot", slotStartAt: slot.startAt });
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedSlotData) return setError("Seleccioná un horario disponible.");
+    if (!hasFilter) {
+      setShowFilterValidation(true);
+      setFilterPromptOpen(true);
+      return;
+    }
+    await reserveSlot(selectedSlotData);
+  };
+
   return (
     <>
       <Navbar user={user} clinicName={clinic?.name} onLogout={logout} />
-      <div className="page public-booking-page">
+      <div className="page public-booking-page" style={{ paddingBottom: isMobile ? 120 : 24 }}>
         <Card>
           <div className="booking-title-row">
             <div>
               <h2>Reservá tu turno — {clinicName}</h2>
-              {clinicInfo && (
-                <p>
-                  {[
-                    clinicInfo.description,
-                    clinicInfo.phone,
-                    clinicInfo.whatsapp,
-                    clinicInfo.website,
-                    [clinicInfo.address, clinicInfo.city, clinicInfo.province].filter(Boolean).join(", "),
-                    clinicInfo.businessHoursNote,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              )}
+              {clinicInfo && <p>{[clinicInfo.description, clinicInfo.phone, clinicInfo.whatsapp, [clinicInfo.address, clinicInfo.city, clinicInfo.province].filter(Boolean).join(", ")].filter(Boolean).join(" · ")}</p>}
             </div>
             <a href="/" className="booking-back-link">Volver</a>
           </div>
         </Card>
 
         <Card>
-          <div className={`grid-2 booking-filters-grid ${showFiltersWarning ? "booking-filters-grid-warning" : ""}`}>
-            <label className="booking-filter">
-              <span><Filter size={14} /> Especialidad</span>
-              <select className="input" value={selectedSpecialtyId} onChange={(e) => setSelectedSpecialtyId(e.target.value)}>
-                <option value="">Todas las especialidades</option>
-                {specialties.map((s) => (
-                  <option key={s._id} value={s._id}>{s.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="booking-filter">
-              <span><Search size={14} /> Profesional</span>
-              <select className="input" value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}>
-                <option value="">Cualquier profesional</option>
-                {filteredProfessionals.map((p) => (
-                  <option key={p._id} value={p._id}>{p.displayName || `${p.firstName} ${p.lastName}`}</option>
-                ))}
-              </select>
-            </label>
+          <div className={`grid-2 booking-filters-grid ${showFilterValidation && !hasFilter ? "booking-filters-grid-warning" : ""}`}>
+            <label className="booking-filter"><span><Filter size={14} /> Especialidad</span><select className="input" value={selectedSpecialtyId} onChange={(e) => setSelectedSpecialtyId(e.target.value)}><option value="">Todas las especialidades</option>{specialties.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}</select></label>
+            <label className="booking-filter"><span><Search size={14} /> Profesional</span><select className="input" value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}><option value="">Cualquier profesional</option>{filteredProfessionals.map((p) => <option key={p._id} value={p._id}>{p.displayName || `${p.firstName} ${p.lastName}`}</option>)}</select></label>
           </div>
-          <p className={`booking-filter-hint ${showFiltersWarning ? "booking-filter-hint-warning" : ""}`}>
-            {showFiltersWarning && <AlertCircle size={14} />}
-            Seleccioná un profesional o una especialidad para continuar.
-          </p>
+          <div className="booking-actions-row">
+            <Button type="button" disabled={isSubmitting || isLoadingAvailability || slots.length === 0} onClick={() => proceedBookingAction({ mode: "first" })}><Zap size={14} /> Reservar el primer turno libre</Button>
+            <p className={`booking-filter-hint ${showFilterValidation && !hasFilter ? "booking-filter-hint-warning" : ""}`}>{showFilterValidation && !hasFilter && <AlertCircle size={14} />}Seleccioná un profesional o una especialidad para continuar.</p>
+          </div>
         </Card>
 
-        {error && (
-          <Card>
-            <p className="error">{error}</p>
-            <Button type="button" onClick={loadAvailability}><RotateCcw size={14} /> Reintentar</Button>
-          </Card>
-        )}
+        {error && <Card><p className="error">{error}</p><Button type="button" onClick={loadAvailability}><RotateCcw size={14} /> Reintentar</Button></Card>}
 
         <div className="booking-main-grid">
           <Card>
             <h3 className="booking-card-title"><CalendarDays size={18} /> Elegí una fecha</h3>
             <div className="booking-calendar">
               <div className="calendar-header">
-                <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
-                  <ChevronLeft size={16} />
-                </button>
+                <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}><ChevronLeft size={16} /></button>
                 <strong>{monthFormatter.format(calendarMonth)}</strong>
-                <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
-                  <ChevronRight size={16} />
-                </button>
+                <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}><ChevronRight size={16} /></button>
               </div>
               <div className="calendar-grid">
-                {weekdayLabels.map((day) => (
-                  <div key={day} className="calendar-weekday">{day}</div>
-                ))}
+                {weekdayLabels.map((day) => <div key={day} className="calendar-weekday">{day}</div>)}
                 {monthGrid.map(({ date, inCurrentMonth }) => {
                   const isPast = date < today;
                   const hasAvailability = availableDays.has(toDateKey(date));
-                  const isDisabled = isPast || !hasAvailability;
                   const isSelected = selectedDay ? isSameDay(selectedDay, date) : false;
-
-                  return (
-                    <button
-                      key={toDateKey(date)}
-                      type="button"
-                      className={`calendar-day ${isSelected ? "calendar-day-selected" : ""}`}
-                      disabled={isDisabled}
-                      data-muted={!inCurrentMonth}
-                      onClick={() => {
-                        setSelectedDay(date);
-                        setSelectedSlot("");
-                      }}
-                    >
-                      <span>{date.getDate()}</span>
-                      {hasAvailability && <span className="calendar-day-dot" aria-hidden="true" />}
-                    </button>
-                  );
+                  return <button key={toDateKey(date)} type="button" className={`calendar-day ${isSelected ? "calendar-day-selected" : ""}`} disabled={isPast || !hasAvailability} data-muted={!inCurrentMonth} onClick={() => { setSelectedDay(date); setSelectedSlot(""); }}><span>{date.getDate()}</span>{hasAvailability && <span className="calendar-day-dot" aria-hidden="true" />}</button>;
                 })}
               </div>
             </div>
           </Card>
-
           <Card>
             <h3 className="booking-card-title"><Clock3 size={18} /> Turnos disponibles — {selectedDay ? selectedDay.toLocaleDateString("es-AR") : "-"}</h3>
-            {isLoadingAvailability ? (
-              <div className="slot-grid">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="slot slot-skeleton" />
-                ))}
-              </div>
-            ) : selectedDaySlots.length ? (
-              <div className="slot-grid">
-                {selectedDaySlots.map((s) => (
-                  <button
-                    type="button"
-                    key={`${s.startAt}-${s.professionalId || "na"}`}
-                    className={`slot ${selectedSlot === s.startAt ? "active" : ""}`}
-                    onClick={() => setSelectedSlot(s.startAt)}
-                  >
-                    {new Date(s.startAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
-                  </button>
-                ))}
-              </div>
-            ) : !hasFilter ? (
-              <p>Seleccioná un profesional o especialidad para ver turnos disponibles.</p>
-            ) : (
-              <p>No hay turnos disponibles para este día.</p>
-            )}
+            {isLoadingAvailability ? <div className="slot-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="slot slot-skeleton" />)}</div> : selectedDaySlots.length ? <div className="slot-grid">{selectedDaySlots.map((s) => <button type="button" key={`${s.startAt}-${s.professionalId || "na"}`} className={`slot ${selectedSlot === s.startAt ? "active" : ""}`} onClick={() => onSlotClick(s)}>{new Date(s.startAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</button>)}</div> : <p>No hay turnos disponibles para este día.</p>}
           </Card>
         </div>
 
-        <Card>
-          <h3>Confirmar reserva</h3>
+        <Card className="desktop-confirm-card">
+          <h3>Confirmación</h3>
           <p>{selectedSlotTimeText ? `Seleccionaste: ${selectedSlotTimeText}` : "Seleccioná un horario para continuar."}</p>
-          <form onSubmit={submit}>
-            <div className="form-row">
-              <Input placeholder="Nombre completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-            </div>
-            <div className="form-row">
-              <Input placeholder="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-            </div>
-            <div className="form-row">
-              <Input placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
-            </div>
-            {msg && <p className="success">{msg}</p>}
-            <Button disabled={!canReserve}>{isSubmitting ? "Reservando..." : "Reservar turno"}</Button>
-          </form>
+          <p>Profesional: {selectedSlotData?.professionalFullName || "Profesional a confirmar"}</p>
+          <p>Clínica: {clinicName}</p>
+          {clinicInfo && <p>{[clinicInfo.address, clinicInfo.city, clinicInfo.phone].filter(Boolean).join(" · ")}</p>}
+          {!user || user.type !== "patient" ? (
+            <form onSubmit={submit}>
+              <div className="form-row"><Input placeholder="Nombre completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
+              <div className="form-row"><Input placeholder="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} required /></div>
+              <div className="form-row"><Input placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} /></div>
+              {msg && <p className="success">{msg}</p>}
+              <Button disabled={!canReserveForm}>{isSubmitting ? "Reservando..." : "Reservar turno"}</Button>
+            </form>
+          ) : (
+            <div>{msg && <p className="success">{msg}</p>}<a className="btn" href="/patient/appointments">Ver mis turnos</a> <a className="btn" href={window.location.pathname}>Reservar otro</a></div>
+          )}
         </Card>
+
+        <BookingFiltersPrompt
+          open={filterPromptOpen}
+          specialties={specialties}
+          professionals={filteredProfessionals}
+          onClose={() => setFilterPromptOpen(false)}
+          onPickProfessional={(value) => setSelectedProfessionalId(value)}
+          onPickSpecialty={(value) => setSelectedSpecialtyId(value)}
+        />
       </div>
+
+      <MobileStickyBookingBar
+        visible={isMobile}
+        dateTimeText={selectedSlotTimeText}
+        clinicName={clinicName}
+        professionalName={selectedSlotData?.professionalFullName || "A confirmar"}
+        disabled={!selectedSlot || !hasFilter || !user || user.type !== "patient"}
+        loading={isSubmitting}
+        onReserve={() => selectedSlotData && proceedBookingAction({ mode: "slot", slotStartAt: selectedSlotData.startAt })}
+      />
     </>
   );
 }

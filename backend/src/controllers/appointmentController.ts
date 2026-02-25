@@ -71,7 +71,7 @@ export async function listAppointments(req: Request, res: Response) {
     return {
       ...appointment,
       professionalId,
-      professionalName: professionalId ? professionalNameById.get(professionalId) ?? null : null,
+      professionalName: professionalId ? professionalNameById.get(professionalId) ?? "Profesional a confirmar" : "Profesional a confirmar",
     };
   });
 

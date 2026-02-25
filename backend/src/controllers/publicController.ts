@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { MongoServerError } from "mongodb";
 import { Appointment } from "../models/Appointment";
+import { Patient } from "../models/Patient";
 import { Clinic } from "../models/Clinic";
 import { Professional } from "../models/Professional";
 import { ProfessionalAvailability } from "../models/ProfessionalAvailability";
@@ -79,6 +80,22 @@ function failConflict(res: Response, code: string, details: Record<string, unkno
 
 function hasTimezoneOffset(value: string) {
   return /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+}
+
+
+async function buildProfessionalNameMap(professionalIds: string[]) {
+  if (!professionalIds.length) return new Map<string, string>();
+
+  const professionals = await Professional.find({ _id: { $in: professionalIds } })
+    .select({ firstName: 1, lastName: 1, displayName: 1 })
+    .lean();
+
+  return new Map(
+    professionals.map((professional) => {
+      const fullName = `${professional.firstName ?? ""} ${professional.lastName ?? ""}`.trim();
+      return [String(professional._id), professional.displayName || fullName || "Profesional a confirmar"] as const;
+    })
+  );
 }
 
 function parseRequestedStart(body: {
@@ -167,6 +184,7 @@ export async function getClinicAvailability(req: Request, res: Response) {
       startAt: s.startAt.toISOString(),
       endAt: s.endAt.toISOString(),
       professionalId: s.professionalId,
+      professionalFullName: s.professionalFullName,
     })),
     ...(debug ? { debug } : {}),
   });
@@ -189,7 +207,12 @@ export async function getClinicAvailabilityById(req: Request, res: Response) {
 
   return ok(res, {
     clinic: buildPublicClinicPayload(clinic),
-    slots: slots.map((s) => ({ startAt: s.startAt.toISOString(), endAt: s.endAt.toISOString(), professionalId: s.professionalId })),
+    slots: slots.map((s) => ({
+      startAt: s.startAt.toISOString(),
+      endAt: s.endAt.toISOString(),
+      professionalId: s.professionalId,
+      professionalFullName: s.professionalFullName,
+    })),
   });
 }
 
@@ -241,8 +264,8 @@ export async function createPublicAppointment(req: Request, res: Response) {
     date?: string;
     time?: string;
     slotMinutes?: number;
-    patientFullName: string;
-    patientPhone: string;
+    patientFullName?: string;
+    patientPhone?: string;
     note?: string;
   };
   const slug = String(req.params.slug);
@@ -269,10 +292,37 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const clinicLocal = getClinicLocalParts(startAt);
   const clinicTzDateKey = clinicLocal.dateKey;
 
-  const professional = professionalId
-    ? await Professional.findOne({ _id: professionalId, clinicId: clinic._id, isActive: true }).lean()
+  let resolvedProfessionalId = professionalId;
+
+  if (!resolvedProfessionalId && specialtyId) {
+    const fromKey = clinicTzDateKey;
+    const nextDate = new Date(`${clinicTzDateKey}T00:00:00.000Z`);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    const dayAfter = nextDate.toISOString().slice(0, 10);
+
+    const daySlots = await buildSlots({
+      clinicId: clinic._id,
+      from: fromKey,
+      to: dayAfter,
+      specialtyId,
+    });
+
+    const matchedSlot = daySlots.find((slot) => slot.startAt.getTime() === startAt.getTime());
+    if (!matchedSlot?.professionalId) {
+      return failConflict(res, "SLOT_NOT_AVAILABLE", {
+        startAt: startAt.toISOString(),
+        clinicTzDateKey,
+        specialtyId,
+      });
+    }
+
+    resolvedProfessionalId = matchedSlot.professionalId;
+  }
+
+  const professional = resolvedProfessionalId
+    ? await Professional.findOne({ _id: resolvedProfessionalId, clinicId: clinic._id, isActive: true }).lean()
     : null;
-  if (professionalId && !professional) {
+  if (resolvedProfessionalId && !professional) {
     return res.status(400).json({
       ok: false,
       error: "El profesional seleccionado no pertenece a la clínica",
@@ -300,12 +350,12 @@ export async function createPublicAppointment(req: Request, res: Response) {
   }
 
   const weekday = clinicLocal.weekday;
-  const blockRows = professionalId
-    ? await ProfessionalAvailability.find({ clinicId: clinic._id, professionalId, weekday, isActive: true }).lean()
+  const blockRows = resolvedProfessionalId
+    ? await ProfessionalAvailability.find({ clinicId: clinic._id, professionalId: resolvedProfessionalId, weekday, isActive: true }).lean()
     : [];
 
   const requestedMinutes = clinicLocal.hour * 60 + clinicLocal.minute;
-  const slotMinutes = professionalId
+  const slotMinutes = resolvedProfessionalId
     ? blockRows.find((b) => {
         const start = Number(b.startTime.slice(0, 2)) * 60 + Number(b.startTime.slice(3, 5));
         const end = Number(b.endTime.slice(0, 2)) * 60 + Number(b.endTime.slice(3, 5));
@@ -314,7 +364,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
     : clinic.settings.slotDurationMinutes;
   const endAt = new Date(startAt.getTime() + slotMinutes * 60_000);
 
-  if (professionalId) {
+  if (resolvedProfessionalId) {
     const matchedBlock = blockRows.find((b) => {
       const blockStart = Number(b.startTime.slice(0, 2)) * 60 + Number(b.startTime.slice(3, 5));
       const blockEnd = Number(b.endTime.slice(0, 2)) * 60 + Number(b.endTime.slice(3, 5));
@@ -328,7 +378,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
         clinicTzDateKey,
         weekday,
         clinicTimezone: CLINIC_TIMEZONE,
-        professionalId,
+        professionalId: resolvedProfessionalId,
         specialtyId,
       });
     }
@@ -343,18 +393,33 @@ export async function createPublicAppointment(req: Request, res: Response) {
     }
   }
 
+  let patientFullName = body.patientFullName;
+  let patientPhone = body.patientPhone;
+
+  if (req.auth?.type === "patient") {
+    const patient = await Patient.findById(req.auth.id).select({ firstName: 1, lastName: 1, phone: 1 }).lean();
+    if (patient) {
+      patientFullName = patientFullName || `${patient.firstName} ${patient.lastName}`.trim();
+      patientPhone = patientPhone || patient.phone || "N/A";
+    }
+  }
+
+  if (!patientFullName || !patientPhone) {
+    return fail(res, "Debés completar nombre y teléfono", 400);
+  }
+
   const appointmentPayload: any = {
     clinicId: clinic._id,
     clinicSlug: clinic.slug,
     startAt,
     endAt,
-    patientFullName: body.patientFullName,
-    patientPhone: body.patientPhone,
+    patientFullName,
+    patientPhone,
     note: body.note,
     status: "booked",
   };
 
-  if (professionalId) appointmentPayload.professionalId = professionalId;
+  if (resolvedProfessionalId) appointmentPayload.professionalId = resolvedProfessionalId;
   if (specialtyId) appointmentPayload.specialtyId = specialtyId;
 
   if (req.auth?.type === "patient") {
@@ -368,8 +433,8 @@ export async function createPublicAppointment(req: Request, res: Response) {
     if (isDuplicateSlotError(error)) {
       logDuplicateSlot({
         clinicId: String(clinic._id),
-        ...(professionalId ? { professionalId } : {}),
-        startAt: buildSlotKey(String(clinic._id), professionalId ?? "none", normalizeStartAt(startAt)),
+        ...(resolvedProfessionalId ? { professionalId: resolvedProfessionalId } : {}),
+        startAt: buildSlotKey(String(clinic._id), resolvedProfessionalId ?? "none", normalizeStartAt(startAt)),
       });
       return res.status(409).json({ ok: false, error: "Turno no disponible", code: "DUPLICATE_SLOT" });
     }
@@ -386,13 +451,46 @@ export async function createPublicAppointment(req: Request, res: Response) {
     });
   }
 
-  return ok(res, appointment, 201);
+  const appointmentData = appointment.toObject();
+  const map = await buildProfessionalNameMap(appointmentData.professionalId ? [String(appointmentData.professionalId)] : []);
+  const professionalName = appointmentData.professionalId ? map.get(String(appointmentData.professionalId)) ?? "Profesional a confirmar" : "Profesional a confirmar";
+
+  return ok(
+    res,
+    {
+      ...appointmentData,
+      professionalName,
+    },
+    201
+  );
 }
 
 export async function listMyAppointments(req: Request, res: Response) {
   const patientId = req.auth!.id;
   const appointments = await Appointment.find({ patientId }).sort({ startAt: 1 }).lean();
-  return ok(res, appointments);
+
+  const professionalIds = [
+    ...new Set(
+      appointments
+        .map((appointment) => appointment.professionalId)
+        .filter(Boolean)
+        .map((id) => String(id))
+    ),
+  ];
+
+  const professionalNameById = await buildProfessionalNameMap(professionalIds);
+
+  return ok(
+    res,
+    appointments.map((appointment) => {
+      const professionalIdValue = appointment.professionalId ? String(appointment.professionalId) : null;
+      return {
+        ...appointment,
+        professionalId: professionalIdValue,
+        professionalName: professionalIdValue ? professionalNameById.get(professionalIdValue) ?? "Profesional a confirmar" : "Profesional a confirmar",
+      };
+    })
+  );
 }
 
 export async function cancelMyAppointment(req: Request, res: Response) {
