@@ -81,7 +81,7 @@ export function AdminAppointmentsPage() {
                 <tr key={a._id}>
                   <td>{humanDate(a.startAt)}</td>
                   <td>{a.patientFullName}<br /><span style={{ color: "#6b7280" }}>{a.patientPhone}</span></td>
-                  <td>{a.professionalName ?? "—"}</td>
+                  <td>{a.professionalName || "Profesional a confirmar"}</td>
                   <td>{(a.specialtyId && specialtiesById.get(a.specialtyId)) || "—"}</td>
                   <td><Badge variant={a.status !== "canceled" ? "success" : "muted"}>{a.status === "canceled" ? <><Icon name="ban" size={16} />Cancelado</> : a.status === "confirmed" ? <><Icon name="calendar-check" size={16} />Confirmado</> : <><Icon name="calendar-check" size={16} />Reservado</>}</Badge></td>
                   <td>{a.status !== "canceled" && <Button variant="secondary" title="Cancelar turno" aria-label="Cancelar turno" onClick={async () => { await cancelAppointment(token!, a._id); load(); }}><Icon name="trash" size={16} /></Button>}</td>

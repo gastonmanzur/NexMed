@@ -8,9 +8,10 @@ import { buildSlotKey, normalizeStartAt } from "../utils/slots";
 export const CLINIC_TIMEZONE = "America/Argentina/Buenos_Aires";
 const CLINIC_UTC_OFFSET_MINUTES = -180;
 
-export type Slot = { startAt: Date; endAt: Date; professionalId?: string };
+export type Slot = { startAt: Date; endAt: Date; professionalId?: string; professionalFullName?: string };
 type ProfessionalSlotConfig = {
   professionalId: string;
+  professionalFullName?: string;
   weeklyBlocks: { weekday: number; startTime: string; endTime: string; slotMinutes: number }[];
 };
 
@@ -97,7 +98,7 @@ async function getProfessionalConfigs(params: {
   if (professionalId) professionalFilter._id = professionalId;
   if (specialtyId) professionalFilter.specialtyIds = specialtyId;
 
-  const professionals = await Professional.find(professionalFilter).select({ _id: 1 }).lean();
+  const professionals = await Professional.find(professionalFilter).select({ _id: 1, firstName: 1, lastName: 1, displayName: 1 }).lean();
   if (professionals.length === 0) return [] as ProfessionalSlotConfig[];
 
   const professionalIds = professionals.map((p) => p._id);
@@ -111,7 +112,8 @@ async function getProfessionalConfigs(params: {
 
   const grouped = new Map<string, ProfessionalSlotConfig>();
   for (const p of professionals) {
-    grouped.set(String(p._id), { professionalId: String(p._id), weeklyBlocks: [] });
+    const fullName = p.displayName || `${p.firstName ?? ""} ${p.lastName ?? ""}`.trim();
+    grouped.set(String(p._id), { professionalId: String(p._id), professionalFullName: fullName, weeklyBlocks: [] });
   }
 
   for (const b of blocks) {
@@ -258,7 +260,12 @@ export function computeProfessionalSlotsByDateKey(params: {
           const key = buildSlotKey(clinicId, cfg.professionalId, normalizeStartAt(slotStart));
           if (bookedSet.has(key)) continue;
 
-          slots.push({ startAt: slotStart, endAt: slotEnd, professionalId: cfg.professionalId });
+          slots.push({
+            startAt: slotStart,
+            endAt: slotEnd,
+            professionalId: cfg.professionalId,
+            ...(cfg.professionalFullName ? { professionalFullName: cfg.professionalFullName } : {}),
+          });
         }
       }
     }

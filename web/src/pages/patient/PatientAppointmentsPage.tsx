@@ -92,6 +92,7 @@ export function PatientAppointmentsPage() {
                 <div>
                   <b>{clinic?.name ?? "Clínica"}</b>
                   <div>{new Date(appointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })}</div>
+                  <div>Atiende: {appointment.professionalName || "Profesional a confirmar"}</div>
                   <div>Estado: {appointment.status === "canceled" ? "Cancelado" : "Reservado"}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
