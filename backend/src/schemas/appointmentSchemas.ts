@@ -10,20 +10,13 @@ export const availabilityQuerySchema = z.object({
 
 export const createPublicAppointmentSchema = z
   .object({
-    startAt: z.iso.datetime().optional(),
-    endAt: z.iso.datetime().optional(),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-    slotMinutes: z.number().int().min(5).max(180).optional(),
-    patientFullName: z.string().min(2).optional(),
-    patientPhone: z.string().min(6).optional(),
+    startAt: z.iso.datetime(),
     note: z.string().max(500).optional(),
     professionalId: z.string().min(1).optional(),
     specialtyId: z.string().min(1).optional(),
-    ts: z.string().optional(),
   })
-  .refine((payload) => Boolean(payload.startAt) || (Boolean(payload.date) && Boolean(payload.time)), {
-    message: "Debés enviar startAt o date+time",
+  .refine((payload) => Boolean(payload.professionalId) || Boolean(payload.specialtyId), {
+    message: "Debés enviar professionalId o specialtyId",
   });
 
 export const listAppointmentsQuerySchema = z.object({

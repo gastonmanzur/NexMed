@@ -11,6 +11,7 @@
 .slot.active { background: #0d6efd; color: #fff; }
 .error { color: #b00020; }
 .success { color: #0f7a2a; }
+.warning { color: #9a6700; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
 
