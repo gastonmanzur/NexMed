@@ -37,6 +37,13 @@ const appointmentSchema = new Schema<AppointmentDocument>(
 );
 
 appointmentSchema.index({ clinicId: 1, startAt: 1, status: 1 });
-appointmentSchema.index({ clinicId: 1, professionalId: 1, startAt: 1, endAt: 1, status: 1 });
+appointmentSchema.index({ clinicId: 1, professionalId: 1, startAt: 1 });
+appointmentSchema.index(
+  { clinicId: 1, professionalId: 1, startAt: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: { $ne: "cancelled" } },
+  }
+);
 
 export const Appointment = model<AppointmentDocument>("Appointment", appointmentSchema);

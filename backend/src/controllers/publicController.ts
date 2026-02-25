@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { MongoServerError } from "mongodb";
 import { Appointment } from "../models/Appointment";
 import { Clinic } from "../models/Clinic";
 import { Professional } from "../models/Professional";
@@ -58,6 +59,16 @@ function isDevEnvironment() {
   return process.env.NODE_ENV !== "production";
 }
 
+function isDuplicateSlotError(error: unknown) {
+  return error instanceof MongoServerError && error.code === 11000;
+}
+
+function logDuplicateSlot(details: { clinicId: string; professionalId?: string; startAt: string }) {
+  if (!isDevEnvironment()) return;
+  console.info("[public-booking] duplicate slot", details);
+}
+
+
 function failConflict(res: Response, code: string, details: Record<string, unknown>) {
   const payload: Record<string, unknown> = { ok: false, error: "Turno no disponible", code };
   if (isDevEnvironment()) payload.details = details;
@@ -80,6 +91,9 @@ function parseRequestedStart(body: {
       throw new Error("startAt debe incluir zona horaria");
     }
     const startAt = new Date(body.startAt);
+    if (Number.isNaN(startAt.getTime())) {
+      throw new Error("startAt inválido");
+    }
     startAt.setSeconds(0, 0);
     return startAt;
   }
@@ -92,8 +106,15 @@ function parseRequestedStart(body: {
   const hour = Number(hourRaw);
   const minute = Number(minuteRaw);
 
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    throw new Error("Hora inválida");
+  }
+
   const clinicDateUtc = new Date(`${body.date}T03:00:00.000Z`);
   const startAt = new Date(clinicDateUtc.getTime() + (hour * 60 + minute) * 60_000);
+  if (Number.isNaN(startAt.getTime())) {
+    throw new Error("Fecha inválida");
+  }
   startAt.setSeconds(0, 0);
   return startAt;
 }
@@ -343,7 +364,21 @@ export async function createPublicAppointment(req: Request, res: Response) {
     appointmentPayload.patientId = req.auth.id;
   }
 
-  const appointment = await Appointment.create(appointmentPayload);
+  let appointment;
+  try {
+    appointment = await Appointment.create(appointmentPayload);
+  } catch (error) {
+    if (isDuplicateSlotError(error)) {
+      logDuplicateSlot({
+        clinicId: String(clinic._id),
+        ...(professionalId ? { professionalId } : {}),
+        startAt: startAt.toISOString(),
+      });
+      return res.status(409).json({ ok: false, error: "Turno no disponible", code: "DUPLICATE_SLOT" });
+    }
+    throw error;
+  }
+
   await scheduleAppointmentReminders(appointment);
 
   if (req.auth?.type === "patient") {
@@ -389,6 +424,8 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   if (!clinic) return fail(res, "Clínica no encontrada", 404);
 
   const nextStartAt = new Date(body.startAt);
+  if (Number.isNaN(nextStartAt.getTime())) return fail(res, "Fecha y hora inválidas", 400);
+  nextStartAt.setSeconds(0, 0);
   const nextEndAt = new Date(nextStartAt.getTime() + clinic.settings.slotDurationMinutes * 60_000);
 
   const appointmentProfessionalId = appointment.professionalId ? String(appointment.professionalId) : undefined;
@@ -403,9 +440,6 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   });
 
   if (!availability.available) return fail(res, "Turno no disponible", 409);
-
-  await Appointment.findByIdAndUpdate(appointmentId, { status: "cancelled" });
-  await cancelScheduledAppointmentReminders(appointmentId);
 
   const newAppointmentPayload: any = {
     clinicId: clinic._id,
@@ -424,7 +458,18 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     newAppointmentPayload.note = appointment.note;
   }
 
-  const newAppointment = await Appointment.create(newAppointmentPayload);
+  let newAppointment;
+  try {
+    newAppointment = await Appointment.create(newAppointmentPayload);
+  } catch (error) {
+    if (isDuplicateSlotError(error)) {
+      return res.status(409).json({ ok: false, error: "Turno no disponible", code: "DUPLICATE_SLOT" });
+    }
+    throw error;
+  }
+
+  await Appointment.findByIdAndUpdate(appointmentId, { status: "cancelled" });
+  await cancelScheduledAppointmentReminders(appointmentId);
   await scheduleAppointmentReminders(newAppointment);
 
   return ok(res, { cancelledAppointmentId: appointmentId, appointment: newAppointment });
