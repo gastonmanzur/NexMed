@@ -174,20 +174,16 @@ export type PatientClinic = {
 };
 
 
-export type NotificationRule = {
-  id: string;
-  enabled: boolean;
-  offsetValue: number;
-  offsetUnit: "days" | "hours";
-  channel: "inApp" | "email";
+export type ReminderOffset = {
+  amount: number;
+  unit: "days" | "hours";
 };
 
-export type ClinicNotificationSettings = {
-  _id?: string;
-  clinicId: string;
-  timezone: string;
-  remindersEnabled: boolean;
-  rules: NotificationRule[];
+export type ClinicReminderSettings = {
+  enabled: boolean;
+  channels: { email: boolean };
+  offsets: ReminderOffset[];
+  updatedAt?: string;
 };
 
 export type PatientNotification = {

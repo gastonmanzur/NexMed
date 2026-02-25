@@ -23,6 +23,20 @@ export type ClinicPublicVisibility = {
   businessHoursNote: boolean;
 };
 
+export type ReminderPolicyOffset = {
+  amount: number;
+  unit: "days" | "hours";
+};
+
+export type ClinicReminderPolicy = {
+  enabled: boolean;
+  channels: {
+    email: boolean;
+  };
+  offsets: ReminderPolicyOffset[];
+  updatedAt: Date;
+};
+
 export interface ClinicDocument {
   _id: Types.ObjectId;
   name: string;
@@ -51,6 +65,7 @@ export interface ClinicDocument {
     slotDurationMinutes: number;
     weeklySchedule: WeeklyScheduleDay[];
   };
+  reminderPolicy: ClinicReminderPolicy;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,6 +92,18 @@ const defaultSchedule: WeeklyScheduleDay[] = Array.from({ length: 7 }, (_, dayOf
   enabled: dayOfWeek >= 1 && dayOfWeek <= 5,
   intervals: dayOfWeek >= 1 && dayOfWeek <= 5 ? [{ start: "09:00", end: "17:00" }] : [],
 }));
+
+
+const defaultReminderPolicy: ClinicReminderPolicy = {
+  enabled: true,
+  channels: { email: true },
+  offsets: [
+    { amount: 7, unit: "days" },
+    { amount: 2, unit: "days" },
+    { amount: 2, unit: "hours" },
+  ],
+  updatedAt: new Date(),
+};
 
 const defaultVisibility: ClinicPublicVisibility = {
   phone: true,
@@ -134,6 +161,35 @@ const clinicSchema = new Schema<ClinicDocument>(
         type: [weeklyDaySchema],
         default: defaultSchedule,
       },
+    },
+    reminderPolicy: {
+      type: {
+        enabled: { type: Boolean, default: true },
+        channels: {
+          type: {
+            email: { type: Boolean, default: true },
+          },
+          _id: false,
+          default: { email: true },
+        },
+        offsets: {
+          type: [
+            {
+              amount: { type: Number, required: true, min: 1 },
+              unit: { type: String, enum: ["days", "hours"], required: true },
+              _id: false,
+            },
+          ],
+          default: [
+            { amount: 7, unit: "days" },
+            { amount: 2, unit: "days" },
+            { amount: 2, unit: "hours" },
+          ],
+        },
+        updatedAt: { type: Date, default: Date.now },
+      },
+      _id: false,
+      default: defaultReminderPolicy,
     },
   },
   { timestamps: true }

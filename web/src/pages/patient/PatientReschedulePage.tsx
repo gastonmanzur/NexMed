@@ -131,7 +131,7 @@ export function PatientReschedulePage() {
         professionalId: selectedSlotData.professionalId || selectedAppointment.professionalId || undefined,
         specialtyId: selectedSlotData.specialtyId || selectedAppointment.specialtyId || undefined,
       });
-      setMsg("Turno reprogramado correctamente. Tu turno anterior fue liberado automáticamente.");
+      setMsg("Turno reprogramado correctamente. Tu turno anterior fue liberado automáticamente. Te vamos a enviar recordatorios por email antes del turno.");
       setSelectedSlot("");
       await loadData();
       await loadAvailability();

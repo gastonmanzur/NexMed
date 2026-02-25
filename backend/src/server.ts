@@ -1,7 +1,7 @@
 import { app } from "./app";
 import { env } from "./config/env";
 import { connectDB } from "./db/connect";
-import { startReminderScheduler } from "./jobs/reminderScheduler";
+import { startReminderWorker } from "./workers/reminderWorker";
 import { Appointment } from "./models/Appointment";
 import { startEmailWorker } from "./workers/emailWorker";
 
@@ -27,7 +27,7 @@ async function syncAppointmentIndexes() {
 async function main() {
   await connectDB();
   await syncAppointmentIndexes();
-  startReminderScheduler();
+  startReminderWorker();
   startEmailWorker();
   app.listen(env.port, () => {
     console.log(`[api] listening on http://localhost:${env.port}`);

@@ -1,16 +1,17 @@
 import { Request, Response } from "express";
 import { Appointment } from "../models/Appointment";
-import { ClinicNotificationSettings } from "../models/ClinicNotificationSettings";
+import { Clinic } from "../models/Clinic";
 import { Reminder } from "../models/Reminder";
+import { ReminderJob } from "../models/ReminderJob";
 import { fail, ok } from "../utils/http";
-import { getOrCreateClinicNotificationSettings, previewReminderSchedule } from "../services/reminderService";
+import { computeScheduledFor, getDefaultReminderPolicy } from "../services/reminders/reminderService";
 
 export async function getClinicNotificationSettings(req: Request, res: Response) {
   const clinicId = req.auth?.id;
   if (!clinicId) return fail(res, "No autorizado", 401);
 
-  const settings = await getOrCreateClinicNotificationSettings(clinicId);
-  return ok(res, settings);
+  const clinic = await Clinic.findById(clinicId).select("reminderPolicy").lean();
+  return ok(res, clinic?.reminderPolicy ?? getDefaultReminderPolicy());
 }
 
 export async function updateClinicNotificationSettings(req: Request, res: Response) {
@@ -18,18 +19,17 @@ export async function updateClinicNotificationSettings(req: Request, res: Respon
   if (!clinicId) return fail(res, "No autorizado", 401);
 
   const body = res.locals.validated?.body ?? req.body;
+  const reminderPolicy = {
+    enabled: body.remindersEnabled,
+    channels: { email: true },
+    offsets: (body.rules ?? [])
+      .filter((rule: any) => rule.channel === "email" && rule.enabled)
+      .map((rule: any) => ({ amount: rule.offsetValue, unit: rule.offsetUnit })),
+    updatedAt: new Date(),
+  };
 
-  const settings = await ClinicNotificationSettings.findOneAndUpdate(
-    { clinicId },
-    {
-      remindersEnabled: body.remindersEnabled,
-      timezone: body.timezone ?? "America/Argentina/Buenos_Aires",
-      rules: body.rules,
-    },
-    { new: true, upsert: true }
-  ).lean();
-
-  return ok(res, settings);
+  await Clinic.updateOne({ _id: clinicId }, { $set: { reminderPolicy } });
+  return ok(res, reminderPolicy);
 }
 
 export async function listPatientNotifications(req: Request, res: Response) {
@@ -54,15 +54,28 @@ export async function previewClinicNotificationSchedule(req: Request, res: Respo
   if (!clinicId) return fail(res, "No autorizado", 401);
 
   const query = (res.locals.validated?.query ?? req.query) as { appointmentId: string };
-  const appointment = await Appointment.findOne({ _id: query.appointmentId, clinicId });
+  const appointment = await Appointment.findOne({ _id: query.appointmentId, clinicId }).lean();
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
-  const settings = await getOrCreateClinicNotificationSettings(clinicId);
-  const preview = await previewReminderSchedule(appointment, settings);
+  const clinic = await Clinic.findById(clinicId).select("reminderPolicy").lean();
+  const policy = clinic?.reminderPolicy ?? getDefaultReminderPolicy();
+  const now = Date.now();
+
+  const preview = policy.offsets.map((offset) => {
+    const scheduledFor = computeScheduledFor(appointment.startAt, offset, "America/Argentina/Buenos_Aires");
+    return {
+      ruleId: `${offset.amount}${offset.unit}`,
+      channel: "email",
+      offsetValue: offset.amount,
+      offsetUnit: offset.unit,
+      scheduledFor,
+      skipped: !policy.enabled || !policy.channels.email || scheduledFor.getTime() <= now,
+      label: `${offset.amount} ${offset.unit} antes por email`,
+    };
+  });
 
   return ok(res, { appointmentId: appointment._id, startAt: appointment.startAt, preview });
 }
-
 
 export async function triggerAppointmentRemindersNow(req: Request, res: Response) {
   if (process.env.NODE_ENV === "production") {
@@ -71,9 +84,9 @@ export async function triggerAppointmentRemindersNow(req: Request, res: Response
 
   const params = (res.locals.validated?.params ?? req.params) as { appointmentId: string };
 
-  const result = await Reminder.updateMany(
-    { appointmentId: params.appointmentId, status: { $in: ["scheduled", "failed"] } },
-    { scheduledFor: new Date(), status: "scheduled", errorMessage: "" }
+  const result = await ReminderJob.updateMany(
+    { appointmentId: params.appointmentId, status: { $in: ["pending", "failed"] } },
+    { $set: { nextRunAt: new Date(), status: "pending", lastError: "" } }
   );
 
   return ok(res, {

@@ -124,9 +124,9 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         professionalId: slot.professionalId || selectedProfessionalId || undefined,
         specialtyId: selectedSpecialtyId || undefined,
       }, token ?? undefined);
-      if (result.warnings?.missingPhone) setWarningMsg("⚠️ Completá tu teléfono para recibir recordatorios del turno");
-      if (result.emailQueued && result.email) setMsg(`Turno reservado con éxito. Se envió un email de confirmación a ${result.email}`);
-      else setMsg("Turno reservado con éxito");
+      if (result.warnings?.missingPhone) setWarningMsg("⚠️ Completá tu teléfono para recibir recordatorios por WhatsApp/SMS (próximamente).");
+      if (result.emailQueued && result.email) setMsg(`Turno reservado con éxito. Se envió un email de confirmación a ${result.email}. Te vamos a enviar recordatorios por email antes del turno.`);
+      else setMsg("Turno reservado con éxito. Te vamos a enviar recordatorios por email antes del turno.");
       setSelectedSlot("");
       await loadAvailability();
       setTimeout(() => { window.location.href = "/patient/appointments"; }, 700);
