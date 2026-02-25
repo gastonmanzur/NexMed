@@ -3,6 +3,7 @@ import { Appointment } from "../models/Appointment";
 import { Professional } from "../models/Professional";
 import { ProfessionalAvailability } from "../models/ProfessionalAvailability";
 import { ProfessionalTimeOff } from "../models/ProfessionalTimeOff";
+import { DEFAULT_CLINIC_TIMEZONE, formatDateKeyInClinicTz, getWeekdayInClinicTz } from "../utils/datetime";
 
 type Slot = { startAt: Date; endAt: Date; professionalId?: string };
 type ProfessionalSlotConfig = {
@@ -135,14 +136,15 @@ export function computeProfessionalSlots(params: {
 
   while (cursor < to) {
     for (const cfg of professionalConfigs) {
-      const blocks = cfg.weeklyBlocks.filter((b) => b.weekday === cursor.getDay());
-      const dateKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+      const weekday = getWeekdayInClinicTz(cursor, DEFAULT_CLINIC_TIMEZONE);
+      const blocks = cfg.weeklyBlocks.filter((b) => b.weekday === weekday);
+      const dateKey = formatDateKeyInClinicTz(cursor, DEFAULT_CLINIC_TIMEZONE);
       const offList = timeOffByKey.get(`${cfg.professionalId}::${dateKey}`) ?? [];
 
       if (!loggedDebug && process.env.NODE_ENV !== "production") {
         console.debug("[availability] matched blocks", {
           date: dateKey,
-          weekday: cursor.getDay(),
+          weekday,
           professionalId: cfg.professionalId,
           blocks,
         });

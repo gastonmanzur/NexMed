@@ -6,14 +6,16 @@ import { Specialty } from "../models/Specialty";
 import { buildAvailableSlots } from "../services/availabilityService";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { cancelScheduledAppointmentReminders, scheduleAppointmentReminders } from "../services/reminderService";
+import {
+  DEFAULT_CLINIC_TIMEZONE,
+  formatDateKeyInClinicTz,
+  getWeekdayInClinicTz,
+  parseLocalDateTime,
+} from "../utils/datetime";
 import { fail, ok } from "../utils/http";
 
 function dateOnlyToClinicStart(value: string) {
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
+  return parseLocalDateTime(value, "00:00", DEFAULT_CLINIC_TIMEZONE);
 }
 
 
@@ -206,9 +208,12 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const startAt = new Date(body.startAt);
   const endAt = new Date(startAt.getTime() + clinic.settings.slotDurationMinutes * 60_000);
 
-  const from = new Date(Date.UTC(startAt.getUTCFullYear(), startAt.getUTCMonth(), startAt.getUTCDate()));
-  const to = new Date(from);
-  to.setUTCDate(to.getUTCDate() + 1);
+  const bookingDateKey = formatDateKeyInClinicTz(startAt, DEFAULT_CLINIC_TIMEZONE);
+  const bookingWeekday = getWeekdayInClinicTz(startAt, DEFAULT_CLINIC_TIMEZONE);
+
+  const from = parseLocalDateTime(bookingDateKey, "00:00", DEFAULT_CLINIC_TIMEZONE);
+  const to = parseLocalDateTime(bookingDateKey, "23:59", DEFAULT_CLINIC_TIMEZONE);
+  to.setMinutes(to.getMinutes() + 1);
 
   const availableSlots = await buildAvailableSlots({
     clinicId: clinic._id,
@@ -219,6 +224,25 @@ export async function createPublicAppointment(req: Request, res: Response) {
   });
 
   const found = availableSlots.find((slot) => slot.startAt.toISOString() === startAt.toISOString());
+
+  if (isDevEnvironment()) {
+    const candidateBlockMatches = availableSlots.filter((slot) => {
+      if (professionalId && slot.professionalId !== professionalId) return false;
+      return formatDateKeyInClinicTz(slot.startAt, DEFAULT_CLINIC_TIMEZONE) === bookingDateKey;
+    });
+
+    console.debug("[booking-validation] slot validation", {
+      requested: { startAt: body.startAt, endAt: endAt.toISOString() },
+      interpreted: {
+        startAtIso: startAt.toISOString(),
+        endAtIso: endAt.toISOString(),
+        dateKey: bookingDateKey,
+        weekday: bookingWeekday,
+      },
+      matchedBlocksCount: candidateBlockMatches.length,
+    });
+  }
+
   if (!found) return fail(res, "Turno no disponible", 409);
 
   const alreadyBookedFilter: any = { clinicId: clinic._id, startAt, status: "confirmed" };
