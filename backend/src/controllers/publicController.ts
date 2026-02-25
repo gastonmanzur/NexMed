@@ -2,18 +2,15 @@ import { Request, Response } from "express";
 import { Appointment } from "../models/Appointment";
 import { Clinic } from "../models/Clinic";
 import { Professional } from "../models/Professional";
+import { ProfessionalAvailability } from "../models/ProfessionalAvailability";
 import { Specialty } from "../models/Specialty";
-import { buildAvailableSlots } from "../services/availabilityService";
+import { buildSlots, CLINIC_TIMEZONE, getClinicLocalParts, isSlotAvailable } from "../services/availabilityService";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { cancelScheduledAppointmentReminders, scheduleAppointmentReminders } from "../services/reminderService";
 import { fail, ok } from "../utils/http";
 
 function dateOnlyToClinicStart(value: string) {
-  const [yearRaw, monthRaw, dayRaw] = value.split("-");
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
+  return value;
 }
 
 
@@ -61,6 +58,46 @@ function isDevEnvironment() {
   return process.env.NODE_ENV !== "production";
 }
 
+function failConflict(res: Response, code: string, details: Record<string, unknown>) {
+  const payload: Record<string, unknown> = { ok: false, error: "Turno no disponible", code };
+  if (isDevEnvironment()) payload.details = details;
+  return res.status(409).json(payload);
+}
+
+function hasTimezoneOffset(value: string) {
+  return /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+}
+
+function parseRequestedStart(body: {
+  startAt?: string;
+  endAt?: string;
+  date?: string;
+  time?: string;
+  slotMinutes?: number;
+}) {
+  if (body.startAt) {
+    if (!hasTimezoneOffset(body.startAt)) {
+      throw new Error("startAt debe incluir zona horaria");
+    }
+    const startAt = new Date(body.startAt);
+    startAt.setSeconds(0, 0);
+    return startAt;
+  }
+
+  if (!body.date || !body.time) {
+    throw new Error("Debés enviar startAt o date+time");
+  }
+
+  const [hourRaw, minuteRaw] = body.time.split(":");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+
+  const clinicDateUtc = new Date(`${body.date}T03:00:00.000Z`);
+  const startAt = new Date(clinicDateUtc.getTime() + (hour * 60 + minute) * 60_000);
+  startAt.setSeconds(0, 0);
+  return startAt;
+}
+
 export async function getPublicClinic(req: Request, res: Response) {
   setNoCacheHeaders(res);
   const slug = String(req.params.slug);
@@ -87,7 +124,7 @@ export async function getClinicAvailability(req: Request, res: Response) {
   const professionalId = query.professionalId ? String(query.professionalId) : undefined;
   const specialtyId = query.specialtyId ? String(query.specialtyId) : undefined;
 
-  const slots = await buildAvailableSlots({
+  const slots = await buildSlots({
     clinicId: clinic._id,
     from,
     to,
@@ -123,7 +160,7 @@ export async function getClinicAvailabilityById(req: Request, res: Response) {
   const from = dateOnlyToClinicStart(String(query.from));
   const to = dateOnlyToClinicStart(String(query.to));
 
-  const slots = await buildAvailableSlots({
+  const slots = await buildSlots({
     clinicId: clinic._id,
     from,
     to,
@@ -178,7 +215,11 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const body = (res.locals.validated?.body ?? req.body) as {
     professionalId?: string;
     specialtyId?: string;
-    startAt: string;
+    startAt?: string;
+    endAt?: string;
+    date?: string;
+    time?: string;
+    slotMinutes?: number;
     patientFullName: string;
     patientPhone: string;
     note?: string;
@@ -190,12 +231,38 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const professionalId = body.professionalId ? String(body.professionalId) : undefined;
   const specialtyId = body.specialtyId ? String(body.specialtyId) : undefined;
 
-  if (professionalId) {
-    const professional = await Professional.findOne({ _id: professionalId, clinicId: clinic._id, isActive: true }).lean();
-    if (!professional) return fail(res, "Profesional inválido", 400);
-    if (specialtyId && !professional.specialtyIds.some((id) => String(id) === specialtyId)) {
-      return fail(res, "Especialidad inválida para el profesional", 400);
-    }
+  let startAt: Date;
+  try {
+    startAt = parseRequestedStart(body);
+  } catch (error: any) {
+    return fail(res, error?.message ?? "Fecha y hora inválidas", 400);
+  }
+  const clinicLocal = getClinicLocalParts(startAt);
+  const clinicTzDateKey = clinicLocal.dateKey;
+
+  const professional = professionalId
+    ? await Professional.findOne({ _id: professionalId, clinicId: clinic._id, isActive: true }).lean()
+    : null;
+  if (professionalId && !professional) {
+    return failConflict(res, "PROFESSIONAL_MISMATCH", {
+      startAt: startAt.toISOString(),
+      clinicTzDateKey,
+      weekday: clinicLocal.weekday,
+      clinicTimezone: CLINIC_TIMEZONE,
+      professionalId,
+      specialtyId,
+    });
+  }
+
+  if (professional && specialtyId && !professional.specialtyIds.some((id) => String(id) === specialtyId)) {
+    return failConflict(res, "SPECIALTY_MISMATCH", {
+      startAt: startAt.toISOString(),
+      clinicTzDateKey,
+      weekday: clinicLocal.weekday,
+      clinicTimezone: CLINIC_TIMEZONE,
+      professionalId,
+      specialtyId,
+    });
   }
 
   if (specialtyId) {
@@ -203,28 +270,60 @@ export async function createPublicAppointment(req: Request, res: Response) {
     if (!specialty) return fail(res, "Especialidad inválida", 400);
   }
 
-  const startAt = new Date(body.startAt);
-  const endAt = new Date(startAt.getTime() + clinic.settings.slotDurationMinutes * 60_000);
+  const weekday = clinicLocal.weekday;
+  const blockRows = professionalId
+    ? await ProfessionalAvailability.find({ clinicId: clinic._id, professionalId, weekday, isActive: true }).lean()
+    : [];
 
-  const from = new Date(Date.UTC(startAt.getUTCFullYear(), startAt.getUTCMonth(), startAt.getUTCDate()));
-  const to = new Date(from);
-  to.setUTCDate(to.getUTCDate() + 1);
+  const requestedMinutes = clinicLocal.hour * 60 + clinicLocal.minute;
+  const slotMinutes = professionalId
+    ? blockRows.find((b) => {
+        const start = Number(b.startTime.slice(0, 2)) * 60 + Number(b.startTime.slice(3, 5));
+        const end = Number(b.endTime.slice(0, 2)) * 60 + Number(b.endTime.slice(3, 5));
+        return requestedMinutes >= start && requestedMinutes < end;
+      })?.slotMinutes ?? clinic.settings.slotDurationMinutes
+    : clinic.settings.slotDurationMinutes;
+  const endAt = new Date(startAt.getTime() + slotMinutes * 60_000);
 
-  const availableSlots = await buildAvailableSlots({
+  if (professionalId) {
+    const invalidGrid = !blockRows.some((b) => {
+      const blockStart = Number(b.startTime.slice(0, 2)) * 60 + Number(b.startTime.slice(3, 5));
+      const blockEnd = Number(b.endTime.slice(0, 2)) * 60 + Number(b.endTime.slice(3, 5));
+      return requestedMinutes >= blockStart && requestedMinutes + b.slotMinutes <= blockEnd && (requestedMinutes - blockStart) % b.slotMinutes === 0;
+    });
+
+    if (invalidGrid) {
+      return failConflict(res, "INVALID_GRID", {
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        clinicTzDateKey,
+        weekday,
+        clinicTimezone: CLINIC_TIMEZONE,
+        professionalId,
+        specialtyId,
+      });
+    }
+  }
+
+  const availability = await isSlotAvailable({
     clinicId: clinic._id,
-    from,
-    to,
     ...(professionalId ? { professionalId } : {}),
     ...(specialtyId ? { specialtyId } : {}),
+    startAt,
+    endAt,
   });
-
-  const found = availableSlots.find((slot) => slot.startAt.toISOString() === startAt.toISOString());
-  if (!found) return fail(res, "Turno no disponible", 409);
-
-  const alreadyBookedFilter: any = { clinicId: clinic._id, startAt, status: "confirmed" };
-  if (professionalId) alreadyBookedFilter.professionalId = professionalId;
-  const alreadyBooked = await Appointment.exists(alreadyBookedFilter);
-  if (alreadyBooked) return fail(res, "Turno no disponible", 409);
+  if (!availability.available) {
+    const code = (availability.code === "SLOT_NOT_AVAILABLE" && professionalId ? "OUTSIDE_BLOCK" : availability.code) ?? "SLOT_NOT_AVAILABLE";
+    return failConflict(res, code, {
+      startAt: startAt.toISOString(),
+      endAt: endAt.toISOString(),
+      clinicTzDateKey,
+      weekday,
+      clinicTimezone: CLINIC_TIMEZONE,
+      professionalId,
+      specialtyId,
+    });
+  }
 
   const appointmentPayload: any = {
     clinicId: clinic._id,
@@ -292,28 +391,18 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   const nextStartAt = new Date(body.startAt);
   const nextEndAt = new Date(nextStartAt.getTime() + clinic.settings.slotDurationMinutes * 60_000);
 
-  const from = new Date(Date.UTC(nextStartAt.getUTCFullYear(), nextStartAt.getUTCMonth(), nextStartAt.getUTCDate()));
-  const to = new Date(from);
-  to.setUTCDate(to.getUTCDate() + 1);
+  const appointmentProfessionalId = appointment.professionalId ? String(appointment.professionalId) : undefined;
+  const appointmentSpecialtyId = appointment.specialtyId ? String(appointment.specialtyId) : undefined;
 
-  const appointmentProfessionalId = appointment.professionalId ? String(appointment.professionalId) : "";
-  const appointmentSpecialtyId = appointment.specialtyId ? String(appointment.specialtyId) : "";
-
-  const availableSlots = await buildAvailableSlots({
+  const availability = await isSlotAvailable({
     clinicId: clinic._id,
-    from,
-    to,
     ...(appointmentProfessionalId ? { professionalId: appointmentProfessionalId } : {}),
     ...(appointmentSpecialtyId ? { specialtyId: appointmentSpecialtyId } : {}),
+    startAt: nextStartAt,
+    endAt: nextEndAt,
   });
 
-  const found = availableSlots.find((slot) => slot.startAt.toISOString() === nextStartAt.toISOString());
-  if (!found) return fail(res, "Turno no disponible", 409);
-
-  const alreadyBookedFilter: any = { clinicId: clinic._id, startAt: nextStartAt, status: "confirmed" };
-  if (appointment.professionalId) alreadyBookedFilter.professionalId = appointment.professionalId;
-  const alreadyBooked = await Appointment.exists(alreadyBookedFilter);
-  if (alreadyBooked) return fail(res, "Turno no disponible", 409);
+  if (!availability.available) return fail(res, "Turno no disponible", 409);
 
   await Appointment.findByIdAndUpdate(appointmentId, { status: "cancelled" });
   await cancelScheduledAppointmentReminders(appointmentId);
