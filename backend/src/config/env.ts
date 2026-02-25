@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+const emailProvider = (process.env.EMAIL_PROVIDER ?? "smtp") as "resend" | "smtp" | "ethereal";
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? 5000),
@@ -15,6 +17,18 @@ export const env = {
   smtpPass: process.env.SMTP_PASS ?? "",
   smtpFrom: process.env.SMTP_FROM ?? "",
   reminderTestMode: process.env.REMINDER_TEST_MODE === "true",
+  emailProvider,
+  emailFrom: process.env.EMAIL_FROM ?? process.env.SMTP_FROM ?? "NexMed <no-reply@nexmed.local>",
+  appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  resendFrom: process.env.RESEND_FROM ?? "",
+  smtpSecure: process.env.SMTP_SECURE === "true",
+  etherealHost: process.env.ETHEREAL_HOST ?? "smtp.ethereal.email",
+  etherealPort: process.env.ETHEREAL_PORT ? Number(process.env.ETHEREAL_PORT) : 587,
+  etherealUser: process.env.ETHEREAL_USER ?? "",
+  etherealPass: process.env.ETHEREAL_PASS ?? "",
+  etherealSecure: process.env.ETHEREAL_SECURE === "true",
+  emailWorkerEnabled: process.env.EMAIL_WORKER_ENABLED !== "false",
 };
 
 if (!env.mongoUri) throw new Error("Missing MONGO_URI");

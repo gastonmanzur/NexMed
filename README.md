@@ -28,3 +28,20 @@ Opcional seed rápido:
 - Panel admin en `/admin`, con agenda, métricas, búsqueda y cancelación.
 - Configuración de horarios en `/admin/settings`.
 - Reserva pública por slug en `/c/:slug`.
+
+## Testing de email en local
+- **MailHog (recomendado)**
+  1. Levantar MailHog:
+     `docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog`
+  2. Configurar backend:
+     - `EMAIL_PROVIDER=smtp`
+     - `SMTP_HOST=localhost`
+     - `SMTP_PORT=1025`
+  3. Ver correos en `http://localhost:8025`.
+
+- **Ethereal (alternativa)**
+  1. Configurar backend:
+     - `EMAIL_PROVIDER=ethereal`
+     - `ETHEREAL_USER=...`
+     - `ETHEREAL_PASS=...`
+  2. El worker registrará en consola el identificador del envío.

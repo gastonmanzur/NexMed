@@ -5,6 +5,7 @@ import { Types } from "mongoose";
 import { Professional } from "../models/Professional";
 import { fail, ok } from "../utils/http";
 import { cancelScheduledAppointmentReminders } from "../services/reminderService";
+import { enqueueEmailJobs } from "../services/email/emailQueue";
 
 function dateOnlyToUtcStart(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
@@ -86,5 +87,6 @@ export async function cancelAppointment(req: Request, res: Response) {
 
   const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "clinic_cancel", "clinic_cancel_endpoint");
   await cancelScheduledAppointmentReminders(updatedAppointment._id);
-  return ok(res, updatedAppointment);
+  const email = await enqueueEmailJobs("appointment.canceled", updatedAppointment);
+  return ok(res, { appointment: updatedAppointment, emailQueued: email.queued });
 }

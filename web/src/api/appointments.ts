@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { Appointment, PaginatedAppointmentHistory, PublicCreateAppointmentResponse } from "../types";
+import { Appointment, AppointmentEmailMutationResponse, PaginatedAppointmentHistory, PublicCreateAppointmentResponse } from "../types";
 
 export const listAppointments = (
   token: string,
@@ -15,7 +15,7 @@ export const listAppointments = (
 };
 
 export const cancelAppointment = (token: string, id: string) =>
-  apiFetch<Appointment>(`/appointments/${id}/cancel`, { method: "PATCH" }, token);
+  apiFetch<AppointmentEmailMutationResponse>(`/appointments/${id}/cancel`, { method: "PATCH" }, token);
 
 export const publicAvailability = (
   slug: string,
@@ -71,10 +71,10 @@ export const publicCreateAppointment = (
 export const listMyAppointments = (token: string) => apiFetch<Appointment[]>(`/patient/appointments`, {}, token);
 
 export const cancelMyAppointment = (token: string, id: string) =>
-  apiFetch<Appointment>(`/patient/appointments/${id}/cancel`, { method: "PATCH" }, token);
+  apiFetch<AppointmentEmailMutationResponse>(`/patient/appointments/${id}/cancel`, { method: "PATCH" }, token);
 
 export const rescheduleMyAppointment = (token: string, id: string, body: { startAt: string; professionalId?: string; specialtyId?: string }) =>
-  apiFetch<{ appointment: Appointment }>(
+  apiFetch<AppointmentEmailMutationResponse>(
     `/patient/appointments/${id}/reschedule`,
     { method: "POST", body: JSON.stringify(body) },
     token

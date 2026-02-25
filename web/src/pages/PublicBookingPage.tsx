@@ -125,7 +125,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         specialtyId: selectedSpecialtyId || undefined,
       }, token ?? undefined);
       if (result.warnings?.missingPhone) setWarningMsg("⚠️ Completá tu teléfono para recibir recordatorios del turno");
-      setMsg("Turno reservado con éxito");
+      if (result.emailQueued && result.email) setMsg(`Turno reservado con éxito. Se envió un email de confirmación a ${result.email}`);
+      else setMsg("Turno reservado con éxito");
       setSelectedSlot("");
       await loadAvailability();
       setTimeout(() => { window.location.href = "/patient/appointments"; }, 700);
