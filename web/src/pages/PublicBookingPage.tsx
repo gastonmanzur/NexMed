@@ -209,7 +209,11 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     } catch (err: any) {
       const message = err.message || "No se pudo reservar el turno";
       if (err instanceof ApiError && err.status === 409) {
-        setError("Ese turno ya fue reservado. Elegí otro.");
+        if (err.code === "DUPLICATE_SLOT") {
+          setError("Ese turno ya fue reservado. Elegí otro.");
+        } else {
+          setError(err.message || "No se pudo reservar el turno");
+        }
         setSelectedSlot("");
         await loadAvailability();
       } else {

@@ -82,7 +82,7 @@ export async function cancelAppointment(req: Request, res: Response) {
 
   const appointment = await Appointment.findOneAndUpdate(
     { _id: req.params.id, clinicId } as any,
-    { status: "cancelled" },
+    { status: "canceled" },
     { new: true }
   ).lean();
 
