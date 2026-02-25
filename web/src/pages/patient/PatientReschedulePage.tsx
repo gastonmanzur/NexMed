@@ -55,7 +55,7 @@ export function PatientReschedulePage() {
   }, [clinics]);
 
   const upcomingAppointments = useMemo(
-    () => appointments.filter((appointment) => appointment.status !== "canceled" && isUpcoming(appointment.startAt)),
+    () => appointments.filter((appointment) => isUpcoming(appointment.startAt)),
     [appointments]
   );
   const selectedAppointment = upcomingAppointments.find((appointment) => appointment._id === selectedAppointmentId);
@@ -73,7 +73,7 @@ export function PatientReschedulePage() {
     setClinics(clinicData);
 
     if (preselectedAppointmentId) return setSelectedAppointmentId(preselectedAppointmentId);
-    const firstAvailable = appointmentData.find((a) => a.status !== "canceled" && isUpcoming(a.startAt));
+    const firstAvailable = appointmentData.find((a) => isUpcoming(a.startAt));
     if (firstAvailable) setSelectedAppointmentId(firstAvailable._id);
   };
 
@@ -131,7 +131,7 @@ export function PatientReschedulePage() {
         professionalId: selectedSlotData.professionalId || selectedAppointment.professionalId || undefined,
         specialtyId: selectedSlotData.specialtyId || selectedAppointment.specialtyId || undefined,
       });
-      setMsg(`Turno reprogramado: ${new Date(result.appointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })} · ${result.appointment.professionalName || "Profesional a confirmar"}`);
+      setMsg("Turno reprogramado correctamente. Tu turno anterior fue liberado automáticamente.");
       setSelectedSlot("");
       await loadData();
       await loadAvailability();
@@ -184,7 +184,7 @@ export function PatientReschedulePage() {
               <p>Profesional: {selectedAppointment.professionalName || "Profesional a confirmar"}</p>
               <p>Especialidad: {selectedAppointment.specialtyId || "No informada"}</p>
               <p>Fecha: {currentDateText}</p>
-              <p><span className="booking-status-badge">{selectedAppointment.status === "canceled" ? "Cancelado" : "Reservado"}</span></p>
+              <p><span className="booking-status-badge">{selectedAppointment.status === "cancelled" ? "Cancelado" : "Reservado"}</span></p>
               <div className="booking-summary-actions">
                 <a className="btn btn-outline" href="/patient/appointments">Volver a Mis Turnos</a>
                 <a className="btn" href={`/c/${selectedAppointment.clinicSlug || clinicById.get(selectedAppointment.clinicId)?.slug || ""}`}>Ver clínica</a>

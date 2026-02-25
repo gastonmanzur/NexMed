@@ -28,7 +28,7 @@ export function PatientPage() {
   const loadAppointments = async () => {
     if (!token) return;
     const data = await listMyAppointments(token);
-    setAppointments(data.filter((a) => a.status !== "canceled"));
+    setAppointments(data);
     if (!selectedAppointmentId && data.length) setSelectedAppointmentId(data[0]._id);
   };
 
@@ -65,7 +65,7 @@ export function PatientPage() {
     setMsg("");
     try {
       await rescheduleMyAppointment(token, selectedAppointmentId, { startAt: selectedSlot });
-      setMsg("Turno reprogramado con éxito");
+      setMsg("Turno reprogramado correctamente");
       setSelectedSlot("");
       await loadAppointments();
     } catch (e: any) {

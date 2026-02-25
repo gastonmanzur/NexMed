@@ -18,7 +18,7 @@ function duplicatePipeline(from: Date, to: Date): PipelineStage[] {
   return [
     {
       $match: {
-        status: { $in: ["booked", "confirmed"] },
+        status: { $in: ["booked"] },
         startAt: { $gte: from, $lt: to },
         professionalId: { $exists: true, $ne: null },
       },
@@ -84,7 +84,7 @@ export async function dedupAppointments(req: Request, res: Response) {
     const duplicateIds = duplicates.map((item: { _id: string }) => item._id);
 
     for (const duplicateId of duplicateIds) {
-      await updateAppointmentStatus(duplicateId, "canceled", "dev_dedup", "dev_dedup_endpoint");
+      await updateAppointmentStatus(duplicateId, "cancelled", "dev_dedup", "dev_dedup_endpoint");
       cancelledCount += 1;
     }
 

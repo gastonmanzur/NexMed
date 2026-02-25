@@ -84,7 +84,7 @@ export async function cancelAppointment(req: Request, res: Response) {
   const appointment = await Appointment.findOne({ _id: req.params.id, clinicId } as any);
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
-  const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "clinic_cancel", "clinic_cancel_endpoint");
+  const updatedAppointment = await updateAppointmentStatus(appointment._id, "cancelled", "clinic_cancel", "clinic_cancel_endpoint");
   await cancelScheduledAppointmentReminders(updatedAppointment._id);
   return ok(res, updatedAppointment);
 }

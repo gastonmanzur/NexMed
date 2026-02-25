@@ -34,8 +34,8 @@ export function AdminDashboardPage() {
   }, [token]);
 
   const today = fmtDate(new Date());
-  const todayCount = useMemo(() => appointments.filter((a) => a.startAt.slice(0, 10) === today && a.status !== "canceled").length, [appointments, today]);
-  const weekCount = useMemo(() => appointments.filter((a) => a.status !== "canceled").length, [appointments]);
+  const todayCount = useMemo(() => appointments.filter((a) => a.startAt.slice(0, 10) === today && a.status !== "cancelled").length, [appointments, today]);
+  const weekCount = useMemo(() => appointments.filter((a) => a.status !== "cancelled").length, [appointments]);
 
   const statCards = [
     { label: "Turnos de hoy", value: todayCount, hint: "Reservados para hoy", icon: "calendar-check" as const },
