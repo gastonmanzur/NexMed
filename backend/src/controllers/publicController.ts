@@ -252,6 +252,14 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const professionalId = body.professionalId ? String(body.professionalId) : undefined;
   const specialtyId = body.specialtyId ? String(body.specialtyId) : undefined;
 
+  if (!professionalId && !specialtyId) {
+    return res.status(400).json({
+      ok: false,
+      error: "Debés seleccionar un profesional o una especialidad",
+      code: "MISSING_PROFESSIONAL_OR_SPECIALTY",
+    });
+  }
+
   let startAt: Date;
   try {
     startAt = parseRequestedStart(body);
@@ -265,30 +273,30 @@ export async function createPublicAppointment(req: Request, res: Response) {
     ? await Professional.findOne({ _id: professionalId, clinicId: clinic._id, isActive: true }).lean()
     : null;
   if (professionalId && !professional) {
-    return failConflict(res, "PROFESSIONAL_MISMATCH", {
-      startAt: startAt.toISOString(),
-      clinicTzDateKey,
-      weekday: clinicLocal.weekday,
-      clinicTimezone: CLINIC_TIMEZONE,
-      professionalId,
-      specialtyId,
-    });
-  }
-
-  if (professional && specialtyId && !professional.specialtyIds.some((id) => String(id) === specialtyId)) {
-    return failConflict(res, "SPECIALTY_MISMATCH", {
-      startAt: startAt.toISOString(),
-      clinicTzDateKey,
-      weekday: clinicLocal.weekday,
-      clinicTimezone: CLINIC_TIMEZONE,
-      professionalId,
-      specialtyId,
+    return res.status(400).json({
+      ok: false,
+      error: "El profesional seleccionado no pertenece a la clínica",
+      code: "PROFESSIONAL_NOT_IN_CLINIC",
     });
   }
 
   if (specialtyId) {
     const specialty = await Specialty.findOne({ _id: specialtyId, clinicId: clinic._id, isActive: true }).lean();
-    if (!specialty) return fail(res, "Especialidad inválida", 400);
+    if (!specialty) {
+      return res.status(400).json({
+        ok: false,
+        error: "La especialidad seleccionada no pertenece a la clínica",
+        code: "SPECIALTY_NOT_IN_CLINIC",
+      });
+    }
+  }
+
+  if (professional && specialtyId && !professional.specialtyIds.some((id) => String(id) === specialtyId)) {
+    return res.status(400).json({
+      ok: false,
+      error: "La especialidad seleccionada no corresponde al profesional",
+      code: "SPECIALTY_NOT_IN_PROFESSIONAL",
+    });
   }
 
   const weekday = clinicLocal.weekday;
