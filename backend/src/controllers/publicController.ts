@@ -5,10 +5,11 @@ import { Clinic } from "../models/Clinic";
 import { Professional } from "../models/Professional";
 import { ProfessionalAvailability } from "../models/ProfessionalAvailability";
 import { Specialty } from "../models/Specialty";
-import { buildSlots, CLINIC_TIMEZONE, getClinicLocalParts, isSlotAvailable } from "../services/availabilityService";
+import { buildSlots, CLINIC_TIMEZONE, getClinicLocalParts } from "../services/availabilityService";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { cancelScheduledAppointmentReminders, scheduleAppointmentReminders } from "../services/reminderService";
 import { fail, ok } from "../utils/http";
+import { alignToGrid, buildSlotKey, normalizeStartAt, SlotValidationError } from "../utils/slots";
 
 function dateOnlyToClinicStart(value: string) {
   return value;
@@ -94,8 +95,7 @@ function parseRequestedStart(body: {
     if (Number.isNaN(startAt.getTime())) {
       throw new Error("startAt inválido");
     }
-    startAt.setSeconds(0, 0);
-    return startAt;
+    return normalizeStartAt(startAt);
   }
 
   if (!body.date || !body.time) {
@@ -115,8 +115,7 @@ function parseRequestedStart(body: {
   if (Number.isNaN(startAt.getTime())) {
     throw new Error("Fecha inválida");
   }
-  startAt.setSeconds(0, 0);
-  return startAt;
+  return normalizeStartAt(startAt);
 }
 
 export async function getPublicClinic(req: Request, res: Response) {
@@ -307,14 +306,14 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const endAt = new Date(startAt.getTime() + slotMinutes * 60_000);
 
   if (professionalId) {
-    const invalidGrid = !blockRows.some((b) => {
+    const matchedBlock = blockRows.find((b) => {
       const blockStart = Number(b.startTime.slice(0, 2)) * 60 + Number(b.startTime.slice(3, 5));
       const blockEnd = Number(b.endTime.slice(0, 2)) * 60 + Number(b.endTime.slice(3, 5));
-      return requestedMinutes >= blockStart && requestedMinutes + b.slotMinutes <= blockEnd && (requestedMinutes - blockStart) % b.slotMinutes === 0;
+      return requestedMinutes >= blockStart && requestedMinutes + b.slotMinutes <= blockEnd;
     });
 
-    if (invalidGrid) {
-      return failConflict(res, "INVALID_GRID", {
+    if (!matchedBlock) {
+      return failConflict(res, "OUTSIDE_BLOCK", {
         startAt: startAt.toISOString(),
         endAt: endAt.toISOString(),
         clinicTzDateKey,
@@ -324,26 +323,15 @@ export async function createPublicAppointment(req: Request, res: Response) {
         specialtyId,
       });
     }
-  }
 
-  const availability = await isSlotAvailable({
-    clinicId: clinic._id,
-    ...(professionalId ? { professionalId } : {}),
-    ...(specialtyId ? { specialtyId } : {}),
-    startAt,
-    endAt,
-  });
-  if (!availability.available) {
-    const code = (availability.code === "SLOT_NOT_AVAILABLE" && professionalId ? "OUTSIDE_BLOCK" : availability.code) ?? "SLOT_NOT_AVAILABLE";
-    return failConflict(res, code, {
-      startAt: startAt.toISOString(),
-      endAt: endAt.toISOString(),
-      clinicTzDateKey,
-      weekday,
-      clinicTimezone: CLINIC_TIMEZONE,
-      professionalId,
-      specialtyId,
-    });
+    try {
+      alignToGrid(startAt, matchedBlock.startTime, matchedBlock.slotMinutes, CLINIC_TIMEZONE);
+    } catch (error) {
+      if (error instanceof SlotValidationError) {
+        return fail(res, error.message, 400);
+      }
+      throw error;
+    }
   }
 
   const appointmentPayload: any = {
@@ -354,7 +342,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
     patientFullName: body.patientFullName,
     patientPhone: body.patientPhone,
     note: body.note,
-    status: "confirmed",
+    status: "booked",
   };
 
   if (professionalId) appointmentPayload.professionalId = professionalId;
@@ -372,7 +360,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
       logDuplicateSlot({
         clinicId: String(clinic._id),
         ...(professionalId ? { professionalId } : {}),
-        startAt: startAt.toISOString(),
+        startAt: buildSlotKey(String(clinic._id), professionalId ?? "none", normalizeStartAt(startAt)),
       });
       return res.status(409).json({ ok: false, error: "Turno no disponible", code: "DUPLICATE_SLOT" });
     }
@@ -402,10 +390,10 @@ export async function cancelMyAppointment(req: Request, res: Response) {
   const patientId = req.auth!.id;
   const appointmentId = String(req.params.id);
 
-  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: "confirmed" });
+  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked", "confirmed"] } });
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
-  appointment.status = "cancelled";
+  appointment.status = "canceled";
   await appointment.save();
   await cancelScheduledAppointmentReminders(appointment._id);
 
@@ -417,7 +405,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   const patientId = req.auth!.id;
   const appointmentId = String(req.params.id);
 
-  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: "confirmed" }).lean();
+  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked", "confirmed"] } }).lean();
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
   const clinic = await Clinic.findById(appointment.clinicId).lean();
@@ -425,31 +413,50 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
 
   const nextStartAt = new Date(body.startAt);
   if (Number.isNaN(nextStartAt.getTime())) return fail(res, "Fecha y hora inválidas", 400);
-  nextStartAt.setSeconds(0, 0);
-  const nextEndAt = new Date(nextStartAt.getTime() + clinic.settings.slotDurationMinutes * 60_000);
+  const nextStartAtNormalized = normalizeStartAt(nextStartAt);
+  const nextEndAt = new Date(nextStartAtNormalized.getTime() + clinic.settings.slotDurationMinutes * 60_000);
 
   const appointmentProfessionalId = appointment.professionalId ? String(appointment.professionalId) : undefined;
   const appointmentSpecialtyId = appointment.specialtyId ? String(appointment.specialtyId) : undefined;
 
-  const availability = await isSlotAvailable({
-    clinicId: clinic._id,
-    ...(appointmentProfessionalId ? { professionalId: appointmentProfessionalId } : {}),
-    ...(appointmentSpecialtyId ? { specialtyId: appointmentSpecialtyId } : {}),
-    startAt: nextStartAt,
-    endAt: nextEndAt,
-  });
+  if (appointmentProfessionalId) {
+    const nextLocal = getClinicLocalParts(nextStartAtNormalized);
+    const weekday = nextLocal.weekday;
+    const requestedMinutes = nextLocal.hour * 60 + nextLocal.minute;
+    const blockRows = await ProfessionalAvailability.find({
+      clinicId: clinic._id,
+      professionalId: appointmentProfessionalId,
+      weekday,
+      isActive: true,
+    }).lean();
 
-  if (!availability.available) return fail(res, "Turno no disponible", 409);
+    const matchedBlock = blockRows.find((b) => {
+      const blockStart = Number(b.startTime.slice(0, 2)) * 60 + Number(b.startTime.slice(3, 5));
+      const blockEnd = Number(b.endTime.slice(0, 2)) * 60 + Number(b.endTime.slice(3, 5));
+      return requestedMinutes >= blockStart && requestedMinutes + b.slotMinutes <= blockEnd;
+    });
+
+    if (!matchedBlock) return fail(res, "Turno fuera de disponibilidad", 409);
+
+    try {
+      alignToGrid(nextStartAtNormalized, matchedBlock.startTime, matchedBlock.slotMinutes, CLINIC_TIMEZONE);
+    } catch (error) {
+      if (error instanceof SlotValidationError) {
+        return fail(res, error.message, 400);
+      }
+      throw error;
+    }
+  }
 
   const newAppointmentPayload: any = {
     clinicId: clinic._id,
     clinicSlug: clinic.slug,
     patientId,
-    startAt: nextStartAt,
+    startAt: nextStartAtNormalized,
     endAt: nextEndAt,
     patientFullName: appointment.patientFullName,
     patientPhone: appointment.patientPhone,
-    status: "confirmed",
+    status: "booked",
     professionalId: appointment.professionalId,
     specialtyId: appointment.specialtyId,
   };
@@ -468,7 +475,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     throw error;
   }
 
-  await Appointment.findByIdAndUpdate(appointmentId, { status: "cancelled" });
+  await Appointment.findByIdAndUpdate(appointmentId, { status: "canceled" });
   await cancelScheduledAppointmentReminders(appointmentId);
   await scheduleAppointmentReminders(newAppointment);
 

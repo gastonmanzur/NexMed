@@ -3,6 +3,7 @@ import { Appointment } from "../models/Appointment";
 import { Professional } from "../models/Professional";
 import { ProfessionalAvailability } from "../models/ProfessionalAvailability";
 import { ProfessionalTimeOff } from "../models/ProfessionalTimeOff";
+import { buildSlotKey, normalizeStartAt } from "../utils/slots";
 
 export const CLINIC_TIMEZONE = "America/Argentina/Buenos_Aires";
 const CLINIC_UTC_OFFSET_MINUTES = -180;
@@ -186,14 +187,16 @@ export async function buildSlots(params: {
 
   const bookedQuery: any = {
     clinicId,
-    status: { $ne: "cancelled" },
+    status: { $in: ["booked", "confirmed"] },
     startAt: { $gte: fromUtc, $lt: toUtc },
   };
   if (professionalId) bookedQuery.professionalId = professionalId;
 
   const booked = await Appointment.find(bookedQuery).select({ startAt: 1, professionalId: 1 }).lean();
   const bookedSet = new Set(
-    booked.map((b) => `${new Date(b.startAt).toISOString()}::${b.professionalId ? String(b.professionalId) : ""}`)
+    booked
+      .filter((b) => Boolean(b.professionalId))
+      .map((b) => buildSlotKey(String(clinicId), String(b.professionalId), normalizeStartAt(new Date(b.startAt))))
   );
 
   const timeOffByKey = await getTimeOffMap({
@@ -204,7 +207,7 @@ export async function buildSlots(params: {
     toUtc,
   });
 
-  return computeProfessionalSlotsByDateKey({ from, to, professionalConfigs, timeOffByKey, bookedSet });
+  return computeProfessionalSlotsByDateKey({ clinicId: String(clinicId), from, to, professionalConfigs, timeOffByKey, bookedSet });
 }
 
 export async function buildAvailableSlots(params: {
@@ -224,13 +227,14 @@ export async function buildAvailableSlots(params: {
 }
 
 export function computeProfessionalSlotsByDateKey(params: {
+  clinicId: string;
   from: string;
   to: string;
   professionalConfigs: ProfessionalSlotConfig[];
   timeOffByKey: TimeOffByKey;
   bookedSet: Set<string>;
 }) {
-  const { from, to, professionalConfigs, timeOffByKey, bookedSet } = params;
+  const { clinicId, from, to, professionalConfigs, timeOffByKey, bookedSet } = params;
   const slots: Slot[] = [];
   let cursorDateKey = from;
 
@@ -251,7 +255,7 @@ export function computeProfessionalSlotsByDateKey(params: {
 
           if (offList.some((off) => hasOverlap(off, m, m + block.slotMinutes))) continue;
 
-          const key = `${slotStart.toISOString()}::${cfg.professionalId}`;
+          const key = buildSlotKey(clinicId, cfg.professionalId, normalizeStartAt(slotStart));
           if (bookedSet.has(key)) continue;
 
           slots.push({ startAt: slotStart, endAt: slotEnd, professionalId: cfg.professionalId });
@@ -266,6 +270,7 @@ export function computeProfessionalSlotsByDateKey(params: {
 }
 
 export function computeProfessionalSlots(params: {
+  clinicId?: string;
   from: Date;
   to: Date;
   professionalConfigs: ProfessionalSlotConfig[];
@@ -273,6 +278,7 @@ export function computeProfessionalSlots(params: {
   bookedSet: Set<string>;
 }) {
   return computeProfessionalSlotsByDateKey({
+    clinicId: params.clinicId ?? "local",
     from: dateKeyFromUTCDate(params.from),
     to: dateKeyFromUTCDate(params.to),
     professionalConfigs: params.professionalConfigs,
@@ -312,7 +318,7 @@ export async function isSlotAvailable(params: {
   const overlap = await Appointment.exists({
     clinicId: params.clinicId,
     ...(params.professionalId ? { professionalId: params.professionalId } : {}),
-    status: { $ne: "cancelled" },
+    status: { $in: ["booked", "confirmed"] },
     startAt: { $lt: params.endAt },
     endAt: { $gt: params.startAt },
   });

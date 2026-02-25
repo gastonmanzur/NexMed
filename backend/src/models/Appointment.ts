@@ -1,6 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 
-export type AppointmentStatus = "confirmed" | "cancelled";
+export type AppointmentStatus = "booked" | "confirmed" | "canceled" | "cancelled";
 
 export interface AppointmentDocument {
   _id: Types.ObjectId;
@@ -31,18 +31,20 @@ const appointmentSchema = new Schema<AppointmentDocument>(
     patientFullName: { type: String, required: true },
     patientPhone: { type: String, required: true, index: true },
     note: { type: String },
-    status: { type: String, enum: ["confirmed", "cancelled"], default: "confirmed", index: true },
+    status: { type: String, enum: ["booked", "confirmed", "canceled", "cancelled"], default: "booked", index: true },
   },
   { timestamps: true }
 );
 
 appointmentSchema.index({ clinicId: 1, startAt: 1, status: 1 });
-appointmentSchema.index({ clinicId: 1, professionalId: 1, startAt: 1 });
 appointmentSchema.index(
   { clinicId: 1, professionalId: 1, startAt: 1 },
   {
     unique: true,
-    partialFilterExpression: { status: { $ne: "cancelled" } },
+    partialFilterExpression: {
+      status: { $in: ["booked", "confirmed"] },
+      professionalId: { $exists: true },
+    },
   }
 );
 
