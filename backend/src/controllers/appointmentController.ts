@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { Appointment } from "../models/Appointment";
+import { updateAppointmentStatus } from "../services/appointmentStatusService";
 import { Types } from "mongoose";
 import { Professional } from "../models/Professional";
 import { fail, ok } from "../utils/http";
@@ -80,13 +81,10 @@ export async function listAppointments(req: Request, res: Response) {
 export async function cancelAppointment(req: Request, res: Response) {
   const clinicId = req.auth?.id;
 
-  const appointment = await Appointment.findOneAndUpdate(
-    { _id: req.params.id, clinicId } as any,
-    { status: "canceled" },
-    { new: true }
-  ).lean();
-
+  const appointment = await Appointment.findOne({ _id: req.params.id, clinicId } as any);
   if (!appointment) return fail(res, "Turno no encontrado", 404);
-  await cancelScheduledAppointmentReminders(appointment._id);
-  return ok(res, appointment);
+
+  const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "clinic_cancel", "clinic_cancel_endpoint");
+  await cancelScheduledAppointmentReminders(updatedAppointment._id);
+  return ok(res, updatedAppointment);
 }
