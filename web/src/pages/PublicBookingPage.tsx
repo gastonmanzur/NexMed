@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Filter, RotateCcw, Search } from "lucide-react";
+import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock3, Filter, RotateCcw, Search } from "lucide-react";
 
 import { publicAvailability, publicCreateAppointment } from "../api/appointments";
 import { ApiError } from "../api/client";
@@ -78,6 +78,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const [error, setError] = useState("");
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFilterValidation, setShowFilterValidation] = useState(false);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -105,6 +106,18 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     }
   }, [selectedProfessionalId, filteredProfessionals]);
 
+  useEffect(() => {
+    if (professionals.length === 1 && !selectedProfessionalId) {
+      setSelectedProfessionalId(professionals[0]._id);
+    }
+  }, [professionals, selectedProfessionalId]);
+
+  useEffect(() => {
+    if (specialties.length === 1 && !selectedSpecialtyId) {
+      setSelectedSpecialtyId(specialties[0]._id);
+    }
+  }, [specialties, selectedSpecialtyId]);
+
   const groupedSlots = useMemo(() => buildMapByDay(slots), [slots]);
   const availableDays = useMemo(() => new Set(Object.keys(groupedSlots)), [groupedSlots]);
   const selectedDayKey = selectedDay ? toDateKey(selectedDay) : "";
@@ -115,21 +128,29 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     setError("");
 
     try {
-      const [availability, specRows, profRows, clinicPublic] = await Promise.all([
-        publicAvailability(slug, from, to, {
-          specialtyId: selectedSpecialtyId || undefined,
-          professionalId: selectedProfessionalId || undefined,
-        }),
+      const [specRows, profRows, clinicPublic] = await Promise.all([
         listPublicSpecialties(slug),
         listPublicProfessionals(slug),
         getPublicClinic(slug),
       ]);
 
-      setClinicName((clinicPublic as any).name || availability.clinic.name);
-      setClinicInfo(clinicPublic);
-      setSlots(availability.slots);
       setSpecialties(specRows);
       setProfessionals(profRows);
+      setClinicName((clinicPublic as any).name || "Clínica");
+      setClinicInfo(clinicPublic);
+
+      if (!selectedSpecialtyId && !selectedProfessionalId) {
+        setSlots([]);
+        return;
+      }
+
+      const availability = await publicAvailability(slug, from, to, {
+        specialtyId: selectedSpecialtyId || undefined,
+        professionalId: selectedProfessionalId || undefined,
+      });
+
+      setClinicName((clinicPublic as any).name || availability.clinic.name);
+      setSlots(availability.slots);
     } catch (e: any) {
       setError(e.message || "No se pudo cargar la disponibilidad");
     } finally {
@@ -176,12 +197,32 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   }, [selectedSlot]);
 
   const monthGrid = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
+  const hasFilter = Boolean(selectedProfessionalId) || Boolean(selectedSpecialtyId);
+  const canReserve = Boolean(selectedSlot) && hasFilter && !isSubmitting;
+  const showFiltersWarning = showFilterValidation && !hasFilter;
+
+  useEffect(() => {
+    if (hasFilter && showFilterValidation) setShowFilterValidation(false);
+  }, [hasFilter, showFilterValidation]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setMsg("");
     setError("");
+
+    if (!hasFilter) {
+      setShowFilterValidation(true);
+      setError("Para reservar, seleccioná al menos un profesional o una especialidad.");
+      return;
+    }
+
+    if (!selectedSlot) {
+      setError("Seleccioná un horario disponible.");
+      return;
+    }
+
     setIsSubmitting(true);
+    setShowFilterValidation(false);
 
     try {
       await publicCreateAppointment(
@@ -252,7 +293,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         </Card>
 
         <Card>
-          <div className="grid-2">
+          <div className={`grid-2 booking-filters-grid ${showFiltersWarning ? "booking-filters-grid-warning" : ""}`}>
             <label className="booking-filter">
               <span><Filter size={14} /> Especialidad</span>
               <select className="input" value={selectedSpecialtyId} onChange={(e) => setSelectedSpecialtyId(e.target.value)}>
@@ -273,6 +314,10 @@ export function PublicBookingPage({ slug }: { slug: string }) {
               </select>
             </label>
           </div>
+          <p className={`booking-filter-hint ${showFiltersWarning ? "booking-filter-hint-warning" : ""}`}>
+            {showFiltersWarning && <AlertCircle size={14} />}
+            Seleccioná un profesional o una especialidad para continuar.
+          </p>
         </Card>
 
         {error && (
@@ -347,6 +392,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
                   </button>
                 ))}
               </div>
+            ) : !hasFilter ? (
+              <p>Seleccioná un profesional o especialidad para ver turnos disponibles.</p>
             ) : (
               <p>No hay turnos disponibles para este día.</p>
             )}
@@ -367,7 +414,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
               <Input placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
             {msg && <p className="success">{msg}</p>}
-            <Button disabled={!selectedSlot || isSubmitting}>{isSubmitting ? "Reservando..." : "Reservar turno"}</Button>
+            <Button disabled={!canReserve}>{isSubmitting ? "Reservando..." : "Reservar turno"}</Button>
           </form>
         </Card>
       </div>

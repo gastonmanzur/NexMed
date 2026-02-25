@@ -43,6 +43,31 @@
   font-size: 14px;
 }
 
+
+.booking-filters-grid {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.booking-filters-grid-warning {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.booking-filter-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.booking-filter-hint-warning {
+  color: #b91c1c;
+}
+
 .booking-main-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
