@@ -78,7 +78,7 @@ export type Appointment = {
   patientFullName: string;
   patientPhone: string;
   note?: string;
-  status: "booked" | "confirmed" | "canceled";
+  status: "booked" | "cancelled" | "completed" | "no_show";
 };
 
 export type PublicCreateAppointmentResponse = {

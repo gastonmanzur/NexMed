@@ -39,23 +39,23 @@ function assertAllowedTransition(params: {
   const { prevStatus, newStatus, actor } = params;
   if (prevStatus === newStatus) return;
 
-  const baseAllowed = new Set<AppointmentStatus>(["booked", "confirmed", "canceled"]);
+  const baseAllowed = new Set<AppointmentStatus>(["booked", "cancelled", "completed", "no_show"]);
   if (!baseAllowed.has(prevStatus) || !baseAllowed.has(newStatus)) {
     throw new Error(`Transición de estado no soportada: ${prevStatus} -> ${newStatus}`);
   }
 
-  if (newStatus === "canceled") {
+  if (newStatus === "cancelled") {
     if (!CANCELLATION_ACTORS.has(actor ?? "")) {
       throw new Error("No se permite cancelar turnos fuera de endpoints explícitos de cancelación");
     }
-    if (!(prevStatus === "booked" || prevStatus === "confirmed")) {
+    if (prevStatus !== "booked") {
       throw new Error(`No se permite cancelar turnos desde estado ${prevStatus}`);
     }
     return;
   }
 
-  if (newStatus === "confirmed" && prevStatus === "booked") return;
-  if (newStatus === "booked" && prevStatus === "confirmed") return;
+  if (newStatus === "completed" && prevStatus === "booked") return;
+  if (newStatus === "no_show" && prevStatus === "booked") return;
 
   throw new Error(`Transición de estado no permitida: ${prevStatus} -> ${newStatus}`);
 }

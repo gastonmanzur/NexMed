@@ -189,7 +189,7 @@ export async function buildSlots(params: {
 
   const bookedQuery: any = {
     clinicId,
-    status: { $in: ["booked", "confirmed"] },
+    status: { $in: ["booked"] },
     startAt: { $gte: fromUtc, $lt: toUtc },
   };
   if (professionalId) bookedQuery.professionalId = professionalId;
@@ -325,7 +325,7 @@ export async function isSlotAvailable(params: {
   const overlap = await Appointment.exists({
     clinicId: params.clinicId,
     ...(params.professionalId ? { professionalId: params.professionalId } : {}),
-    status: { $in: ["booked", "confirmed"] },
+    status: { $in: ["booked"] },
     startAt: { $lt: params.endAt },
     endAt: { $gt: params.startAt },
   });

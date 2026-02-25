@@ -466,7 +466,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
 
 export async function listMyAppointments(req: Request, res: Response) {
   const patientId = req.auth!.id;
-  const appointments = await Appointment.find({ patientId }).sort({ startAt: 1 }).lean();
+  const appointments = await Appointment.find({ patientId, status: { $in: ["booked"] }, isDeleted: { $ne: true } }).sort({ startAt: 1 }).lean();
 
   const professionalIds = [
     ...new Set(
@@ -496,10 +496,10 @@ export async function cancelMyAppointment(req: Request, res: Response) {
   const patientId = req.auth!.id;
   const appointmentId = String(req.params.id);
 
-  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked", "confirmed"] } });
+  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked"] } });
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
-  const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "patient_cancel", "patient_cancel_endpoint");
+  const updatedAppointment = await updateAppointmentStatus(appointment._id, "cancelled", "patient_cancel", "patient_cancel_endpoint");
   await cancelScheduledAppointmentReminders(appointment._id);
 
   return ok(res, updatedAppointment);
@@ -510,7 +510,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   const patientId = req.auth!.id;
   const appointmentId = String(req.params.id);
 
-  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked", "confirmed"] } }).lean();
+  const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked"] } }).lean();
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
   const clinic = await Clinic.findById(appointment.clinicId).lean();
@@ -553,35 +553,60 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     }
   }
 
-  let updatedAppointment;
+  const rescheduledAppointmentPayload: any = {
+    clinicId: appointment.clinicId,
+    clinicSlug: appointment.clinicSlug,
+    patientId: appointment.patientId,
+    professionalId: requestedProfessionalId,
+    specialtyId: requestedSpecialtyId,
+    startAt: nextStartAtNormalized,
+    endAt: nextEndAt,
+    patientFullName: appointment.patientFullName,
+    patientPhone: appointment.patientPhone,
+    note: appointment.note,
+    status: "booked",
+  };
+
+  let newAppointmentId = "";
+  const session = await Appointment.startSession();
   try {
-    updatedAppointment = await Appointment.findOneAndUpdate(
-      { _id: appointmentId, patientId, status: { $in: ["booked", "confirmed"] } },
-      {
-        $set: {
-          startAt: nextStartAtNormalized,
-          endAt: nextEndAt,
-          professionalId: requestedProfessionalId,
-          specialtyId: requestedSpecialtyId,
-          status: "booked",
-        },
-      },
-      { new: true }
-    );
+    await session.withTransaction(async () => {
+      const createdAppointments = await Appointment.create([rescheduledAppointmentPayload], { session });
+      const created = createdAppointments[0];
+      if (!created) {
+        throw new Error("No se pudo crear el nuevo turno");
+      }
+      newAppointmentId = String(created._id);
+
+      const cancelledAppointment = await Appointment.findOneAndUpdate(
+        { _id: appointmentId, patientId, status: { $in: ["booked"] } },
+        { $set: { status: "cancelled" } },
+        { new: true, session }
+      );
+
+      if (!cancelledAppointment) {
+        throw new Error("Turno no encontrado");
+      }
+    });
   } catch (error) {
     if (isDuplicateSlotError(error)) {
       return res.status(409).json({ ok: false, error: "Turno no disponible", code: "DUPLICATE_SLOT" });
     }
     throw error;
+  } finally {
+    await session.endSession();
   }
 
-  if (!updatedAppointment) return fail(res, "Turno no encontrado", 404);
+  if (!newAppointmentId) return fail(res, "No se pudo reprogramar el turno", 500);
+
+  const newAppointment = await Appointment.findById(newAppointmentId);
+  if (!newAppointment) return fail(res, "No se pudo reprogramar el turno", 500);
 
   await cancelScheduledAppointmentReminders(appointmentId);
-  await scheduleAppointmentReminders(updatedAppointment);
+  await scheduleAppointmentReminders(newAppointment);
 
-  const map = await buildProfessionalNameMap(updatedAppointment.professionalId ? [String(updatedAppointment.professionalId)] : []);
-  const professionalName = updatedAppointment.professionalId ? map.get(String(updatedAppointment.professionalId)) ?? "Profesional a confirmar" : "Profesional a confirmar";
+  const map = await buildProfessionalNameMap(newAppointment.professionalId ? [String(newAppointment.professionalId)] : []);
+  const professionalName = newAppointment.professionalId ? map.get(String(newAppointment.professionalId)) ?? "Profesional a confirmar" : "Profesional a confirmar";
 
-  return ok(res, { appointment: { ...updatedAppointment.toObject(), professionalName } });
+  return ok(res, { appointment: { ...newAppointment.toObject(), professionalName } });
 }

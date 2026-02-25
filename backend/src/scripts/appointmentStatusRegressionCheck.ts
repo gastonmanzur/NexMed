@@ -28,7 +28,7 @@ async function run() {
     clinicId,
     professionalId,
     startAt,
-    status: { $in: ["booked", "confirmed"] },
+    status: { $in: ["booked"] },
   }).lean();
 
   if (existingActive) {
@@ -66,7 +66,7 @@ async function run() {
     clinicId,
     professionalId,
     startAt,
-    status: { $in: ["booked", "confirmed"] },
+    status: { $in: ["booked"] },
   }).lean();
 
   console.log("[check] slot blocked", {
