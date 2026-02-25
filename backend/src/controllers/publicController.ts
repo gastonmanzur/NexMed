@@ -506,7 +506,7 @@ export async function cancelMyAppointment(req: Request, res: Response) {
 }
 
 export async function rescheduleMyAppointment(req: Request, res: Response) {
-  const body = (res.locals.validated?.body ?? req.body) as { startAt: string };
+  const body = (res.locals.validated?.body ?? req.body) as { startAt: string; professionalId?: string; specialtyId?: string };
   const patientId = req.auth!.id;
   const appointmentId = String(req.params.id);
 
@@ -521,16 +521,16 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   const nextStartAtNormalized = normalizeStartAt(nextStartAt);
   const nextEndAt = new Date(nextStartAtNormalized.getTime() + clinic.settings.slotDurationMinutes * 60_000);
 
-  const appointmentProfessionalId = appointment.professionalId ? String(appointment.professionalId) : undefined;
-  const appointmentSpecialtyId = appointment.specialtyId ? String(appointment.specialtyId) : undefined;
+  const requestedProfessionalId = body.professionalId ? String(body.professionalId) : (appointment.professionalId ? String(appointment.professionalId) : undefined);
+  const requestedSpecialtyId = body.specialtyId ? String(body.specialtyId) : (appointment.specialtyId ? String(appointment.specialtyId) : undefined);
 
-  if (appointmentProfessionalId) {
+  if (requestedProfessionalId) {
     const nextLocal = getClinicLocalParts(nextStartAtNormalized);
     const weekday = nextLocal.weekday;
     const requestedMinutes = nextLocal.hour * 60 + nextLocal.minute;
     const blockRows = await ProfessionalAvailability.find({
       clinicId: clinic._id,
-      professionalId: appointmentProfessionalId,
+      professionalId: requestedProfessionalId,
       weekday,
       isActive: true,
     }).lean();
@@ -553,26 +553,21 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     }
   }
 
-  const newAppointmentPayload: any = {
-    clinicId: clinic._id,
-    clinicSlug: clinic.slug,
-    patientId,
-    startAt: nextStartAtNormalized,
-    endAt: nextEndAt,
-    patientFullName: appointment.patientFullName,
-    patientPhone: appointment.patientPhone,
-    status: "booked",
-    professionalId: appointment.professionalId,
-    specialtyId: appointment.specialtyId,
-  };
-
-  if (appointment.note) {
-    newAppointmentPayload.note = appointment.note;
-  }
-
-  let newAppointment;
+  let updatedAppointment;
   try {
-    newAppointment = await Appointment.create(newAppointmentPayload);
+    updatedAppointment = await Appointment.findOneAndUpdate(
+      { _id: appointmentId, patientId, status: { $in: ["booked", "confirmed"] } },
+      {
+        $set: {
+          startAt: nextStartAtNormalized,
+          endAt: nextEndAt,
+          professionalId: requestedProfessionalId,
+          specialtyId: requestedSpecialtyId,
+          status: "booked",
+        },
+      },
+      { new: true }
+    );
   } catch (error) {
     if (isDuplicateSlotError(error)) {
       return res.status(409).json({ ok: false, error: "Turno no disponible", code: "DUPLICATE_SLOT" });
@@ -580,9 +575,13 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     throw error;
   }
 
-  await updateAppointmentStatus(appointmentId, "canceled", "patient_reschedule", "patient_reschedule_endpoint");
-  await cancelScheduledAppointmentReminders(appointmentId);
-  await scheduleAppointmentReminders(newAppointment);
+  if (!updatedAppointment) return fail(res, "Turno no encontrado", 404);
 
-  return ok(res, { cancelledAppointmentId: appointmentId, appointment: newAppointment });
+  await cancelScheduledAppointmentReminders(appointmentId);
+  await scheduleAppointmentReminders(updatedAppointment);
+
+  const map = await buildProfessionalNameMap(updatedAppointment.professionalId ? [String(updatedAppointment.professionalId)] : []);
+  const professionalName = updatedAppointment.professionalId ? map.get(String(updatedAppointment.professionalId)) ?? "Profesional a confirmar" : "Profesional a confirmar";
+
+  return ok(res, { appointment: { ...updatedAppointment.toObject(), professionalName } });
 }

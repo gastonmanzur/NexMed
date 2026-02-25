@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, RotateCcw } from "lucide-react";
 
 import { listMyAppointments, publicAvailabilityByClinicIdWithFilters, rescheduleMyAppointment } from "../../api/appointments";
 import { listMyClinics } from "../../api/patientClinics";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { Navbar } from "../../components/Navbar";
+import { BookingCalendar } from "../../components/booking/BookingCalendar";
+import { DesktopSummaryCard } from "../../components/booking/DesktopSummaryCard";
+import { MobileStickyBar } from "../../components/booking/MobileStickyBar";
+import { SlotsList } from "../../components/booking/SlotsList";
+import { addDays, BookingSlot, buildMapByDay, fromDateKey, toDateKey } from "../../components/booking/types";
 import { useAuth } from "../../hooks/useAuth";
 import { Appointment, PatientClinic } from "../../types";
-import { fmtDate } from "../helpers";
+
+const ALLOW_PROFESSIONAL_CHANGE = false;
 
 function isUpcoming(startAt: string) {
   return new Date(startAt).getTime() >= Date.now();
@@ -17,19 +24,28 @@ export function PatientReschedulePage() {
   const { logout, token, user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinics, setClinics] = useState<PatientClinic[]>([]);
-  const [slots, setSlots] = useState<{ startAt: string; endAt: string }[]>([]);
+  const [slots, setSlots] = useState<BookingSlot[]>([]);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
+  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [selectedDay, setSelectedDay] = useState<Date>();
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 900px)").matches);
 
   const preselectedAppointmentId = useMemo(() => new URLSearchParams(window.location.search).get("appointmentId") ?? "", []);
+  const today = useMemo(() => new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()), []);
+  const from = useMemo(() => toDateKey(today), [today]);
+  const to = useMemo(() => toDateKey(addDays(today, 30)), [today]);
 
-  const from = fmtDate(new Date());
-  const to = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 14);
-    return fmtDate(d);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const listener = (event: MediaQueryListEvent) => setIsMobile(event.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
   }, []);
 
   const clinicById = useMemo(() => {
@@ -42,8 +58,13 @@ export function PatientReschedulePage() {
     () => appointments.filter((appointment) => appointment.status !== "canceled" && isUpcoming(appointment.startAt)),
     [appointments]
   );
-
   const selectedAppointment = upcomingAppointments.find((appointment) => appointment._id === selectedAppointmentId);
+
+  const groupedSlots = useMemo(() => buildMapByDay(slots), [slots]);
+  const availableDays = useMemo(() => new Set(Object.keys(groupedSlots)), [groupedSlots]);
+  const selectedDayKey = selectedDay ? toDateKey(selectedDay) : "";
+  const selectedDaySlots = useMemo(() => (selectedDayKey ? groupedSlots[selectedDayKey] ?? [] : []), [groupedSlots, selectedDayKey]);
+  const selectedSlotData = useMemo(() => slots.find((slot) => slot.startAt === selectedSlot), [slots, selectedSlot]);
 
   const loadData = async () => {
     if (!token) return;
@@ -51,14 +72,24 @@ export function PatientReschedulePage() {
     setAppointments(appointmentData);
     setClinics(clinicData);
 
-    if (preselectedAppointmentId) {
-      setSelectedAppointmentId(preselectedAppointmentId);
-      return;
-    }
+    if (preselectedAppointmentId) return setSelectedAppointmentId(preselectedAppointmentId);
+    const firstAvailable = appointmentData.find((a) => a.status !== "canceled" && isUpcoming(a.startAt));
+    if (firstAvailable) setSelectedAppointmentId(firstAvailable._id);
+  };
 
-    const firstAvailable = appointmentData.find((appointment) => appointment.status !== "canceled" && isUpcoming(appointment.startAt));
-    if (firstAvailable) {
-      setSelectedAppointmentId(firstAvailable._id);
+  const loadAvailability = async () => {
+    if (!selectedAppointment) return setSlots([]);
+    setIsLoadingAvailability(true);
+    setError("");
+    try {
+      const data = await publicAvailabilityByClinicIdWithFilters(selectedAppointment.clinicId, from, to, {
+        professionalId: ALLOW_PROFESSIONAL_CHANGE ? undefined : selectedAppointment.professionalId || undefined,
+      });
+      setSlots(data.slots.sort((a, b) => a.startAt.localeCompare(b.startAt)));
+    } catch (e: any) {
+      setError(e.message || "No se pudo cargar disponibilidad");
+    } finally {
+      setIsLoadingAvailability(false);
     }
   };
 
@@ -67,18 +98,19 @@ export function PatientReschedulePage() {
   }, [token]);
 
   useEffect(() => {
-    if (!selectedAppointment) {
-      setSlots([]);
-      return;
-    }
+    loadAvailability();
+    setSelectedSlot("");
+  }, [selectedAppointmentId, selectedAppointment?.clinicId, selectedAppointment?.professionalId]);
 
-    publicAvailabilityByClinicIdWithFilters(selectedAppointment.clinicId, from, to, {
-      professionalId: selectedAppointment.professionalId || undefined,
-      specialtyId: selectedAppointment.specialtyId || undefined,
-    })
-      .then((data) => setSlots(data.slots.filter((slot) => slot.startAt !== selectedAppointment.startAt)))
-      .catch((e: Error) => setError(e.message));
-  }, [selectedAppointmentId, selectedAppointment?.clinicId, selectedAppointment?.professionalId, selectedAppointment?.specialtyId]);
+  useEffect(() => {
+    if (!selectedDay) {
+      const firstAvailableDay = [...availableDays].sort()[0];
+      if (!firstAvailableDay) return;
+      const parsed = fromDateKey(firstAvailableDay);
+      setSelectedDay(parsed);
+      setCalendarMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1));
+    }
+  }, [availableDays, selectedDay]);
 
   const onLogout = () => {
     logout();
@@ -86,93 +118,123 @@ export function PatientReschedulePage() {
   };
 
   const onReschedule = async () => {
-    if (!token || !selectedAppointment || !selectedSlot) return;
+    if (!token || !selectedAppointment || !selectedSlotData) return;
+    if (selectedSlotData.startAt === selectedAppointment.startAt) return setWarning("Este ya es tu turno actual");
 
     setError("");
     setMsg("");
+    setWarning("");
+    setIsSubmitting(true);
     try {
-      await rescheduleMyAppointment(token, selectedAppointment._id, { startAt: selectedSlot });
-      setMsg("Turno reprogramado con éxito.");
+      const result = await rescheduleMyAppointment(token, selectedAppointment._id, {
+        startAt: selectedSlotData.startAt,
+        professionalId: selectedSlotData.professionalId || selectedAppointment.professionalId || undefined,
+        specialtyId: selectedSlotData.specialtyId || selectedAppointment.specialtyId || undefined,
+      });
+      setMsg(`Turno reprogramado: ${new Date(result.appointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })} · ${result.appointment.professionalName || "Profesional a confirmar"}`);
       setSelectedSlot("");
       await loadData();
+      await loadAvailability();
+      window.dispatchEvent(new CustomEvent("appointments:refresh"));
       window.history.replaceState({}, "", "/patient/reschedule");
     } catch (e: any) {
-      setError(e.message);
+      if (e?.status === 409) {
+        setError("Ese turno ya no está disponible. Actualizando horarios…");
+        await loadAvailability();
+      } else {
+        setError(e.message || "No se pudo reprogramar");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const selectedSlotTimeText = selectedSlot ? new Date(selectedSlot).toLocaleString("es-AR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
+  const currentDateText = selectedAppointment ? new Date(selectedAppointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" }) : "-";
   const shouldShowSelector = !preselectedAppointmentId;
 
   return (
     <>
       {user && <Navbar user={user} onLogout={onLogout} />}
-      <div className="page">
+      <div className="page public-booking-page" style={{ paddingBottom: isMobile ? 120 : 24 }}>
         <Card>
-          <h2>Reprogramar Turnos</h2>
-          <p>Seleccioná un turno y elegí un nuevo horario disponible sin perder contexto.</p>
-
-          {shouldShowSelector && (
-            <>
-              <h3>Paso 1: Elegí un turno a reprogramar</h3>
-              {!upcomingAppointments.length && <p>No hay turnos para reprogramar.</p>}
-              {upcomingAppointments.map((appointment) => {
-                const clinic = clinicById.get(appointment.clinicId);
-                const isSelected = selectedAppointmentId === appointment._id;
-                return (
-                  <div key={appointment._id} className="form-row" style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                    <div>
-                      <b>{clinic?.name ?? "Clínica"}</b>
-                      <div>{new Date(appointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })}</div>
-                    </div>
-                    <Button onClick={() => setSelectedAppointmentId(appointment._id)} disabled={isSelected}>
-                      {isSelected ? "Elegido" : "Elegir"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {selectedAppointment && (
-            <>
-              <h3>Paso 2: Confirmá el turno seleccionado</h3>
-              <div className="form-row">
-                <div>Clínica: <b>{clinicById.get(selectedAppointment.clinicId)?.name ?? "No disponible"}</b></div>
-                <div>Profesional: <b>{selectedAppointment.professionalName || "A confirmar"}</b></div>
-                <div>Especialidad: <b>{selectedAppointment.specialtyId || "No informada"}</b></div>
-                <div>Fecha actual: <b>{new Date(selectedAppointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })}</b></div>
-              </div>
-
-              <h3>Paso 3: Elegí un nuevo horario</h3>
-              {!slots.length && <p>No hay horarios disponibles para este turno en los próximos días.</p>}
-              <div className="slot-list">
-                {slots.map((slot) => (
-                  <button
-                    key={slot.startAt}
-                    type="button"
-                    className={`slot ${selectedSlot === slot.startAt ? "active" : ""}`}
-                    onClick={() => setSelectedSlot(slot.startAt)}
-                  >
-                    {new Date(slot.startAt).toLocaleString("es-AR", {
-                      weekday: "short",
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </button>
-                ))}
-              </div>
-
-              <h3>Paso 4: Confirmar reprogramación</h3>
-              <Button onClick={onReschedule} disabled={!selectedSlot}>Reprogramar (cancelar + nuevo horario)</Button>
-            </>
-          )}
-
-          {error && <p className="error">{error}</p>}
-          {msg && <p className="success">{msg}</p>}
+          <h2>Reprogramar turno</h2>
+          <p>Mantené tu turno actual hasta confirmar el nuevo horario.</p>
         </Card>
+
+        {shouldShowSelector && (
+          <Card>
+            <h3>Paso 1: elegí un turno</h3>
+            {!upcomingAppointments.length && <p>No hay turnos para reprogramar.</p>}
+            <div className="slot-list">
+              {upcomingAppointments.map((appointment) => (
+                <button key={appointment._id} className={`slot ${selectedAppointmentId === appointment._id ? "active" : ""}`} onClick={() => setSelectedAppointmentId(appointment._id)}>
+                  {clinicById.get(appointment.clinicId)?.name ?? "Clínica"} · {new Date(appointment.startAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {selectedAppointment && (
+          <>
+            <Card className="current-appointment-card">
+              <h3>Turno actual</h3>
+              <p><b>{clinicById.get(selectedAppointment.clinicId)?.name ?? "Clínica"}</b></p>
+              <p>Profesional: {selectedAppointment.professionalName || "Profesional a confirmar"}</p>
+              <p>Especialidad: {selectedAppointment.specialtyId || "No informada"}</p>
+              <p>Fecha: {currentDateText}</p>
+              <p><span className="booking-status-badge">{selectedAppointment.status === "canceled" ? "Cancelado" : "Reservado"}</span></p>
+              <div className="booking-summary-actions">
+                <a className="btn btn-outline" href="/patient/appointments">Volver a Mis Turnos</a>
+                <a className="btn" href={`/c/${selectedAppointment.clinicSlug || clinicById.get(selectedAppointment.clinicId)?.slug || ""}`}>Ver clínica</a>
+              </div>
+            </Card>
+
+            <div className="booking-main-grid">
+              <Card>
+                <BookingCalendar calendarMonth={calendarMonth} today={today} selectedDay={selectedDay} availableDays={availableDays} onChangeMonth={setCalendarMonth} onSelectDay={(day) => { setSelectedDay(day); setSelectedSlot(""); }} />
+              </Card>
+              <Card>
+                <SlotsList selectedDay={selectedDay} selectedSlot={selectedSlot} slots={selectedDaySlots} loading={isLoadingAvailability} onSelectSlot={(slot) => setSelectedSlot(slot.startAt)} emptyText="No hay horarios disponibles para este turno en los próximos días." />
+              </Card>
+            </div>
+
+            <DesktopSummaryCard
+              visible={Boolean(selectedSlotData)}
+              title="Confirmar reprogramación"
+              dateTimeText={selectedSlotTimeText}
+              clinicName={clinicById.get(selectedAppointment.clinicId)?.name ?? "Clínica"}
+              professionalName={selectedSlotData?.professionalFullName || selectedAppointment.professionalName || "Profesional a confirmar"}
+              ctaText="Confirmar reprogramación"
+              loadingText="Reprogramando..."
+              secondaryText="Mantener turno actual"
+              onSecondary={() => window.location.href = "/patient/appointments"}
+              disabled={!selectedSlotData}
+              loading={isSubmitting}
+              onSubmit={onReschedule}
+            />
+          </>
+        )}
+
+        {warning && <Card><p className="warning"><AlertCircle size={14} /> {warning}</p></Card>}
+        {error && <Card><p className="error">{error}</p><Button type="button" onClick={loadAvailability}><RotateCcw size={14} /> Actualizar horarios</Button></Card>}
+        {msg && <Card><p className="success">{msg}</p></Card>}
       </div>
+
+      <MobileStickyBar
+        visible={Boolean(selectedSlotData)}
+        dateTimeText={selectedSlotTimeText}
+        clinicName={selectedAppointment ? (clinicById.get(selectedAppointment.clinicId)?.name ?? "Clínica") : "Clínica"}
+        professionalName={selectedSlotData?.professionalFullName || selectedAppointment?.professionalName || "A confirmar"}
+        ctaText="Confirmar reprogramación"
+        secondaryText="Mantener turno"
+        onSecondary={() => window.location.href = "/patient/appointments"}
+        loading={isSubmitting}
+        loadingText="Reprogramando..."
+        disabled={!selectedSlotData}
+        onSubmit={onReschedule}
+      />
     </>
   );
 }

@@ -28,4 +28,6 @@ export const listAppointmentsQuerySchema = z.object({
 
 export const rescheduleMyAppointmentSchema = z.object({
   startAt: z.iso.datetime(),
+  professionalId: z.string().min(1).optional(),
+  specialtyId: z.string().min(1).optional(),
 });

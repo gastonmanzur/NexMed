@@ -1,47 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock3, Filter, RotateCcw, Search, Zap } from "lucide-react";
+import { AlertCircle, Filter, RotateCcw, Search, Zap } from "lucide-react";
 
 import { publicAvailability, publicCreateAppointment } from "../api/appointments";
 import { ApiError } from "../api/client";
 import { getPublicClinic, listPublicProfessionals, listPublicSpecialties } from "../api/clinic";
 import { Button } from "../components/Button";
-import { BookingFiltersPrompt } from "../components/BookingFiltersPrompt";
 import { Card } from "../components/Card";
-import { MobileStickyBookingBar } from "../components/MobileStickyBookingBar";
 import { Navbar } from "../components/Navbar";
+import { BookingCalendar } from "../components/booking/BookingCalendar";
+import { DesktopSummaryCard } from "../components/booking/DesktopSummaryCard";
+import { FiltersPrompt } from "../components/booking/FiltersPrompt";
+import { MobileStickyBar } from "../components/booking/MobileStickyBar";
+import { SlotsList } from "../components/booking/SlotsList";
+import { addDays, BookingSlot, buildMapByDay, fromDateKey, toDateKey } from "../components/booking/types";
 import { useAuth } from "../hooks/useAuth";
 import { RETURN_TO_KEY } from "./JoinClinicPage";
 import { Professional, Specialty } from "../types";
 
-type Slot = { startAt: string; endAt: string; professionalId?: string; professionalFullName?: string; specialtyId?: string };
-type CalendarDay = { date: Date; inCurrentMonth: boolean };
 type PendingBookingAction = { mode: "slot" | "first"; slotStartAt?: string };
-
 const PENDING_BOOKING_KEY = "turnos_pending_booking";
-const monthFormatter = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" });
-const weekdayLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-
-const toDateKey = (date: Date) => `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
-const fromDateKey = (dateKey: string) => new Date(`${dateKey}T00:00:00`);
-const addDays = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
-const isSameDay = (a: Date, b: Date) => toDateKey(a) === toDateKey(b);
-
-const buildMapByDay = (items: Slot[]) => items.reduce<Record<string, Slot[]>>((acc, slot) => {
-  const key = slot.startAt.slice(0, 10);
-  acc[key] = [...(acc[key] ?? []), slot].sort((a, b) => a.startAt.localeCompare(b.startAt));
-  return acc;
-}, {});
-
-const buildMonthGrid = (month: Date): CalendarDay[] => {
-  const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
-  const offsetMonday = (firstDay.getDay() + 6) % 7;
-  const start = addDays(firstDay, -offsetMonday);
-  return Array.from({ length: 42 }).map((_, idx) => ({ date: addDays(start, idx), inCurrentMonth: addDays(start, idx).getMonth() === month.getMonth() }));
-};
 
 export function PublicBookingPage({ slug }: { slug: string }) {
   const { token, user, clinic, logout } = useAuth();
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slots, setSlots] = useState<BookingSlot[]>([]);
   const [clinicName, setClinicName] = useState("Clínica");
   const [clinicInfo, setClinicInfo] = useState<any>(null);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
@@ -80,9 +61,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   }, []);
 
   const filteredProfessionals = useMemo(() => !selectedSpecialtyId ? professionals : professionals.filter((p) => p.specialtyIds.includes(selectedSpecialtyId)), [professionals, selectedSpecialtyId]);
-  useEffect(() => {
-    if (selectedProfessionalId && !filteredProfessionals.some((p) => p._id === selectedProfessionalId)) setSelectedProfessionalId("");
-  }, [selectedProfessionalId, filteredProfessionals]);
+  useEffect(() => { if (selectedProfessionalId && !filteredProfessionals.some((p) => p._id === selectedProfessionalId)) setSelectedProfessionalId(""); }, [selectedProfessionalId, filteredProfessionals]);
   useEffect(() => { if (professionals.length === 1 && !selectedProfessionalId) setSelectedProfessionalId(professionals[0]._id); }, [professionals, selectedProfessionalId]);
   useEffect(() => { if (specialties.length === 1 && !selectedSpecialtyId) setSelectedSpecialtyId(specialties[0]._id); }, [specialties, selectedSpecialtyId]);
 
@@ -125,7 +104,6 @@ export function PublicBookingPage({ slug }: { slug: string }) {
 
   const hasFilter = Boolean(selectedProfessionalId) || Boolean(selectedSpecialtyId);
   const selectedSlotTimeText = selectedSlot ? new Date(selectedSlot).toLocaleString("es-AR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
-  const monthGrid = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
 
   const storePendingAndGoLogin = (action: PendingBookingAction) => {
     localStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(action));
@@ -133,7 +111,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     window.location.href = "/login";
   };
 
-  const reserveSlot = async (slot: Slot) => {
+  const reserveSlot = async (slot: BookingSlot) => {
     if (!user || user.type !== "patient") return storePendingAndGoLogin({ mode: "slot", slotStartAt: slot.startAt });
     setIsSubmitting(true);
     setError("");
@@ -146,27 +124,18 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         professionalId: slot.professionalId || selectedProfessionalId || undefined,
         specialtyId: selectedSpecialtyId || undefined,
       }, token ?? undefined);
-      if (result.warnings?.missingPhone) {
-        setWarningMsg("⚠️ Completá tu teléfono para recibir recordatorios del turno");
-      }
+      if (result.warnings?.missingPhone) setWarningMsg("⚠️ Completá tu teléfono para recibir recordatorios del turno");
       setMsg("Turno reservado con éxito");
       setSelectedSlot("");
       await loadAvailability();
       setTimeout(() => { window.location.href = "/patient/appointments"; }, 700);
     } catch (err: any) {
-      if (err instanceof ApiError && err.code === "PATIENT_PROFILE_INCOMPLETE") {
-        setError("Necesitás completar tu perfil para reservar.");
-        return;
-      }
+      if (err instanceof ApiError && err.code === "PATIENT_PROFILE_INCOMPLETE") return setError("Necesitás completar tu perfil para reservar.");
       if (err instanceof ApiError && err.status === 409) {
         setError(err.code === "DUPLICATE_SLOT" ? "Ese turno ya fue reservado. Elegí otro." : "No se pudo reservar el turno. Intentá nuevamente.");
         setSelectedSlot("");
         await loadAvailability();
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError("No se pudo reservar el turno. Intentá nuevamente.");
-      } else {
-        setError("No se pudo reservar el turno. Intentá nuevamente.");
-      }
+      } else setError("No se pudo reservar el turno. Intentá nuevamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -179,14 +148,13 @@ export function PublicBookingPage({ slug }: { slug: string }) {
 
     if (!user || user.type !== "patient") return storePendingAndGoLogin(action);
     if (!hasFilter) {
+      setShowFilterValidation(true);
       setPendingBookingAction(action);
       setFilterPromptOpen(true);
       return;
     }
 
-    if (action.mode === "first" || !isMobile) {
-      await reserveSlot(target);
-    }
+    if (action.mode === "first" || !isMobile) await reserveSlot(target);
   };
 
   useEffect(() => {
@@ -194,8 +162,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     const raw = localStorage.getItem(PENDING_BOOKING_KEY);
     if (!raw) return;
     localStorage.removeItem(PENDING_BOOKING_KEY);
-    const action = JSON.parse(raw) as PendingBookingAction;
-    proceedBookingAction(action);
+    proceedBookingAction(JSON.parse(raw) as PendingBookingAction);
   }, [user, hasFilter, slots.length]);
 
   useEffect(() => {
@@ -204,13 +171,6 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     proceedBookingAction(pendingBookingAction);
     setPendingBookingAction(null);
   }, [hasFilter, pendingBookingAction]);
-
-  const onSlotClick = (slot: Slot) => {
-    setSelectedSlot(slot.startAt);
-    if (!isMobile) {
-      proceedBookingAction({ mode: "slot", slotStartAt: slot.startAt });
-    }
-  };
 
   return (
     <>
@@ -242,73 +202,59 @@ export function PublicBookingPage({ slug }: { slug: string }) {
 
         <div className="booking-main-grid">
           <Card>
-            <h3 className="booking-card-title"><CalendarDays size={18} /> Elegí una fecha</h3>
-            <div className="booking-calendar">
-              <div className="calendar-header">
-                <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}><ChevronLeft size={16} /></button>
-                <strong>{monthFormatter.format(calendarMonth)}</strong>
-                <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}><ChevronRight size={16} /></button>
-              </div>
-              <div className="calendar-grid">
-                {weekdayLabels.map((day) => <div key={day} className="calendar-weekday">{day}</div>)}
-                {monthGrid.map(({ date, inCurrentMonth }) => {
-                  const isPast = date < today;
-                  const hasAvailability = availableDays.has(toDateKey(date));
-                  const isSelected = selectedDay ? isSameDay(selectedDay, date) : false;
-                  return <button key={toDateKey(date)} type="button" className={`calendar-day ${isSelected ? "calendar-day-selected" : ""}`} disabled={isPast || !hasAvailability} data-muted={!inCurrentMonth} onClick={() => { setSelectedDay(date); setSelectedSlot(""); }}><span>{date.getDate()}</span>{hasAvailability && <span className="calendar-day-dot" aria-hidden="true" />}</button>;
-                })}
-              </div>
-            </div>
+            <BookingCalendar
+              calendarMonth={calendarMonth}
+              today={today}
+              selectedDay={selectedDay}
+              availableDays={availableDays}
+              onChangeMonth={setCalendarMonth}
+              onSelectDay={(date) => { setSelectedDay(date); setSelectedSlot(""); }}
+            />
           </Card>
           <Card>
-            <h3 className="booking-card-title"><Clock3 size={18} /> Turnos disponibles — {selectedDay ? selectedDay.toLocaleDateString("es-AR") : "-"}</h3>
-            {isLoadingAvailability ? <div className="slot-grid">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="slot slot-skeleton" />)}</div> : selectedDaySlots.length ? <div className="slot-grid">{selectedDaySlots.map((s) => <button type="button" key={`${s.startAt}-${s.professionalId || "na"}`} className={`slot ${selectedSlot === s.startAt ? "active" : ""}`} onClick={() => onSlotClick(s)}>{new Date(s.startAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</button>)}</div> : <p>No hay turnos disponibles para este día.</p>}
+            <SlotsList
+              selectedDay={selectedDay}
+              selectedSlot={selectedSlot}
+              slots={selectedDaySlots}
+              loading={isLoadingAvailability}
+              onSelectSlot={(slot) => {
+                setSelectedSlot(slot.startAt);
+                if (!isMobile) proceedBookingAction({ mode: "slot", slotStartAt: slot.startAt });
+              }}
+            />
           </Card>
         </div>
 
-        {selectedSlotData && (
-          <Card className="desktop-confirm-card">
-            <h3>Confirmación</h3>
-            <p>{`Seleccionaste: ${selectedSlotTimeText}`}</p>
-            <p>Profesional: {selectedSlotData.professionalFullName || "Profesional a confirmar"}</p>
-            <p>Clínica: {clinicName}</p>
-            {clinicInfo && <p>{[clinicInfo.address, clinicInfo.city, clinicInfo.phone].filter(Boolean).join(" · ")}</p>}
-            {!user || user.type !== "patient" ? (
-              <div>
-                <p>Iniciá sesión para reservar en 2 clicks.</p>
-                <a className="btn" href="/login">Iniciar sesión</a>
-              </div>
-            ) : (
-              <div>
-                <div className="form-row"><input className="input" placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} /></div>
-                {msg && <p className="success">{msg}</p>}
-                <Button type="button" disabled={!selectedSlot || !hasFilter || isSubmitting} onClick={() => reserveSlot(selectedSlotData)}>{isSubmitting ? "Reservando..." : "Reservar turno"}</Button>
-              </div>
-            )}
-          </Card>
-        )}
-
-        <BookingFiltersPrompt
-          open={filterPromptOpen}
-          specialties={specialties}
-          professionals={filteredProfessionals}
-          onClose={() => setFilterPromptOpen(false)}
-          onPickProfessional={(value) => setSelectedProfessionalId(value)}
-          onPickSpecialty={(value) => setSelectedSpecialtyId(value)}
-        />
-      </div>
-
-      {selectedSlotData && (
-        <MobileStickyBookingBar
+        <DesktopSummaryCard
           visible={Boolean(selectedSlotData)}
           dateTimeText={selectedSlotTimeText}
           clinicName={clinicName}
-          professionalName={selectedSlotData.professionalFullName || "A confirmar"}
-          disabled={!selectedSlot || !hasFilter || !user || user.type !== "patient"}
+          professionalName={selectedSlotData?.professionalFullName || "Profesional a confirmar"}
+          details={clinicInfo ? [clinicInfo.address, clinicInfo.city, clinicInfo.phone].filter(Boolean).join(" · ") : undefined}
+          ctaText="Reservar turno"
+          loadingText="Reservando..."
+          disabled={!selectedSlot || !hasFilter || isSubmitting}
           loading={isSubmitting}
-          onReserve={() => reserveSlot(selectedSlotData)}
-        />
-      )}
+          onSubmit={() => selectedSlotData && reserveSlot(selectedSlotData)}
+        >
+          {!user || user.type !== "patient" ? <div><p>Iniciá sesión para reservar en 2 clicks.</p><a className="btn" href="/login">Iniciar sesión</a></div> : <div className="form-row"><input className="input" placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} /></div>}
+          {msg && <p className="success">{msg}</p>}
+        </DesktopSummaryCard>
+
+        <FiltersPrompt open={filterPromptOpen} specialties={specialties} professionals={filteredProfessionals} onClose={() => setFilterPromptOpen(false)} onPickProfessional={(v) => setSelectedProfessionalId(v)} onPickSpecialty={(v) => setSelectedSpecialtyId(v)} />
+      </div>
+
+      <MobileStickyBar
+        visible={Boolean(selectedSlotData)}
+        dateTimeText={selectedSlotTimeText}
+        clinicName={clinicName}
+        professionalName={selectedSlotData?.professionalFullName || "A confirmar"}
+        ctaText="Reservar"
+        disabled={!selectedSlot || !hasFilter || !user || user.type !== "patient"}
+        loading={isSubmitting}
+        loadingText="Reservando..."
+        onSubmit={() => selectedSlotData && reserveSlot(selectedSlotData)}
+      />
     </>
   );
 }

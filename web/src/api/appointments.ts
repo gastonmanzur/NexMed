@@ -73,8 +73,8 @@ export const listMyAppointments = (token: string) => apiFetch<Appointment[]>(`/p
 export const cancelMyAppointment = (token: string, id: string) =>
   apiFetch<Appointment>(`/public/me/appointments/${id}/cancel`, { method: "PATCH" }, token);
 
-export const rescheduleMyAppointment = (token: string, id: string, body: { startAt: string }) =>
-  apiFetch<{ cancelledAppointmentId: string; appointment: Appointment }>(
+export const rescheduleMyAppointment = (token: string, id: string, body: { startAt: string; professionalId?: string; specialtyId?: string }) =>
+  apiFetch<{ appointment: Appointment }>(
     `/public/me/appointments/${id}/reschedule`,
     { method: "POST", body: JSON.stringify(body) },
     token

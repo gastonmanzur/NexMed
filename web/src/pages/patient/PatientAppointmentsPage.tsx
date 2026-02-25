@@ -37,6 +37,12 @@ export function PatientAppointmentsPage() {
     loadData().catch((e: Error) => setError(e.message));
   }, [token]);
 
+  useEffect(() => {
+    const refresh = () => { loadData().catch((e: Error) => setError(e.message)); };
+    window.addEventListener("appointments:refresh", refresh as EventListener);
+    return () => window.removeEventListener("appointments:refresh", refresh as EventListener);
+  }, [token]);
+
   const filteredAppointments = appointments.filter((appointment) => {
     const upcoming = isUpcoming(appointment.startAt);
     if (timeFilter === "upcoming" && !upcoming) return false;
