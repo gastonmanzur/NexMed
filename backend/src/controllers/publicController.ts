@@ -8,7 +8,7 @@ import { ProfessionalAvailability } from "../models/ProfessionalAvailability";
 import { Specialty } from "../models/Specialty";
 import { buildSlots, CLINIC_TIMEZONE, getClinicLocalParts } from "../services/availabilityService";
 import { upsertPatientClinicLink } from "../services/patientClinicService";
-import { cancelScheduledAppointmentReminders, scheduleAppointmentReminders } from "../services/reminderService";
+import { cancelPendingReminders, enqueueRemindersForAppointment } from "../services/reminders/reminderService";
 import { updateAppointmentStatus } from "../services/appointmentStatusService";
 import { enqueueEmailJobs } from "../services/email/emailQueue";
 import { fail, ok } from "../utils/http";
@@ -433,7 +433,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
     throw error;
   }
 
-  await scheduleAppointmentReminders(appointment);
+  await enqueueRemindersForAppointment(appointment._id);
 
   if (req.auth?.type === "patient") {
     await upsertPatientClinicLink({
@@ -606,7 +606,7 @@ export async function cancelMyAppointment(req: Request, res: Response) {
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
   const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "patient_cancel", "patient_cancel_endpoint");
-  await cancelScheduledAppointmentReminders(appointment._id);
+  await cancelPendingReminders(appointment._id, "appointment_canceled");
   const email = await enqueueEmailJobs("appointment.canceled", updatedAppointment);
 
   return ok(res, { appointment: updatedAppointment, emailQueued: email.queued });
@@ -718,8 +718,8 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
   const newAppointment = await Appointment.findById(newAppointmentId);
   if (!newAppointment) return fail(res, "No se pudo reprogramar el turno", 500);
 
-  await cancelScheduledAppointmentReminders(appointmentId);
-  await scheduleAppointmentReminders(newAppointment);
+  await cancelPendingReminders(appointmentId, "rescheduled");
+  await enqueueRemindersForAppointment(newAppointment._id);
 
   const map = await buildProfessionalNameMap(newAppointment.professionalId ? [String(newAppointment.professionalId)] : []);
   const professionalName = newAppointment.professionalId ? map.get(String(newAppointment.professionalId)) ?? "Profesional a confirmar" : "Profesional a confirmar";

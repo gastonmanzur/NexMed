@@ -65,8 +65,8 @@ export function PatientPage() {
     setMsg("");
     try {
       const result = await rescheduleMyAppointment(token, selectedAppointmentId, { startAt: selectedSlot });
-      if (result.emailQueued && user?.email) setMsg(`Turno reprogramado correctamente. Se envió un email de confirmación a ${user.email}`);
-      else setMsg("Turno reprogramado correctamente");
+      if (result.emailQueued && user?.email) setMsg(`Turno reprogramado correctamente. Se envió un email de confirmación a ${user.email}. Te vamos a enviar recordatorios por email antes del turno.`);
+      else setMsg("Turno reprogramado correctamente. Te vamos a enviar recordatorios por email antes del turno.");
       setSelectedSlot("");
       await loadAppointments();
     } catch (e: any) {

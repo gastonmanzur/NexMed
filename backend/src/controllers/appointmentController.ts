@@ -4,7 +4,7 @@ import { updateAppointmentStatus } from "../services/appointmentStatusService";
 import { Types } from "mongoose";
 import { Professional } from "../models/Professional";
 import { fail, ok } from "../utils/http";
-import { cancelScheduledAppointmentReminders } from "../services/reminderService";
+import { cancelPendingReminders } from "../services/reminders/reminderService";
 import { enqueueEmailJobs } from "../services/email/emailQueue";
 
 function dateOnlyToUtcStart(value: string) {
@@ -86,7 +86,7 @@ export async function cancelAppointment(req: Request, res: Response) {
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
   const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "clinic_cancel", "clinic_cancel_endpoint");
-  await cancelScheduledAppointmentReminders(updatedAppointment._id);
+  await cancelPendingReminders(updatedAppointment._id, "appointment_canceled");
   const email = await enqueueEmailJobs("appointment.canceled", updatedAppointment);
   return ok(res, { appointment: updatedAppointment, emailQueued: email.queued });
 }

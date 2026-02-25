@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { Clinic, ClinicInvite, ClinicNotificationSettings, Professional, ProfessionalAvailabilityPayload, ProfessionalTimeOff, Specialty } from "../types";
+import { Clinic, ClinicInvite, ClinicReminderSettings, Professional, ProfessionalAvailabilityPayload, ProfessionalTimeOff, Specialty } from "../types";
 
 export const updateSettings = (token: string, settings: Clinic["settings"]) =>
   apiFetch<Clinic["settings"]>(
@@ -75,11 +75,11 @@ export const listPublicProfessionals = (slug: string) => {
 export const getPublicClinic = (slug: string) => apiFetch<Partial<Clinic>>(`/public/clinics/${slug}`, { cache: "no-store" });
 
 
-export const getNotificationSettings = (token: string) =>
-  apiFetch<ClinicNotificationSettings>("/clinic/notifications/settings", {}, token);
+export const getReminderSettings = (token: string) =>
+  apiFetch<ClinicReminderSettings>("/clinic/settings/reminders", {}, token);
 
-export const updateNotificationSettings = (token: string, body: Omit<ClinicNotificationSettings, "clinicId" | "_id">) =>
-  apiFetch<ClinicNotificationSettings>("/clinic/notifications/settings", { method: "PUT", body: JSON.stringify(body) }, token);
+export const updateReminderSettings = (token: string, body: ClinicReminderSettings) =>
+  apiFetch<ClinicReminderSettings>("/clinic/settings/reminders", { method: "PUT", body: JSON.stringify(body) }, token);
 
 export const previewNotificationSchedule = (token: string, appointmentId: string) =>
   apiFetch<{
@@ -90,7 +90,7 @@ export const previewNotificationSchedule = (token: string, appointmentId: string
       label: string;
       scheduledFor: string;
       skipped: boolean;
-      channel: "inApp" | "email";
+      channel: "email";
       offsetValue: number;
       offsetUnit: "days" | "hours";
     }[];
