@@ -60,7 +60,7 @@ export function AdminAppointmentsPage() {
           <div className="ui-input-with-icon"><label className="ui-label" htmlFor="from">Desde</label><span className="ui-input-leading-icon"><Icon name="calendar-days" size={16} /></span><Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div className="ui-input-with-icon"><label className="ui-label" htmlFor="to">Hasta</label><span className="ui-input-leading-icon"><Icon name="calendar-days" size={16} /></span><Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
           <div className="ui-input-with-icon"><label className="ui-label" htmlFor="professional">Profesional</label><span className="ui-input-leading-icon"><Icon name="filter" size={16} /></span><Select id="professional" value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}><option value="">Todos los profesionales</option>{professionals.map((professional) => <option key={professional._id} value={professional._id}>{professional.displayName || `${professional.firstName} ${professional.lastName}`.trim()}</option>)}</Select></div>
-          <div className="ui-input-with-icon"><label className="ui-label" htmlFor="status">Estado</label><span className="ui-input-leading-icon"><Icon name="filter" size={16} /></span><Select id="status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="all">Todos</option><option value="booked">Reservado</option><option value="completed">Confirmado</option><option value="cancelled">Cancelado</option></Select></div>
+          <div className="ui-input-with-icon"><label className="ui-label" htmlFor="status">Estado</label><span className="ui-input-leading-icon"><Icon name="filter" size={16} /></span><Select id="status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="all">Todos</option><option value="booked">Reservado</option><option value="completed">Confirmado</option><option value="canceled">Cancelado</option></Select></div>
         </div>
         <div style={{ display: "flex", gap: "0.55rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
           <div className="ui-input-with-icon" style={{ flex: 1, minWidth: 250 }}><span className="ui-input-leading-icon"><Icon name="search" size={16} /></span><Input placeholder="Buscar por teléfono o nombre" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -83,8 +83,8 @@ export function AdminAppointmentsPage() {
                   <td>{a.patientFullName}<br /><span style={{ color: "#6b7280" }}>{a.patientPhone}</span></td>
                   <td>{a.professionalName || "Profesional a confirmar"}</td>
                   <td>{(a.specialtyId && specialtiesById.get(a.specialtyId)) || "—"}</td>
-                  <td><Badge variant={a.status !== "cancelled" ? "success" : "muted"}>{a.status === "cancelled" ? <><Icon name="ban" size={16} />Cancelado</> : a.status === "completed" ? <><Icon name="calendar-check" size={16} />Confirmado</> : <><Icon name="calendar-check" size={16} />Reservado</>}</Badge></td>
-                  <td>{a.status !== "cancelled" && <Button variant="secondary" title="Cancelar turno" aria-label="Cancelar turno" onClick={async () => { await cancelAppointment(token!, a._id); load(); }}><Icon name="trash" size={16} /></Button>}</td>
+                  <td><Badge variant={a.status !== "canceled" ? "success" : "muted"}>{a.status === "canceled" ? <><Icon name="ban" size={16} />Cancelado</> : a.status === "completed" ? <><Icon name="calendar-check" size={16} />Confirmado</> : <><Icon name="calendar-check" size={16} />Reservado</>}</Badge></td>
+                  <td>{a.status !== "canceled" && <Button variant="secondary" title="Cancelar turno" aria-label="Cancelar turno" onClick={async () => { await cancelAppointment(token!, a._id); load(); }}><Icon name="trash" size={16} /></Button>}</td>
                 </tr>
               ))}
             </tbody>

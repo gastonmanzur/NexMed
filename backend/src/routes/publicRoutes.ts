@@ -6,13 +6,14 @@ import {
   getPublicClinic,
   getClinicAvailabilityById,
   listMyAppointments,
+  listMyAppointmentHistory,
   listPublicProfessionals,
   listPublicSpecialties,
   rescheduleMyAppointment,
 } from "../controllers/publicController";
 import { authRequired, patientOnly } from "../middlewares/auth";
 import { validateBody, validateQuery } from "../middlewares/validate";
-import { availabilityQuerySchema, createPublicAppointmentSchema, rescheduleMyAppointmentSchema } from "../schemas/appointmentSchemas";
+import { availabilityQuerySchema, createPublicAppointmentSchema, patientAppointmentHistoryQuerySchema, rescheduleMyAppointmentSchema } from "../schemas/appointmentSchemas";
 import { publicPeopleQuerySchema } from "../schemas/clinicManagementSchemas";
 
 const router = Router();
@@ -24,6 +25,7 @@ router.get("/clinics/:slug/specialties", listPublicSpecialties);
 router.get("/clinics/:slug/professionals", validateQuery(publicPeopleQuerySchema), listPublicProfessionals);
 router.post("/clinics/:slug/appointments", authRequired, patientOnly, validateBody(createPublicAppointmentSchema), createPublicAppointment);
 router.get("/me/appointments", authRequired, patientOnly, listMyAppointments);
+router.get("/me/appointments/history", authRequired, patientOnly, validateQuery(patientAppointmentHistoryQuerySchema), listMyAppointmentHistory);
 router.patch("/me/appointments/:id/cancel", authRequired, patientOnly, cancelMyAppointment);
 router.post("/me/appointments/:id/reschedule", authRequired, patientOnly, validateBody(rescheduleMyAppointmentSchema), rescheduleMyAppointment);
 

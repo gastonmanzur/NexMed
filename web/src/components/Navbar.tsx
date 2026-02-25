@@ -28,6 +28,7 @@ const clinicNavItems: NavItem[] = [
 const patientNavItems: NavItem[] = [
   { label: "Mis Clínicas", href: "/patient/clinics" },
   { label: "Mis Turnos", href: "/patient/appointments" },
+  { label: "Historial", href: "/patient/history" },
   { label: "Reprogramar Turnos", href: "/patient/reschedule" },
   { label: "Notificaciones", href: "/patient/notifications" },
 ];
@@ -35,6 +36,7 @@ const patientNavItems: NavItem[] = [
 function isActiveLink(pathname: string, href: string) {
   if (href === "/admin") return pathname === "/admin";
   if (href === "/patient/reschedule") return pathname === "/patient/reschedule";
+  if (href === "/patient/history") return pathname === "/patient/history";
   if (href === "/clinic/notifications") return pathname === "/clinic/notifications";
   if (href === "/patient/notifications") return pathname === "/patient/notifications";
   return pathname === href;

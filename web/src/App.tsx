@@ -13,6 +13,7 @@ import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage
 import { PatientClinicsPage } from "./pages/patient/PatientClinicsPage";
 import { PatientReschedulePage } from "./pages/patient/PatientReschedulePage";
 import { PatientNotificationsPage } from "./pages/patient/PatientNotificationsPage";
+import { PatientHistoryPage } from "./pages/patient/PatientHistoryPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -46,6 +47,7 @@ function App() {
     if (path === "/patient/clinics") return <PatientClinicsPage />;
     if (path === "/patient/reschedule") return <PatientReschedulePage />;
     if (path === "/patient/notifications") return <PatientNotificationsPage />;
+    if (path === "/patient/history") return <PatientHistoryPage />;
 
     window.history.replaceState({}, "", "/patient/appointments");
     return <PatientAppointmentsPage />;

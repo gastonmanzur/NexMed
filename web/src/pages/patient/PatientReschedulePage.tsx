@@ -184,7 +184,7 @@ export function PatientReschedulePage() {
               <p>Profesional: {selectedAppointment.professionalName || "Profesional a confirmar"}</p>
               <p>Especialidad: {selectedAppointment.specialtyId || "No informada"}</p>
               <p>Fecha: {currentDateText}</p>
-              <p><span className="booking-status-badge">{selectedAppointment.status === "cancelled" ? "Cancelado" : "Reservado"}</span></p>
+              <p><span className="booking-status-badge">{selectedAppointment.status === "canceled" ? "Cancelado" : "Reservado"}</span></p>
               <div className="booking-summary-actions">
                 <a className="btn btn-outline" href="/patient/appointments">Volver a Mis Turnos</a>
                 <a className="btn" href={`/c/${selectedAppointment.clinicSlug || clinicById.get(selectedAppointment.clinicId)?.slug || ""}`}>Ver clínica</a>
