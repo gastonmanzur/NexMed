@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { Appointment } from "../types";
+import { Appointment, PublicCreateAppointmentResponse } from "../types";
 
 export const listAppointments = (
   token: string,
@@ -61,14 +61,12 @@ export const publicCreateAppointment = (
   slug: string,
   body: {
     startAt: string;
-    patientFullName: string;
-    patientPhone: string;
     note?: string;
     professionalId?: string;
     specialtyId?: string;
   },
   token?: string
-) => apiFetch<Appointment>(`/public/clinics/${slug}/appointments`, { method: "POST", body: JSON.stringify(body) }, token);
+) => apiFetch<PublicCreateAppointmentResponse>(`/public/clinics/${slug}/appointments`, { method: "POST", body: JSON.stringify(body) }, token);
 
 export const listMyAppointments = (token: string) => apiFetch<Appointment[]>(`/public/me/appointments`, {}, token);
 

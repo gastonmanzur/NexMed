@@ -81,6 +81,13 @@ export type Appointment = {
   status: "booked" | "confirmed" | "canceled";
 };
 
+export type PublicCreateAppointmentResponse = {
+  appointment: Appointment;
+  warnings?: {
+    missingPhone?: boolean;
+  };
+};
+
 export type Specialty = {
   _id: string;
   clinicId: string;

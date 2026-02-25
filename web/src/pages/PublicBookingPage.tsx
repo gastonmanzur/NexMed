@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Clock3, Filter, RotateCcw, Search, Zap } from "lucide-react";
 
 import { publicAvailability, publicCreateAppointment } from "../api/appointments";
@@ -7,7 +7,6 @@ import { getPublicClinic, listPublicProfessionals, listPublicSpecialties } from 
 import { Button } from "../components/Button";
 import { BookingFiltersPrompt } from "../components/BookingFiltersPrompt";
 import { Card } from "../components/Card";
-import { Input } from "../components/Input";
 import { MobileStickyBookingBar } from "../components/MobileStickyBookingBar";
 import { Navbar } from "../components/Navbar";
 import { useAuth } from "../hooks/useAuth";
@@ -52,10 +51,9 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const [selectedDay, setSelectedDay] = useState<Date>();
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedSlot, setSelectedSlot] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [msg, setMsg] = useState("");
+  const [warningMsg, setWarningMsg] = useState("");
   const [error, setError] = useState("");
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,8 +93,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const selectedSlotData = useMemo(() => slots.find((slot) => slot.startAt === selectedSlot), [slots, selectedSlot]);
 
   const loadAvailability = async () => {
-    setIsLoadingAvailability(true);
     setError("");
+    setIsLoadingAvailability(true);
     try {
       const [specRows, profRows, clinicPublic] = await Promise.all([listPublicSpecialties(slug), listPublicProfessionals(slug), getPublicClinic(slug)]);
       setSpecialties(specRows);
@@ -128,7 +126,6 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const hasFilter = Boolean(selectedProfessionalId) || Boolean(selectedSpecialtyId);
   const selectedSlotTimeText = selectedSlot ? new Date(selectedSlot).toLocaleString("es-AR", { weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
   const monthGrid = useMemo(() => buildMonthGrid(calendarMonth), [calendarMonth]);
-  const canReserveForm = Boolean(selectedSlot) && hasFilter && !isSubmitting;
 
   const storePendingAndGoLogin = (action: PendingBookingAction) => {
     localStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(action));
@@ -137,29 +134,38 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   };
 
   const reserveSlot = async (slot: Slot) => {
+    if (!user || user.type !== "patient") return storePendingAndGoLogin({ mode: "slot", slotStartAt: slot.startAt });
     setIsSubmitting(true);
     setError("");
     setMsg("");
+    setWarningMsg("");
     try {
-      await publicCreateAppointment(slug, {
+      const result = await publicCreateAppointment(slug, {
         startAt: slot.startAt,
-        patientFullName: fullName,
-        patientPhone: phone,
         note: note || undefined,
         professionalId: slot.professionalId || selectedProfessionalId || undefined,
         specialtyId: selectedSpecialtyId || undefined,
       }, token ?? undefined);
+      if (result.warnings?.missingPhone) {
+        setWarningMsg("⚠️ Completá tu teléfono para recibir recordatorios del turno");
+      }
       setMsg("Turno reservado con éxito");
       setSelectedSlot("");
       await loadAvailability();
-      if (user?.type === "patient") setTimeout(() => { window.location.href = "/patient/appointments"; }, 700);
+      setTimeout(() => { window.location.href = "/patient/appointments"; }, 700);
     } catch (err: any) {
+      if (err instanceof ApiError && err.code === "PATIENT_PROFILE_INCOMPLETE") {
+        setError("Necesitás completar tu perfil para reservar.");
+        return;
+      }
       if (err instanceof ApiError && err.status === 409) {
-        setError(err.code === "DUPLICATE_SLOT" ? "Ese turno ya fue reservado. Elegí otro." : (err.message || "No se pudo reservar el turno"));
+        setError(err.code === "DUPLICATE_SLOT" ? "Ese turno ya fue reservado. Elegí otro." : "No se pudo reservar el turno. Intentá nuevamente.");
         setSelectedSlot("");
         await loadAvailability();
+      } else if (err instanceof ApiError && err.status === 400) {
+        setError("No se pudo reservar el turno. Intentá nuevamente.");
       } else {
-        setError(err.message || "No se pudo reservar el turno");
+        setError("No se pudo reservar el turno. Intentá nuevamente.");
       }
     } finally {
       setIsSubmitting(false);
@@ -178,8 +184,9 @@ export function PublicBookingPage({ slug }: { slug: string }) {
       return;
     }
 
-    if (isMobile) return;
-    await reserveSlot(target);
+    if (action.mode === "first" || !isMobile) {
+      await reserveSlot(target);
+    }
   };
 
   useEffect(() => {
@@ -198,21 +205,11 @@ export function PublicBookingPage({ slug }: { slug: string }) {
     setPendingBookingAction(null);
   }, [hasFilter, pendingBookingAction]);
 
-  const onSlotClick = async (slot: Slot) => {
+  const onSlotClick = (slot: Slot) => {
     setSelectedSlot(slot.startAt);
-    if (isMobile) return;
-    await proceedBookingAction({ mode: "slot", slotStartAt: slot.startAt });
-  };
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedSlotData) return setError("Seleccioná un horario disponible.");
-    if (!hasFilter) {
-      setShowFilterValidation(true);
-      setFilterPromptOpen(true);
-      return;
+    if (!isMobile) {
+      proceedBookingAction({ mode: "slot", slotStartAt: slot.startAt });
     }
-    await reserveSlot(selectedSlotData);
   };
 
   return (
@@ -241,6 +238,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         </Card>
 
         {error && <Card><p className="error">{error}</p><Button type="button" onClick={loadAvailability}><RotateCcw size={14} /> Reintentar</Button></Card>}
+        {warningMsg && <Card><p className="warning">{warningMsg}</p><a className="btn" href="/patient/profile">Completar perfil</a></Card>}
 
         <div className="booking-main-grid">
           <Card>
@@ -268,24 +266,27 @@ export function PublicBookingPage({ slug }: { slug: string }) {
           </Card>
         </div>
 
-        <Card className="desktop-confirm-card">
-          <h3>Confirmación</h3>
-          <p>{selectedSlotTimeText ? `Seleccionaste: ${selectedSlotTimeText}` : "Seleccioná un horario para continuar."}</p>
-          <p>Profesional: {selectedSlotData?.professionalFullName || "Profesional a confirmar"}</p>
-          <p>Clínica: {clinicName}</p>
-          {clinicInfo && <p>{[clinicInfo.address, clinicInfo.city, clinicInfo.phone].filter(Boolean).join(" · ")}</p>}
-          {!user || user.type !== "patient" ? (
-            <form onSubmit={submit}>
-              <div className="form-row"><Input placeholder="Nombre completo" value={fullName} onChange={(e) => setFullName(e.target.value)} required /></div>
-              <div className="form-row"><Input placeholder="Teléfono" value={phone} onChange={(e) => setPhone(e.target.value)} required /></div>
-              <div className="form-row"><Input placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} /></div>
-              {msg && <p className="success">{msg}</p>}
-              <Button disabled={!canReserveForm}>{isSubmitting ? "Reservando..." : "Reservar turno"}</Button>
-            </form>
-          ) : (
-            <div>{msg && <p className="success">{msg}</p>}<a className="btn" href="/patient/appointments">Ver mis turnos</a> <a className="btn" href={window.location.pathname}>Reservar otro</a></div>
-          )}
-        </Card>
+        {selectedSlotData && (
+          <Card className="desktop-confirm-card">
+            <h3>Confirmación</h3>
+            <p>{`Seleccionaste: ${selectedSlotTimeText}`}</p>
+            <p>Profesional: {selectedSlotData.professionalFullName || "Profesional a confirmar"}</p>
+            <p>Clínica: {clinicName}</p>
+            {clinicInfo && <p>{[clinicInfo.address, clinicInfo.city, clinicInfo.phone].filter(Boolean).join(" · ")}</p>}
+            {!user || user.type !== "patient" ? (
+              <div>
+                <p>Iniciá sesión para reservar en 2 clicks.</p>
+                <a className="btn" href="/login">Iniciar sesión</a>
+              </div>
+            ) : (
+              <div>
+                <div className="form-row"><input className="input" placeholder="Nota (opcional)" value={note} onChange={(e) => setNote(e.target.value)} /></div>
+                {msg && <p className="success">{msg}</p>}
+                <Button type="button" disabled={!selectedSlot || !hasFilter || isSubmitting} onClick={() => reserveSlot(selectedSlotData)}>{isSubmitting ? "Reservando..." : "Reservar turno"}</Button>
+              </div>
+            )}
+          </Card>
+        )}
 
         <BookingFiltersPrompt
           open={filterPromptOpen}
@@ -297,15 +298,17 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         />
       </div>
 
-      <MobileStickyBookingBar
-        visible={isMobile}
-        dateTimeText={selectedSlotTimeText}
-        clinicName={clinicName}
-        professionalName={selectedSlotData?.professionalFullName || "A confirmar"}
-        disabled={!selectedSlot || !hasFilter || !user || user.type !== "patient"}
-        loading={isSubmitting}
-        onReserve={() => selectedSlotData && proceedBookingAction({ mode: "slot", slotStartAt: selectedSlotData.startAt })}
-      />
+      {selectedSlotData && (
+        <MobileStickyBookingBar
+          visible={Boolean(selectedSlotData)}
+          dateTimeText={selectedSlotTimeText}
+          clinicName={clinicName}
+          professionalName={selectedSlotData.professionalFullName || "A confirmar"}
+          disabled={!selectedSlot || !hasFilter || !user || user.type !== "patient"}
+          loading={isSubmitting}
+          onReserve={() => reserveSlot(selectedSlotData)}
+        />
+      )}
     </>
   );
 }

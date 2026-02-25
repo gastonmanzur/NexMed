@@ -260,12 +260,6 @@ export async function createPublicAppointment(req: Request, res: Response) {
     professionalId?: string;
     specialtyId?: string;
     startAt?: string;
-    endAt?: string;
-    date?: string;
-    time?: string;
-    slotMinutes?: number;
-    patientFullName?: string;
-    patientPhone?: string;
     note?: string;
   };
   const slug = String(req.params.slug);
@@ -393,20 +387,17 @@ export async function createPublicAppointment(req: Request, res: Response) {
     }
   }
 
-  let patientFullName = body.patientFullName;
-  let patientPhone = body.patientPhone;
-
-  if (req.auth?.type === "patient") {
-    const patient = await Patient.findById(req.auth.id).select({ firstName: 1, lastName: 1, phone: 1 }).lean();
-    if (patient) {
-      patientFullName = patientFullName || `${patient.firstName} ${patient.lastName}`.trim();
-      patientPhone = patientPhone || patient.phone || "N/A";
-    }
+  if (req.auth?.type !== "patient") {
+    return fail(res, "Debés iniciar sesión para reservar", 401);
   }
 
-  if (!patientFullName || !patientPhone) {
-    return fail(res, "Debés completar nombre y teléfono", 400);
+  const patient = await Patient.findById(req.auth.id).select({ firstName: 1, lastName: 1, phone: 1 }).lean();
+  if (!patient) {
+    return fail(res, "Paciente no encontrado", 404);
   }
+
+  const patientFullName = `${patient.firstName} ${patient.lastName}`.trim();
+  const patientPhone = patient.phone?.trim() || "N/A";
 
   const appointmentPayload: any = {
     clinicId: clinic._id,
@@ -455,11 +446,19 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const map = await buildProfessionalNameMap(appointmentData.professionalId ? [String(appointmentData.professionalId)] : []);
   const professionalName = appointmentData.professionalId ? map.get(String(appointmentData.professionalId)) ?? "Profesional a confirmar" : "Profesional a confirmar";
 
+  const warnings: { missingPhone?: boolean } = {};
+  if (!patient.phone || patient.phone.trim() === "") {
+    warnings.missingPhone = true;
+  }
+
   return ok(
     res,
     {
-      ...appointmentData,
-      professionalName,
+      appointment: {
+        ...appointmentData,
+        professionalName,
+      },
+      warnings,
     },
     201
   );
