@@ -466,7 +466,7 @@ export async function createPublicAppointment(req: Request, res: Response) {
 
 export async function listMyAppointments(req: Request, res: Response) {
   const patientId = req.auth!.id;
-  const appointments = await Appointment.find({ patientId, status: { $in: ["booked"] }, isDeleted: { $ne: true } }).sort({ startAt: 1 }).lean();
+  const appointments = await Appointment.find({ patientId, status: { $in: ["booked"] } }).sort({ startAt: 1 }).lean();
 
   const professionalIds = [
     ...new Set(
@@ -492,6 +492,107 @@ export async function listMyAppointments(req: Request, res: Response) {
   );
 }
 
+
+export async function listMyAppointmentHistory(req: Request, res: Response) {
+  const patientId = req.auth!.id;
+  const query = req.query as Record<string, string | undefined>;
+
+  const defaultStatuses = ["canceled", "completed", "no_show"];
+  const statuses = (query.status ?? defaultStatuses.join(",")).split(",").map((value) => value.trim()).filter((value) => defaultStatuses.includes(value));
+
+  const page = Math.max(1, Number.parseInt(query.page ?? "1", 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(query.limit ?? "10", 10) || 10));
+
+  const sortRaw = (query.sort ?? "startAt:desc").trim();
+  const [sortFieldRaw, sortDirectionRaw] = sortRaw.split(":");
+  const sortField = sortFieldRaw === "startAt" ? "startAt" : "startAt";
+  const sortDirection = sortDirectionRaw === "asc" ? 1 : -1;
+
+  const filter: Record<string, any> = {
+    patientId,
+    status: { $in: statuses.length ? statuses : defaultStatuses },
+  };
+
+  if (query.from || query.to) {
+    filter.startAt = {};
+    if (query.from) {
+      const fromDate = new Date(`${query.from}T00:00:00.000Z`);
+      if (!Number.isNaN(fromDate.getTime())) filter.startAt.$gte = fromDate;
+    }
+    if (query.to) {
+      const toDate = new Date(`${query.to}T23:59:59.999Z`);
+      if (!Number.isNaN(toDate.getTime())) filter.startAt.$lte = toDate;
+    }
+    if (!Object.keys(filter.startAt).length) delete filter.startAt;
+  }
+
+  if (query.clinicId) filter.clinicId = query.clinicId;
+  if (query.professionalId) filter.professionalId = query.professionalId;
+  if (query.specialtyId) filter.specialtyId = query.specialtyId;
+
+  if (query.q?.trim()) {
+    const q = query.q.trim();
+    filter.$or = [
+      { patientFullName: { $regex: q, $options: "i" } },
+      { patientPhone: { $regex: q, $options: "i" } },
+      { note: { $regex: q, $options: "i" } },
+    ];
+  }
+
+  const [items, total] = await Promise.all([
+    Appointment.find(filter)
+      .sort({ [sortField]: sortDirection })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate({ path: "clinicId", select: "name slug address city phone" })
+      .populate({ path: "professionalId", select: "firstName lastName displayName" })
+      .populate({ path: "specialtyId", select: "name" })
+      .lean(),
+    Appointment.countDocuments(filter),
+  ]);
+
+  const mapped = items.map((item: any) => {
+    const clinic = item.clinicId && typeof item.clinicId === "object"
+      ? {
+          _id: String(item.clinicId._id),
+          name: item.clinicId.name,
+          slug: item.clinicId.slug,
+          address: item.clinicId.address,
+          city: item.clinicId.city,
+          phone: item.clinicId.phone,
+        }
+      : null;
+
+    const professional = item.professionalId && typeof item.professionalId === "object"
+      ? {
+          _id: String(item.professionalId._id),
+          fullName: item.professionalId.displayName || `${item.professionalId.firstName || ""} ${item.professionalId.lastName || ""}`.trim() || "Profesional a confirmar",
+        }
+      : null;
+
+    const specialty = item.specialtyId && typeof item.specialtyId === "object"
+      ? { _id: String(item.specialtyId._id), name: item.specialtyId.name }
+      : null;
+
+    return {
+      ...item,
+      clinicId: clinic?._id ?? (item.clinicId ? String(item.clinicId) : undefined),
+      professionalId: professional?._id ?? (item.professionalId ? String(item.professionalId) : undefined),
+      specialtyId: specialty?._id ?? (item.specialtyId ? String(item.specialtyId) : undefined),
+      clinic,
+      professional,
+      specialty,
+    };
+  });
+
+  return ok(res, {
+    items: mapped,
+    page,
+    limit,
+    total,
+  });
+}
+
 export async function cancelMyAppointment(req: Request, res: Response) {
   const patientId = req.auth!.id;
   const appointmentId = String(req.params.id);
@@ -499,7 +600,7 @@ export async function cancelMyAppointment(req: Request, res: Response) {
   const appointment = await Appointment.findOne({ _id: appointmentId, patientId, status: { $in: ["booked"] } });
   if (!appointment) return fail(res, "Turno no encontrado", 404);
 
-  const updatedAppointment = await updateAppointmentStatus(appointment._id, "cancelled", "patient_cancel", "patient_cancel_endpoint");
+  const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "patient_cancel", "patient_cancel_endpoint");
   await cancelScheduledAppointmentReminders(appointment._id);
 
   return ok(res, updatedAppointment);
@@ -565,6 +666,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
     patientPhone: appointment.patientPhone,
     note: appointment.note,
     status: "booked",
+    rescheduledFromAppointmentId: appointment._id,
   };
 
   let newAppointmentId = "";
@@ -578,13 +680,21 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
       }
       newAppointmentId = String(created._id);
 
-      const cancelledAppointment = await Appointment.findOneAndUpdate(
+      const canceledAppointment = await Appointment.findOneAndUpdate(
         { _id: appointmentId, patientId, status: { $in: ["booked"] } },
-        { $set: { status: "cancelled" } },
+        {
+          $set: {
+            status: "canceled",
+            canceledAt: new Date(),
+            canceledBy: "patient",
+            cancelReason: "reschedule",
+            cancelReasonText: "patient_reschedule",
+          },
+        },
         { new: true, session }
       );
 
-      if (!cancelledAppointment) {
+      if (!canceledAppointment) {
         throw new Error("Turno no encontrado");
       }
     });

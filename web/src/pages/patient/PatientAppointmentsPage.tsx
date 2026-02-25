@@ -92,14 +92,14 @@ export function PatientAppointmentsPage() {
 
           {filteredAppointments.map((appointment) => {
             const clinic = clinicById.get(appointment.clinicId);
-            const canCancel = appointment.status !== "cancelled" && isUpcoming(appointment.startAt);
+            const canCancel = appointment.status !== "canceled" && isUpcoming(appointment.startAt);
             return (
               <div key={appointment._id} className="form-row" style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12 }}>
                 <div>
                   <b>{clinic?.name ?? "Clínica"}</b>
                   <div>{new Date(appointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })}</div>
                   <div>Atiende: {appointment.professionalName || "Profesional a confirmar"}</div>
-                  <div>Estado: {appointment.status === "cancelled" ? "Cancelado" : "Reservado"}</div>
+                  <div>Estado: {appointment.status === "canceled" ? "Cancelado" : "Reservado"}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                   <a className="btn" href={`/c/${appointment.clinicSlug || clinic?.slug || ""}`}>Ver detalles</a>

@@ -78,7 +78,16 @@ export type Appointment = {
   patientFullName: string;
   patientPhone: string;
   note?: string;
-  status: "booked" | "cancelled" | "completed" | "no_show";
+  status: "booked" | "canceled" | "completed" | "no_show";
+  canceledAt?: string | null;
+  completedAt?: string | null;
+  canceledBy?: "patient" | "clinic" | "system" | null;
+  cancelReason?: "patient_cancel" | "clinic_cancel" | "reschedule" | "dedup" | "other" | null;
+  cancelReasonText?: string | null;
+  rescheduledFromAppointmentId?: string | null;
+  clinic?: { _id: string; name: string; slug: string; address?: string; city?: string; phone?: string } | null;
+  professional?: { _id: string; fullName: string } | null;
+  specialty?: { _id: string; name: string } | null;
 };
 
 export type PublicCreateAppointmentResponse = {
@@ -188,4 +197,12 @@ export type PatientNotification = {
     city?: string;
     phone?: string;
   };
+};
+
+
+export type PaginatedAppointmentHistory = {
+  items: Appointment[];
+  page: number;
+  limit: number;
+  total: number;
 };

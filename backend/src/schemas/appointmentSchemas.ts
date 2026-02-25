@@ -31,3 +31,16 @@ export const rescheduleMyAppointmentSchema = z.object({
   professionalId: z.string().min(1).optional(),
   specialtyId: z.string().min(1).optional(),
 });
+
+export const patientAppointmentHistoryQuerySchema = z.object({
+  status: z.string().optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  clinicId: z.string().min(1).optional(),
+  professionalId: z.string().min(1).optional(),
+  specialtyId: z.string().min(1).optional(),
+  q: z.string().optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+  sort: z.string().optional(),
+});

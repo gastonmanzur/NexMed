@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { Appointment, PublicCreateAppointmentResponse } from "../types";
+import { Appointment, PaginatedAppointmentHistory, PublicCreateAppointmentResponse } from "../types";
 
 export const listAppointments = (
   token: string,
@@ -68,14 +68,45 @@ export const publicCreateAppointment = (
   token?: string
 ) => apiFetch<PublicCreateAppointmentResponse>(`/public/clinics/${slug}/appointments`, { method: "POST", body: JSON.stringify(body) }, token);
 
-export const listMyAppointments = (token: string) => apiFetch<Appointment[]>(`/public/me/appointments`, {}, token);
+export const listMyAppointments = (token: string) => apiFetch<Appointment[]>(`/patient/appointments`, {}, token);
 
 export const cancelMyAppointment = (token: string, id: string) =>
-  apiFetch<Appointment>(`/public/me/appointments/${id}/cancel`, { method: "PATCH" }, token);
+  apiFetch<Appointment>(`/patient/appointments/${id}/cancel`, { method: "PATCH" }, token);
 
 export const rescheduleMyAppointment = (token: string, id: string, body: { startAt: string; professionalId?: string; specialtyId?: string }) =>
   apiFetch<{ appointment: Appointment }>(
-    `/public/me/appointments/${id}/reschedule`,
+    `/patient/appointments/${id}/reschedule`,
     { method: "POST", body: JSON.stringify(body) },
     token
   );
+
+
+export const listMyAppointmentHistory = (
+  token: string,
+  params: {
+    status?: string[];
+    from?: string;
+    to?: string;
+    clinicId?: string;
+    professionalId?: string;
+    specialtyId?: string;
+    q?: string;
+    page?: number;
+    limit?: number;
+    sort?: string;
+  }
+) => {
+  const search = new URLSearchParams();
+  if (params.status?.length) search.set("status", params.status.join(","));
+  if (params.from) search.set("from", params.from);
+  if (params.to) search.set("to", params.to);
+  if (params.clinicId) search.set("clinicId", params.clinicId);
+  if (params.professionalId) search.set("professionalId", params.professionalId);
+  if (params.specialtyId) search.set("specialtyId", params.specialtyId);
+  if (params.q) search.set("q", params.q);
+  if (params.page) search.set("page", String(params.page));
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.sort) search.set("sort", params.sort);
+
+  return apiFetch<PaginatedAppointmentHistory>(`/patient/appointments/history?${search.toString()}`, {}, token);
+};

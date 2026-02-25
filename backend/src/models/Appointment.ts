@@ -1,6 +1,8 @@
 import { Schema, model, Types } from "mongoose";
 
-export type AppointmentStatus = "booked" | "cancelled" | "completed" | "no_show";
+export type AppointmentStatus = "booked" | "canceled" | "completed" | "no_show";
+export type AppointmentCanceledBy = "patient" | "clinic" | "system";
+export type AppointmentCancelReason = "patient_cancel" | "clinic_cancel" | "reschedule" | "dedup" | "other";
 
 export interface AppointmentDocument {
   _id: Types.ObjectId;
@@ -15,6 +17,12 @@ export interface AppointmentDocument {
   patientPhone: string;
   note?: string;
   status: AppointmentStatus;
+  canceledAt?: Date | null;
+  completedAt?: Date | null;
+  canceledBy?: AppointmentCanceledBy | null;
+  cancelReason?: AppointmentCancelReason | null;
+  cancelReasonText?: string | null;
+  rescheduledFromAppointmentId?: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,12 +39,20 @@ const appointmentSchema = new Schema<AppointmentDocument>(
     patientFullName: { type: String, required: true },
     patientPhone: { type: String, required: true, index: true },
     note: { type: String },
-    status: { type: String, enum: ["booked", "cancelled", "completed", "no_show"], default: "booked", index: true },
+    status: { type: String, enum: ["booked", "canceled", "completed", "no_show"], default: "booked", index: true },
+    canceledAt: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
+    canceledBy: { type: String, enum: ["patient", "clinic", "system"], default: null },
+    cancelReason: { type: String, enum: ["patient_cancel", "clinic_cancel", "reschedule", "dedup", "other"], default: null },
+    cancelReasonText: { type: String, default: null },
+    rescheduledFromAppointmentId: { type: Schema.Types.ObjectId, ref: "Appointment", default: null },
   },
   { timestamps: true }
 );
 
 appointmentSchema.index({ clinicId: 1, startAt: 1, status: 1 });
+appointmentSchema.index({ patientId: 1, status: 1, startAt: -1 });
+appointmentSchema.index({ patientId: 1, clinicId: 1, professionalId: 1, specialtyId: 1, startAt: -1 });
 appointmentSchema.index(
   { clinicId: 1, professionalId: 1, startAt: 1 },
   {

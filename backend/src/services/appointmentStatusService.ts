@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Appointment, AppointmentDocument, AppointmentStatus } from "../models/Appointment";
+import { Appointment, AppointmentCancelReason, AppointmentCanceledBy, AppointmentDocument, AppointmentStatus } from "../models/Appointment";
 
 const CANCELLATION_ACTORS = new Set([
   "patient_cancel_endpoint",
@@ -7,6 +7,20 @@ const CANCELLATION_ACTORS = new Set([
   "patient_reschedule_endpoint",
   "dev_dedup_endpoint",
 ]);
+
+const CANCELLATION_BY_ACTOR: Record<string, AppointmentCanceledBy> = {
+  patient_cancel_endpoint: "patient",
+  clinic_cancel_endpoint: "clinic",
+  patient_reschedule_endpoint: "patient",
+  dev_dedup_endpoint: "system",
+};
+
+const CANCELLATION_REASON_BY_ACTOR: Record<string, AppointmentCancelReason> = {
+  patient_cancel_endpoint: "patient_cancel",
+  clinic_cancel_endpoint: "clinic_cancel",
+  patient_reschedule_endpoint: "reschedule",
+  dev_dedup_endpoint: "dedup",
+};
 
 function isDevEnvironment() {
   return process.env.NODE_ENV !== "production";
@@ -39,12 +53,12 @@ function assertAllowedTransition(params: {
   const { prevStatus, newStatus, actor } = params;
   if (prevStatus === newStatus) return;
 
-  const baseAllowed = new Set<AppointmentStatus>(["booked", "cancelled", "completed", "no_show"]);
+  const baseAllowed = new Set<AppointmentStatus>(["booked", "canceled", "completed", "no_show"]);
   if (!baseAllowed.has(prevStatus) || !baseAllowed.has(newStatus)) {
     throw new Error(`Transición de estado no soportada: ${prevStatus} -> ${newStatus}`);
   }
 
-  if (newStatus === "cancelled") {
+  if (newStatus === "canceled") {
     if (!CANCELLATION_ACTORS.has(actor ?? "")) {
       throw new Error("No se permite cancelar turnos fuera de endpoints explícitos de cancelación");
     }
@@ -85,6 +99,21 @@ export async function updateAppointmentStatus(
   }
 
   appointment.status = status;
+
+  if (status === "canceled") {
+    appointment.canceledAt = new Date();
+    appointment.completedAt = null;
+    appointment.canceledBy = CANCELLATION_BY_ACTOR[actor ?? ""] ?? "system";
+    appointment.cancelReason = CANCELLATION_REASON_BY_ACTOR[actor ?? ""] ?? "other";
+    if (reason) {
+      appointment.cancelReasonText = reason;
+    }
+  }
+
+  if (status === "completed") {
+    appointment.completedAt = new Date();
+  }
+
   await appointment.save();
   return appointment;
 }

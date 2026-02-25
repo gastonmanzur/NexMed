@@ -84,7 +84,7 @@ export async function dedupAppointments(req: Request, res: Response) {
     const duplicateIds = duplicates.map((item: { _id: string }) => item._id);
 
     for (const duplicateId of duplicateIds) {
-      await updateAppointmentStatus(duplicateId, "cancelled", "dev_dedup", "dev_dedup_endpoint");
+      await updateAppointmentStatus(duplicateId, "canceled", "dev_dedup", "dev_dedup_endpoint");
       cancelledCount += 1;
     }
 
