@@ -6,10 +6,15 @@ import styles from "./Navbar.module.css";
 type NavItem = { label: string; href: string };
 
 type NavbarProps = {
-  user: AuthUser;
+  user?: AuthUser | null;
   clinicName?: string;
-  onLogout: () => void;
+  onLogout?: () => void;
 };
+
+const publicNavItems: NavItem[] = [
+  { label: "Iniciar sesión", href: "/login" },
+  { label: "Registrarse", href: "/register" },
+];
 
 const clinicNavItems: NavItem[] = [
   { label: "Inicio", href: "/admin" },
@@ -42,16 +47,17 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
   const menuId = "main-navigation-menu";
   const pathname = window.location.pathname;
 
-  const navItems = user.type === "clinic" ? clinicNavItems : patientNavItems;
+  const navItems = !user ? publicNavItems : user.type === "clinic" ? clinicNavItems : patientNavItems;
 
   const userDisplayName = useMemo(() => {
+    if (!user) return "Invitado";
     if (user.type === "clinic") {
       return clinicName || user.displayName || user.email;
     }
     return user.displayName || user.email;
-  }, [clinicName, user.email, user.type]);
+  }, [clinicName, user]);
 
-  const userRoleText = user.type === "clinic" ? "Consultorio/Clínica" : "Paciente";
+  const userRoleText = !user ? "Reserva online" : user.type === "clinic" ? "Consultorio/Clínica" : "Paciente";
   const avatarLetter = userDisplayName.trim().charAt(0).toUpperCase();
 
   useEffect(() => {
@@ -79,7 +85,7 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
   return (
     <header className={styles.wrapper}>
       <nav className={styles.navbar} aria-label="Navegación principal">
-        <a href={user.type === "clinic" ? "/admin" : "/patient/appointments"} className={styles.brand}>
+        <a href={!user ? "/" : user.type === "clinic" ? "/admin" : "/patient/appointments"} className={styles.brand}>
           <span className={styles.brandTitle}>NexMed</span>
           <span className={styles.brandSubtitle}>{userRoleText}</span>
         </a>
@@ -110,29 +116,31 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
           })}
         </ul>
 
-        <div className={styles.actions} ref={dropdownRef}>
-          <button
-            type="button"
-            className={styles.userButton}
-            aria-label="Abrir menú de usuario"
-            aria-expanded={isUserMenuOpen}
-            onClick={() => setIsUserMenuOpen((prev) => !prev)}
-          >
-            <span className={styles.avatar}>{avatarLetter}</span>
-            <span className={styles.userName}>{userDisplayName}</span>
-          </button>
+        {user && (
+          <div className={styles.actions} ref={dropdownRef}>
+            <button
+              type="button"
+              className={styles.userButton}
+              aria-label="Abrir menú de usuario"
+              aria-expanded={isUserMenuOpen}
+              onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            >
+              <span className={styles.avatar}>{avatarLetter}</span>
+              <span className={styles.userName}>{userDisplayName}</span>
+            </button>
 
-          {isUserMenuOpen && (
-            <div className={styles.dropdown} role="menu" aria-label="Opciones de usuario">
-              <button type="button" className={styles.dropdownItem} role="menuitem" onClick={() => onNavigate("/profile")}>
-                Perfil
-              </button>
-              <button type="button" className={styles.dropdownItem} role="menuitem" onClick={onLogout}>
-                Cerrar sesión
-              </button>
-            </div>
-          )}
-        </div>
+            {isUserMenuOpen && (
+              <div className={styles.dropdown} role="menu" aria-label="Opciones de usuario">
+                <button type="button" className={styles.dropdownItem} role="menuitem" onClick={() => onNavigate("/profile")}>
+                  Perfil
+                </button>
+                <button type="button" className={styles.dropdownItem} role="menuitem" onClick={() => onLogout?.()}>
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </nav>
 
       {isMobileOpen && <button type="button" className={styles.overlay} aria-label="Cerrar menú" onClick={() => setIsMobileOpen(false)} />}

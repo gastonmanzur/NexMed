@@ -13,3 +13,153 @@
 .success { color: #0f7a2a; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+
+.public-booking-page {
+  max-width: 1100px;
+}
+
+.booking-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.booking-back-link {
+  color: #374151;
+  font-weight: 600;
+}
+
+.booking-filter span,
+.booking-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.booking-filter span {
+  margin-bottom: 6px;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.booking-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.slot:hover,
+.booking-back-link:hover,
+.calendar-day:hover,
+.calendar-nav-btn:hover {
+  transition: all 150ms ease;
+}
+
+.booking-calendar {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  text-transform: capitalize;
+}
+
+.calendar-nav-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.calendar-day {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  min-height: 40px;
+  background: #fff;
+  position: relative;
+  cursor: pointer;
+  color: #111827;
+}
+
+.calendar-day[data-muted="true"] {
+  color: #9ca3af;
+}
+
+.calendar-day:disabled {
+  cursor: not-allowed;
+  color: #d1d5db;
+  background: #f9fafb;
+}
+
+.calendar-day-selected {
+  border-color: #0d6efd;
+  background: #eef5ff;
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+.calendar-day-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #1d4ed8;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.slot-skeleton {
+  min-height: 36px;
+  border-color: #e5e7eb;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 37%, #f3f4f6 63%);
+  background-size: 400% 100%;
+  animation: slotPulse 1.2s ease infinite;
+}
+
+@keyframes slotPulse {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+@media (max-width: 900px) {
+  .booking-main-grid,
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-title-row {
+    flex-direction: column;
+  }
+}
