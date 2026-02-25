@@ -10,6 +10,7 @@ import { buildSlots, CLINIC_TIMEZONE, getClinicLocalParts } from "../services/av
 import { upsertPatientClinicLink } from "../services/patientClinicService";
 import { cancelScheduledAppointmentReminders, scheduleAppointmentReminders } from "../services/reminderService";
 import { updateAppointmentStatus } from "../services/appointmentStatusService";
+import { enqueueEmailJobs } from "../services/email/emailQueue";
 import { fail, ok } from "../utils/http";
 import { alignToGrid, buildSlotKey, normalizeStartAt, SlotValidationError } from "../utils/slots";
 
@@ -451,6 +452,8 @@ export async function createPublicAppointment(req: Request, res: Response) {
     warnings.missingPhone = true;
   }
 
+  const email = await enqueueEmailJobs("appointment.booked", appointment);
+
   return ok(
     res,
     {
@@ -459,6 +462,8 @@ export async function createPublicAppointment(req: Request, res: Response) {
         professionalName,
       },
       warnings,
+      emailQueued: email.queued,
+      email: patient.email,
     },
     201
   );
@@ -602,8 +607,9 @@ export async function cancelMyAppointment(req: Request, res: Response) {
 
   const updatedAppointment = await updateAppointmentStatus(appointment._id, "canceled", "patient_cancel", "patient_cancel_endpoint");
   await cancelScheduledAppointmentReminders(appointment._id);
+  const email = await enqueueEmailJobs("appointment.canceled", updatedAppointment);
 
-  return ok(res, updatedAppointment);
+  return ok(res, { appointment: updatedAppointment, emailQueued: email.queued });
 }
 
 export async function rescheduleMyAppointment(req: Request, res: Response) {
@@ -717,6 +723,7 @@ export async function rescheduleMyAppointment(req: Request, res: Response) {
 
   const map = await buildProfessionalNameMap(newAppointment.professionalId ? [String(newAppointment.professionalId)] : []);
   const professionalName = newAppointment.professionalId ? map.get(String(newAppointment.professionalId)) ?? "Profesional a confirmar" : "Profesional a confirmar";
+  const email = await enqueueEmailJobs("appointment.rescheduled", newAppointment);
 
-  return ok(res, { appointment: { ...newAppointment.toObject(), professionalName } });
+  return ok(res, { appointment: { ...newAppointment.toObject(), professionalName }, emailQueued: email.queued });
 }

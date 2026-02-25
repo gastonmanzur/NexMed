@@ -19,6 +19,7 @@ export function PatientAppointmentsPage() {
   const [timeFilter, setTimeFilter] = useState<"upcoming" | "past">("upcoming");
   const [clinicFilter, setClinicFilter] = useState("all");
   const [error, setError] = useState("");
+  const [msg, setMsg] = useState("");
 
   const clinicById = useMemo(() => {
     const map = new Map<string, PatientClinic>();
@@ -54,8 +55,10 @@ export function PatientAppointmentsPage() {
   const onCancel = async (appointmentId: string) => {
     if (!token) return;
     setError("");
+    setMsg("");
     try {
-      await cancelMyAppointment(token, appointmentId);
+      const result = await cancelMyAppointment(token, appointmentId);
+      if (result.emailQueued && user?.email) setMsg(`Se envió un email de confirmación a ${user.email}`);
       await loadData();
     } catch (e: any) {
       setError(e.message);
@@ -88,6 +91,7 @@ export function PatientAppointmentsPage() {
           </div>
 
           {error && <p className="error">{error}</p>}
+          {msg && <p className="success">{msg}</p>}
           {!filteredAppointments.length && !error && <p>No tenés turnos.</p>}
 
           {filteredAppointments.map((appointment) => {

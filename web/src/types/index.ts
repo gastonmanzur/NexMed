@@ -95,6 +95,13 @@ export type PublicCreateAppointmentResponse = {
   warnings?: {
     missingPhone?: boolean;
   };
+  emailQueued?: boolean;
+  email?: string;
+};
+
+export type AppointmentEmailMutationResponse = {
+  appointment: Appointment;
+  emailQueued?: boolean;
 };
 
 export type Specialty = {
