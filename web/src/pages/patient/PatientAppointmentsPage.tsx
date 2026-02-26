@@ -72,7 +72,7 @@ export function PatientAppointmentsPage() {
 
   return (
     <>
-      {user && <Navbar user={user} onLogout={onLogout} />}
+      {user && <Navbar user={user} token={token} onLogout={onLogout} />}
       <div className="page">
         <Card>
           <h2>Mis Turnos</h2>

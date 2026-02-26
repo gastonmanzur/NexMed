@@ -187,7 +187,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
 
   return (
     <>
-      <Navbar user={user} clinicName={clinic?.name} onLogout={logout} />
+      <Navbar user={user} token={token} clinicName={clinic?.name} onLogout={logout} />
       <div className="page public-booking-page" style={{ paddingBottom: isMobile ? 120 : 24 }}>
         <Card>
           <div className="booking-title-row">

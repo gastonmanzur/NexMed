@@ -1,4 +1,18 @@
-import { PatientNotification } from "../types";
+import { InAppNotification, PaginatedNotifications } from "../types";
 import { apiFetch } from "./client";
 
-export const listPatientNotifications = (token: string) => apiFetch<PatientNotification[]>("/patient/notifications", {}, token);
+export const listNotifications = (token: string, params?: { page?: number; limit?: number }) => {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return apiFetch<PaginatedNotifications>(`/notifications${suffix}`, {}, token);
+};
+
+export const getUnreadNotificationsCount = (token: string) => apiFetch<{ unreadCount: number }>("/notifications/unread-count", {}, token);
+
+export const markNotificationRead = (token: string, id: string) =>
+  apiFetch<InAppNotification>(`/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }, token);
+
+export const markAllNotificationsRead = (token: string) =>
+  apiFetch<{ modifiedCount: number }>("/notifications/read-all", { method: "POST" }, token);

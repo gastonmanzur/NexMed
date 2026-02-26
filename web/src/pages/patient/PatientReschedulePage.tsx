@@ -155,7 +155,7 @@ export function PatientReschedulePage() {
 
   return (
     <>
-      {user && <Navbar user={user} onLogout={onLogout} />}
+      {user && <Navbar user={user} token={token} onLogout={onLogout} />}
       <div className="page public-booking-page" style={{ paddingBottom: isMobile ? 120 : 24 }}>
         <Card>
           <h2>Reprogramar turno</h2>

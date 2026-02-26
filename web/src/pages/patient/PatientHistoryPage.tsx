@@ -133,7 +133,7 @@ export function PatientHistoryPage() {
 
   return (
     <>
-      {user && <Navbar user={user} onLogout={onLogout} />}
+      {user && <Navbar user={user} token={token} onLogout={onLogout} />}
       <div className="page">
         <Card className="ui-form-row">
           <h2 style={{ marginTop: 0 }}>Historial de turnos</h2>

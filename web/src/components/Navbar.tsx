@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AuthUser } from "../types";
+import { NotificationsBell } from "./NotificationsBell";
 import styles from "./Navbar.module.css";
 
 type NavItem = { label: string; href: string };
 
 type NavbarProps = {
   user?: AuthUser | null;
+  token?: string | null;
   clinicName?: string;
   onLogout?: () => void;
 };
@@ -22,7 +24,6 @@ const clinicNavItems: NavItem[] = [
   { label: "Especialidades", href: "/admin/specialties" },
   { label: "Profesionales", href: "/admin/professionals" },
   { label: "Horarios", href: "/admin/schedules" },
-  { label: "Notificaciones", href: "/clinic/notifications" },
 ];
 
 const patientNavItems: NavItem[] = [
@@ -30,7 +31,6 @@ const patientNavItems: NavItem[] = [
   { label: "Mis Turnos", href: "/patient/appointments" },
   { label: "Historial", href: "/patient/history" },
   { label: "Reprogramar Turnos", href: "/patient/reschedule" },
-  { label: "Notificaciones", href: "/patient/notifications" },
 ];
 
 function isActiveLink(pathname: string, href: string) {
@@ -42,7 +42,7 @@ function isActiveLink(pathname: string, href: string) {
   return pathname === href;
 }
 
-export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
+export function Navbar({ user, token, clinicName, onLogout }: NavbarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -120,6 +120,7 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
 
         {user && (
           <div className={styles.actions} ref={dropdownRef}>
+            {token && <NotificationsBell token={token} />}
             <button
               type="button"
               className={styles.userButton}
@@ -164,6 +165,16 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
               </li>
             );
           })}
+          {user && (
+            <li>
+              <a
+                className={`${styles.mobileLink} ${isActiveLink(pathname, user.type === "clinic" ? "/clinic/notifications" : "/patient/notifications") ? styles.linkActive : ""}`}
+                href={user.type === "clinic" ? "/clinic/notifications" : "/patient/notifications"}
+              >
+                Notificaciones
+              </a>
+            </li>
+          )}
         </ul>
       </div>
     </header>
