@@ -47,6 +47,7 @@ async function buildPayload(appointment: AppointmentDocument) {
     specialty: specialty ? { name: specialty.name } : undefined,
     startAt: appointment.startAt.toISOString(),
     endAt: appointment.endAt.toISOString(),
+    confirmationStatus: appointment.confirmationStatus,
     actions: {
       myAppointmentsUrl: withBase("/patient/turnos"),
       rescheduleUrl: withBase(`/patient/reprogramar/${String(appointment._id)}`),
@@ -55,7 +56,11 @@ async function buildPayload(appointment: AppointmentDocument) {
   };
 }
 
-export async function enqueueEmailJobs(eventType: EmailJobType, appointmentInput: AppointmentDocument | string | Types.ObjectId) {
+export async function enqueueEmailJobs(
+  eventType: EmailJobType,
+  appointmentInput: AppointmentDocument | string | Types.ObjectId,
+  options?: { dedupeKey?: string }
+) {
   const appointment =
     typeof appointmentInput === "string" || appointmentInput instanceof Types.ObjectId
       ? await Appointment.findById(appointmentInput)
@@ -66,10 +71,10 @@ export async function enqueueEmailJobs(eventType: EmailJobType, appointmentInput
   const payload = await buildPayload(appointment);
   if (!payload) return { queued: false };
 
-  const recipients = [payload.patient.email, payload.clinic.email].filter(Boolean) as string[];
+  const recipients = eventType === "appointment.confirmed_by_clinic" ? [payload.patient.email] : [payload.patient.email, payload.clinic.email].filter(Boolean);
   if (!recipients.length) return { queued: false };
 
-  const key = dedupeKey(eventType, appointment);
+  const key = options?.dedupeKey ?? dedupeKey(eventType, appointment);
 
   await EmailJob.findOneAndUpdate(
     { dedupeKey: key },

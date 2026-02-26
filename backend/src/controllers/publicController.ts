@@ -400,6 +400,9 @@ export async function createPublicAppointment(req: Request, res: Response) {
   const patientFullName = `${patient.firstName} ${patient.lastName}`.trim();
   const patientPhone = patient.phone?.trim() || "N/A";
 
+  const bookingSettings = clinic.bookingSettings ?? { requireClinicConfirmation: false, autoConfirmAppointments: true };
+  const shouldStartPending = bookingSettings.requireClinicConfirmation && !bookingSettings.autoConfirmAppointments;
+
   const appointmentPayload: any = {
     clinicId: clinic._id,
     clinicSlug: clinic.slug,
@@ -409,6 +412,8 @@ export async function createPublicAppointment(req: Request, res: Response) {
     patientPhone,
     note: body.note,
     status: "booked",
+    confirmationStatus: shouldStartPending ? "pending" : "confirmed",
+    confirmedAt: shouldStartPending ? null : new Date(),
   };
 
   if (resolvedProfessionalId) appointmentPayload.professionalId = resolvedProfessionalId;

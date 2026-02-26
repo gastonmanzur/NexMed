@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import { Clinic, ClinicInvite, ClinicReminderSettings, Professional, ProfessionalAvailabilityPayload, ProfessionalTimeOff, Specialty } from "../types";
+import { Clinic, ClinicBookingSettings, ClinicInvite, ClinicReminderSettings, Professional, ProfessionalAvailabilityPayload, ProfessionalTimeOff, Specialty } from "../types";
 
 export const updateSettings = (token: string, settings: Clinic["settings"]) =>
   apiFetch<Clinic["settings"]>(
@@ -96,3 +96,9 @@ export const previewNotificationSchedule = (token: string, appointmentId: string
     }[];
   }>(`/clinic/notifications/preview?appointmentId=${encodeURIComponent(appointmentId)}`, {}, token);
 
+
+export const getBookingSettings = (token: string) =>
+  apiFetch<ClinicBookingSettings>("/clinic/settings/booking", {}, token);
+
+export const updateBookingSettings = (token: string, body: ClinicBookingSettings) =>
+  apiFetch<ClinicBookingSettings>("/clinic/settings/booking", { method: "PUT", body: JSON.stringify(body) }, token);

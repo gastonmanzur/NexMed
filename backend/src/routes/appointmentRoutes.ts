@@ -1,12 +1,13 @@
 import { Router } from "express";
-import { cancelAppointment, listAppointments } from "../controllers/appointmentController";
+import { cancelAppointment, confirmAppointment, listAppointments } from "../controllers/appointmentController";
 import { authRequired, clinicOnly } from "../middlewares/auth";
-import { validateQuery } from "../middlewares/validate";
-import { listAppointmentsQuerySchema } from "../schemas/appointmentSchemas";
+import { validateParams, validateQuery } from "../middlewares/validate";
+import { appointmentIdParamSchema, listAppointmentsQuerySchema } from "../schemas/appointmentSchemas";
 
 const router = Router();
 
 router.get("/", authRequired, clinicOnly, validateQuery(listAppointmentsQuerySchema), listAppointments);
-router.patch("/:id/cancel", authRequired, clinicOnly, cancelAppointment);
+router.post("/:id/confirm", authRequired, clinicOnly, validateParams(appointmentIdParamSchema), confirmAppointment);
+router.patch("/:id/cancel", authRequired, clinicOnly, validateParams(appointmentIdParamSchema), cancelAppointment);
 
 export default router;

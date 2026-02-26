@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed:clinic": "ts-node-dev --respawn --transpile-only src/scripts/seedClinic.ts",
-    "check:appointment-status": "ts-node-dev --respawn --transpile-only src/scripts/appointmentStatusRegressionCheck.ts"
+    "check:appointment-status": "ts-node-dev --respawn --transpile-only src/scripts/appointmentStatusRegressionCheck.ts",
+    "migrate:confirmation-status": "ts-node-dev --respawn --transpile-only src/scripts/migrate-confirmation-status.ts"
   },
   "keywords": [],
   "author": "",

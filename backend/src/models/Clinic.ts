@@ -37,6 +37,11 @@ export type ClinicReminderPolicy = {
   updatedAt: Date;
 };
 
+export type ClinicBookingSettings = {
+  requireClinicConfirmation: boolean;
+  autoConfirmAppointments: boolean;
+};
+
 export interface ClinicDocument {
   _id: Types.ObjectId;
   name: string;
@@ -66,6 +71,7 @@ export interface ClinicDocument {
     weeklySchedule: WeeklyScheduleDay[];
   };
   reminderPolicy: ClinicReminderPolicy;
+  bookingSettings: ClinicBookingSettings;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -103,6 +109,11 @@ const defaultReminderPolicy: ClinicReminderPolicy = {
     { amount: 2, unit: "hours" },
   ],
   updatedAt: new Date(),
+};
+
+const defaultBookingSettings: ClinicBookingSettings = {
+  requireClinicConfirmation: false,
+  autoConfirmAppointments: true,
 };
 
 const defaultVisibility: ClinicPublicVisibility = {
@@ -161,6 +172,14 @@ const clinicSchema = new Schema<ClinicDocument>(
         type: [weeklyDaySchema],
         default: defaultSchedule,
       },
+    },
+    bookingSettings: {
+      type: {
+        requireClinicConfirmation: { type: Boolean, default: false },
+        autoConfirmAppointments: { type: Boolean, default: true },
+      },
+      _id: false,
+      default: defaultBookingSettings,
     },
     reminderPolicy: {
       type: {

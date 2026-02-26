@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { cancelAppointment, listAppointments } from "../api/appointments";
+import { cancelAppointment, confirmAppointment, listAppointments } from "../api/appointments";
 import { listProfessionals, listSpecialties } from "../api/clinic";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
@@ -16,13 +16,13 @@ import { Appointment, Professional, Specialty } from "../types";
 import { fmtDate, humanDate } from "./helpers";
 
 export function AdminAppointmentsPage() {
-  const { token } = useAuth();
+  const { token, clinic } = useAuth();
   const [items, setItems] = useState<Appointment[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [q, setQ] = useState("");
   const [selectedProfessionalId, setSelectedProfessionalId] = useState("");
-  const [status, setStatus] = useState("all");
+  const [tab, setTab] = useState<"pending" | "confirmed" | "history">("confirmed");
   const [from, setFrom] = useState(fmtDate(new Date()));
   const [to, setTo] = useState(() => {
     const toDate = new Date();
@@ -31,13 +31,21 @@ export function AdminAppointmentsPage() {
   });
   const [loading, setLoading] = useState(true);
 
+  const requireClinicConfirmation = Boolean(clinic?.bookingSettings?.requireClinicConfirmation);
+
+  useEffect(() => {
+    if (requireClinicConfirmation) setTab("pending");
+  }, [requireClinicConfirmation]);
+
   const specialtiesById = useMemo(() => new Map(specialties.map((s) => [s._id, s.name])), [specialties]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const data = await listAppointments(token!, from, to, q, selectedProfessionalId || undefined);
-      setItems(data);
+      const status = tab === "history" ? undefined : "booked";
+      const confirmation = tab === "pending" ? "pending" : tab === "confirmed" ? "confirmed" : undefined;
+      const data = await listAppointments(token!, from, to, q, selectedProfessionalId || undefined, status, confirmation);
+      setItems(tab === "history" ? data.filter((item) => ["canceled", "completed", "no_show"].includes(item.status)) : data);
     } finally {
       setLoading(false);
     }
@@ -49,18 +57,26 @@ export function AdminAppointmentsPage() {
     listSpecialties(token!).then(setSpecialties).catch(() => setSpecialties([]));
   }, []);
 
-  const visibleItems = status === "all" ? items : items.filter((item) => item.status === status);
+  useEffect(() => {
+    load().catch(() => setItems([]));
+  }, [tab]);
 
   return (
     <>
       <PageHeader title="Turnos" subtitle="Gestión de turnos y estado de atención" />
 
       <Card className="ui-form-row">
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          {requireClinicConfirmation && (
+            <Button variant={tab === "pending" ? "primary" : "secondary"} onClick={() => setTab("pending")}>Pendientes</Button>
+          )}
+          <Button variant={tab === "confirmed" ? "primary" : "secondary"} onClick={() => setTab("confirmed")}>Confirmados</Button>
+          <Button variant={tab === "history" ? "primary" : "secondary"} onClick={() => setTab("history")}>Historial</Button>
+        </div>
         <div className="ui-grid-4">
           <div className="ui-input-with-icon"><label className="ui-label" htmlFor="from">Desde</label><span className="ui-input-leading-icon"><Icon name="calendar-days" size={16} /></span><Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div className="ui-input-with-icon"><label className="ui-label" htmlFor="to">Hasta</label><span className="ui-input-leading-icon"><Icon name="calendar-days" size={16} /></span><Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
           <div className="ui-input-with-icon"><label className="ui-label" htmlFor="professional">Profesional</label><span className="ui-input-leading-icon"><Icon name="filter" size={16} /></span><Select id="professional" value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}><option value="">Todos los profesionales</option>{professionals.map((professional) => <option key={professional._id} value={professional._id}>{professional.displayName || `${professional.firstName} ${professional.lastName}`.trim()}</option>)}</Select></div>
-          <div className="ui-input-with-icon"><label className="ui-label" htmlFor="status">Estado</label><span className="ui-input-leading-icon"><Icon name="filter" size={16} /></span><Select id="status" value={status} onChange={(e) => setStatus(e.target.value)}><option value="all">Todos</option><option value="booked">Reservado</option><option value="completed">Confirmado</option><option value="canceled">Cancelado</option></Select></div>
         </div>
         <div style={{ display: "flex", gap: "0.55rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
           <div className="ui-input-with-icon" style={{ flex: 1, minWidth: 250 }}><span className="ui-input-leading-icon"><Icon name="search" size={16} /></span><Input placeholder="Buscar por teléfono o nombre" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -71,20 +87,34 @@ export function AdminAppointmentsPage() {
       <Card>
         {loading ? (
           <Skeleton variant="table" rows={8} />
-        ) : visibleItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState icon={<Icon name="calendar-x" size={20} />} title="No hay turnos para los filtros seleccionados" description="Probá ajustar el rango de fechas o el profesional." />
         ) : (
           <Table>
-            <thead><tr><th>Fecha/hora</th><th>Paciente</th><th>Profesional</th><th>Especialidad</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Fecha/hora</th><th>Paciente</th><th>Profesional</th><th>Especialidad</th><th>Confirmación</th><th>Acciones</th></tr></thead>
             <tbody>
-              {visibleItems.map((a) => (
+              {items.map((a) => (
                 <tr key={a._id}>
                   <td>{humanDate(a.startAt)}</td>
                   <td>{a.patientFullName}<br /><span style={{ color: "#6b7280" }}>{a.patientPhone}</span></td>
                   <td>{a.professionalName || "Profesional a confirmar"}</td>
                   <td>{(a.specialtyId && specialtiesById.get(a.specialtyId)) || "—"}</td>
-                  <td><Badge variant={a.status !== "canceled" ? "success" : "muted"}>{a.status === "canceled" ? <><Icon name="ban" size={16} />Cancelado</> : a.status === "completed" ? <><Icon name="calendar-check" size={16} />Confirmado</> : <><Icon name="calendar-check" size={16} />Reservado</>}</Badge></td>
-                  <td>{a.status !== "canceled" && <Button variant="secondary" title="Cancelar turno" aria-label="Cancelar turno" onClick={async () => { await cancelAppointment(token!, a._id); load(); }}><Icon name="trash" size={16} /></Button>}</td>
+                  <td><Badge variant={a.confirmationStatus === "pending" ? "muted" : "success"}>{a.confirmationStatus === "pending" ? "Pendiente" : "Confirmado"}</Badge></td>
+                  <td style={{ display: "flex", gap: 8 }}>
+                    {a.status === "booked" && a.confirmationStatus === "pending" && (
+                      <Button
+                        onClick={async () => {
+                          await confirmAppointment(token!, a._id);
+                          setItems((prev) => prev.filter((item) => item._id !== a._id));
+                        }}
+                      >
+                        ✅ Confirmar
+                      </Button>
+                    )}
+                    {a.status !== "canceled" && (
+                      <Button variant="secondary" title="Cancelar turno" aria-label="Cancelar turno" onClick={async () => { await cancelAppointment(token!, a._id); load(); }}><Icon name="trash" size={16} /></Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -103,12 +103,14 @@ export function PatientAppointmentsPage() {
                   <b>{clinic?.name ?? "Clínica"}</b>
                   <div>{new Date(appointment.startAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" })}</div>
                   <div>Atiende: {appointment.professionalName || "Profesional a confirmar"}</div>
-                  <div>Estado: {appointment.status === "canceled" ? "Cancelado" : "Reservado"}</div>
+                  <div>Estado: {appointment.confirmationStatus === "pending" ? "Pendiente de confirmación" : "Confirmado"}</div>
+                  {appointment.confirmationStatus === "pending" && <div style={{ color: "#6b7280" }}>La clínica confirmará tu turno a la brevedad.</div>}
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                   <a className="btn" href={`/c/${appointment.clinicSlug || clinic?.slug || ""}`}>Ver detalles</a>
                   <Button onClick={() => onCancel(appointment._id)} disabled={!canCancel}>Cancelar</Button>
                   <a className="btn" href={`/patient/reschedule?appointmentId=${appointment._id}`}>Reprogramar</a>
+                  {clinic?.phone && <a className="btn" href={`tel:${clinic.phone}`}>Contactar clínica</a>}
                 </div>
               </div>
             );

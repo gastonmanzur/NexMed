@@ -6,13 +6,20 @@ export const listAppointments = (
   from: string,
   to: string,
   q = "",
-  professionalId?: string
+  professionalId?: string,
+  status?: "booked" | "canceled" | "completed" | "no_show",
+  confirmation?: "pending" | "confirmed" | "rejected"
 ) => {
   const params = new URLSearchParams({ from, to, q });
   if (professionalId) params.set("professionalId", professionalId);
+  if (status) params.set("status", status);
+  if (confirmation) params.set("confirmation", confirmation);
 
   return apiFetch<Appointment[]>(`/appointments?${params.toString()}`, {}, token);
 };
+
+export const confirmAppointment = (token: string, id: string) =>
+  apiFetch<AppointmentEmailMutationResponse>(`/appointments/${id}/confirm`, { method: "POST" }, token);
 
 export const cancelAppointment = (token: string, id: string) =>
   apiFetch<AppointmentEmailMutationResponse>(`/appointments/${id}/cancel`, { method: "PATCH" }, token);
