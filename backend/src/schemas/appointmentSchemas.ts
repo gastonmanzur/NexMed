@@ -24,6 +24,12 @@ export const listAppointmentsQuerySchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   q: z.string().optional(),
   professionalId: z.string().min(1).optional(),
+  status: z.enum(["booked", "canceled", "completed", "no_show"]).optional(),
+  confirmation: z.enum(["pending", "confirmed", "rejected"]).optional(),
+});
+
+export const appointmentIdParamSchema = z.object({
+  id: z.string().min(1),
 });
 
 export const rescheduleMyAppointmentSchema = z.object({

@@ -3,6 +3,9 @@ import { Appointment } from "../models/Appointment";
 import { updateAppointmentStatus } from "../services/appointmentStatusService";
 import { Types } from "mongoose";
 import { Professional } from "../models/Professional";
+import { Specialty } from "../models/Specialty";
+import { Patient } from "../models/Patient";
+import { Clinic } from "../models/Clinic";
 import { fail, ok } from "../utils/http";
 import { cancelPendingReminders } from "../services/reminders/reminderService";
 import { enqueueEmailJobs } from "../services/email/emailQueue";
@@ -20,6 +23,8 @@ export async function listAppointments(req: Request, res: Response) {
     to: string;
     q?: string;
     professionalId?: string;
+    status?: "booked" | "canceled" | "completed" | "no_show";
+    confirmation?: "pending" | "confirmed" | "rejected";
   };
   const from = dateOnlyToUtcStart(String(query.from));
   const to = dateOnlyToUtcStart(String(query.to));
@@ -31,6 +36,9 @@ export async function listAppointments(req: Request, res: Response) {
     startAt: { $gte: from, $lt: to },
   };
 
+  if (query.status) filter.status = query.status;
+  if (query.confirmation) filter.confirmationStatus = query.confirmation;
+
   if (q) {
     filter.patientPhone = { $regex: q, $options: "i" };
   }
@@ -40,7 +48,7 @@ export async function listAppointments(req: Request, res: Response) {
   }
 
   const appointments = await Appointment.find(filter)
-    .select("startAt endAt patientFullName patientPhone note status professionalId specialtyId clinicId clinicSlug")
+    .select("startAt endAt patientFullName patientPhone note status confirmationStatus confirmedAt professionalId specialtyId clinicId clinicSlug")
     .sort({ startAt: 1 })
     .lean();
 
@@ -77,6 +85,63 @@ export async function listAppointments(req: Request, res: Response) {
   });
 
   return ok(res, mappedAppointments);
+}
+
+export async function confirmAppointment(req: Request, res: Response) {
+  const clinicId = req.auth?.id;
+  if (!clinicId) return fail(res, "No autorizado", 401);
+
+  const appointment = await Appointment.findOne({ _id: req.params.id, clinicId } as any);
+  if (!appointment) return fail(res, "Turno no encontrado", 404);
+  if (appointment.status !== "booked") return fail(res, "Solo podés confirmar turnos reservados", 400);
+
+  if (appointment.confirmationStatus !== "confirmed") {
+    appointment.confirmationStatus = "confirmed";
+    appointment.confirmedAt = new Date();
+    appointment.confirmedBy = { clinicId: new Types.ObjectId(clinicId) };
+    appointment.rejectedAt = null;
+    appointment.rejectedBy = null;
+    appointment.rejectionReason = null;
+    await appointment.save();
+  }
+
+  const [professional, specialty, patient, clinic] = await Promise.all([
+    appointment.professionalId ? Professional.findById(appointment.professionalId).select("firstName lastName displayName").lean() : null,
+    appointment.specialtyId ? Specialty.findById(appointment.specialtyId).select("name").lean() : null,
+    appointment.patientId ? Patient.findById(appointment.patientId).select("firstName lastName email").lean() : null,
+    Clinic.findById(appointment.clinicId).select("name slug address city phone").lean(),
+  ]);
+
+  const professionalFullName = professional?.displayName || `${professional?.firstName ?? ""} ${professional?.lastName ?? ""}`.trim() || "Profesional a confirmar";
+
+  const email = await enqueueEmailJobs("appointment.confirmed_by_clinic", appointment, {
+    dedupeKey: `appointment.confirmed_by_clinic:${String(appointment._id)}`,
+  });
+
+  return ok(res, {
+    appointment: {
+      ...appointment.toObject(),
+      professional: appointment.professionalId ? { _id: String(appointment.professionalId), fullName: professionalFullName } : null,
+      specialty: specialty ? { _id: String(specialty._id), name: specialty.name } : null,
+      patient: patient
+        ? {
+            name: `${patient.firstName ?? ""} ${patient.lastName ?? ""}`.trim(),
+            email: patient.email,
+          }
+        : null,
+      clinic: clinic
+        ? {
+            _id: String(clinic._id),
+            name: clinic.name,
+            slug: clinic.slug,
+            address: clinic.address,
+            city: clinic.city,
+            phone: clinic.phone,
+          }
+        : null,
+    },
+    emailQueued: email.queued,
+  });
 }
 
 export async function cancelAppointment(req: Request, res: Response) {

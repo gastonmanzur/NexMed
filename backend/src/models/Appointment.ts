@@ -1,8 +1,14 @@
 import { Schema, model, Types } from "mongoose";
 
 export type AppointmentStatus = "booked" | "canceled" | "completed" | "no_show";
+export type AppointmentConfirmationStatus = "pending" | "confirmed" | "rejected";
 export type AppointmentCanceledBy = "patient" | "clinic" | "system";
 export type AppointmentCancelReason = "patient_cancel" | "clinic_cancel" | "reschedule" | "dedup" | "other";
+
+export type AppointmentConfirmationActor = {
+  clinicId: Types.ObjectId;
+  userId?: Types.ObjectId;
+};
 
 export interface AppointmentDocument {
   _id: Types.ObjectId;
@@ -17,6 +23,13 @@ export interface AppointmentDocument {
   patientPhone: string;
   note?: string;
   status: AppointmentStatus;
+  confirmationStatus: AppointmentConfirmationStatus;
+  confirmedAt?: Date | null;
+  confirmedBy?: AppointmentConfirmationActor | null;
+  confirmationNote?: string | null;
+  rejectedAt?: Date | null;
+  rejectedBy?: AppointmentConfirmationActor | null;
+  rejectionReason?: string | null;
   canceledAt?: Date | null;
   completedAt?: Date | null;
   canceledBy?: AppointmentCanceledBy | null;
@@ -40,6 +53,27 @@ const appointmentSchema = new Schema<AppointmentDocument>(
     patientPhone: { type: String, required: true, index: true },
     note: { type: String },
     status: { type: String, enum: ["booked", "canceled", "completed", "no_show"], default: "booked", index: true },
+    confirmationStatus: { type: String, enum: ["pending", "confirmed", "rejected"], default: "confirmed", index: true },
+    confirmedAt: { type: Date, default: null },
+    confirmedBy: {
+      type: {
+        clinicId: { type: Schema.Types.ObjectId, ref: "Clinic", required: true },
+        userId: { type: Schema.Types.ObjectId, required: false },
+      },
+      _id: false,
+      default: null,
+    },
+    confirmationNote: { type: String, default: null },
+    rejectedAt: { type: Date, default: null },
+    rejectedBy: {
+      type: {
+        clinicId: { type: Schema.Types.ObjectId, ref: "Clinic", required: true },
+        userId: { type: Schema.Types.ObjectId, required: false },
+      },
+      _id: false,
+      default: null,
+    },
+    rejectionReason: { type: String, default: null },
     canceledAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
     canceledBy: { type: String, enum: ["patient", "clinic", "system"], default: null },

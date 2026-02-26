@@ -1,6 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 
-export type EmailJobType = "appointment.booked" | "appointment.rescheduled" | "appointment.canceled";
+export type EmailJobType = "appointment.booked" | "appointment.rescheduled" | "appointment.canceled" | "appointment.confirmed_by_clinic";
 export type EmailJobStatus = "pending" | "sent" | "failed";
 
 export type AppointmentEmailPayload = {
@@ -26,6 +26,7 @@ export type AppointmentEmailPayload = {
   };
   startAt: string;
   endAt: string;
+  confirmationStatus?: "pending" | "confirmed" | "rejected";
   actions: {
     myAppointmentsUrl: string;
     rescheduleUrl: string;
@@ -51,7 +52,7 @@ const emailJobSchema = new Schema<EmailJobDocument>(
   {
     type: {
       type: String,
-      enum: ["appointment.booked", "appointment.rescheduled", "appointment.canceled"],
+      enum: ["appointment.booked", "appointment.rescheduled", "appointment.canceled", "appointment.confirmed_by_clinic"],
       required: true,
       index: true,
     },

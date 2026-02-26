@@ -42,6 +42,13 @@ export type Clinic = {
     slotDurationMinutes: number;
     weeklySchedule: WeeklyDay[];
   };
+  bookingSettings?: ClinicBookingSettings;
+};
+
+
+export type ClinicBookingSettings = {
+  requireClinicConfirmation: boolean;
+  autoConfirmAppointments: boolean;
 };
 
 export type Patient = {
@@ -79,6 +86,8 @@ export type Appointment = {
   patientPhone: string;
   note?: string;
   status: "booked" | "canceled" | "completed" | "no_show";
+  confirmationStatus?: "pending" | "confirmed" | "rejected";
+  confirmedAt?: string | null;
   canceledAt?: string | null;
   completedAt?: string | null;
   canceledBy?: "patient" | "clinic" | "system" | null;

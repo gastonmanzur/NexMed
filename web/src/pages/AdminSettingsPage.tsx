@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { createInvite, listInvites, updateSettings } from "../api/clinic";
+import { createInvite, getBookingSettings, listInvites, updateBookingSettings, updateSettings } from "../api/clinic";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { useAuth } from "../hooks/useAuth";
-import { ClinicInvite, WeeklyDay } from "../types";
+import { ClinicBookingSettings, ClinicInvite, WeeklyDay } from "../types";
 
 const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -12,6 +12,10 @@ export function AdminSettingsPage() {
   const { clinic, token, refreshProfile } = useAuth();
   const [slotDurationMinutes, setSlotDurationMinutes] = useState(30);
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklyDay[]>([]);
+  const [bookingSettings, setBookingSettings] = useState<ClinicBookingSettings>({
+    requireClinicConfirmation: false,
+    autoConfirmAppointments: true,
+  });
   const [inviteLabel, setInviteLabel] = useState("");
   const [invites, setInvites] = useState<ClinicInvite[]>([]);
   const [newInviteUrl, setNewInviteUrl] = useState("");
@@ -26,10 +30,12 @@ export function AdminSettingsPage() {
   useEffect(() => {
     if (!token) return;
     listInvites(token).then(setInvites).catch(() => setInvites([]));
+    getBookingSettings(token).then(setBookingSettings).catch(() => null);
   }, [token]);
 
   const save = async () => {
     await updateSettings(token!, { slotDurationMinutes, weeklySchedule });
+    await updateBookingSettings(token!, bookingSettings);
     await refreshProfile();
     setMsg("Configuración guardada");
   };
@@ -72,6 +78,27 @@ export function AdminSettingsPage() {
           </div>
         </div>
       ))}
+
+      <h3>Confirmación de turnos</h3>
+      <div className="form-row">
+        <label>
+          <input
+            type="checkbox"
+            checked={bookingSettings.requireClinicConfirmation}
+            onChange={(e) => setBookingSettings((prev) => ({ ...prev, requireClinicConfirmation: e.target.checked, autoConfirmAppointments: e.target.checked ? prev.autoConfirmAppointments : true }))}
+          /> Los turnos quedarán pendientes hasta que los confirmes
+        </label>
+      </div>
+      <div className="form-row">
+        <label>
+          <input
+            type="checkbox"
+            disabled={!bookingSettings.requireClinicConfirmation}
+            checked={bookingSettings.autoConfirmAppointments}
+            onChange={(e) => setBookingSettings((prev) => ({ ...prev, autoConfirmAppointments: e.target.checked }))}
+          /> Confirmar automáticamente al reservar (sin intervención)
+        </label>
+      </div>
       <Button onClick={save}>Guardar</Button>
       {msg && <p className="success">{msg}</p>}
       </Card>

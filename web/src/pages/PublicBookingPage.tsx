@@ -125,8 +125,20 @@ export function PublicBookingPage({ slug }: { slug: string }) {
         specialtyId: selectedSpecialtyId || undefined,
       }, token ?? undefined);
       if (result.warnings?.missingPhone) setWarningMsg("⚠️ Completá tu teléfono para recibir recordatorios por WhatsApp/SMS (próximamente).");
-      if (result.emailQueued && result.email) setMsg(`Turno reservado con éxito. Se envió un email de confirmación a ${result.email}. Te vamos a enviar recordatorios por email antes del turno.`);
-      else setMsg("Turno reservado con éxito. Te vamos a enviar recordatorios por email antes del turno.");
+      const isPending = result.appointment.confirmationStatus === "pending";
+      if (result.emailQueued && result.email) {
+        setMsg(
+          isPending
+            ? `Turno solicitado con éxito y pendiente de confirmación de la clínica. Se envió un email a ${result.email}.`
+            : `Turno confirmado con éxito. Se envió un email de confirmación a ${result.email}. Te vamos a enviar recordatorios por email antes del turno.`
+        );
+      } else {
+        setMsg(
+          isPending
+            ? "Turno solicitado con éxito y pendiente de confirmación de la clínica."
+            : "Turno reservado con éxito. Te vamos a enviar recordatorios por email antes del turno."
+        );
+      }
       setSelectedSlot("");
       await loadAvailability();
       setTimeout(() => { window.location.href = "/patient/appointments"; }, 700);
