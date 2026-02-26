@@ -25,7 +25,7 @@ export function PatientClinicsPage() {
 
   return (
     <>
-      {user && <Navbar user={user} onLogout={onLogout} />}
+      {user && <Navbar user={user} token={token} onLogout={onLogout} />}
       <div className="page">
         <Card>
           <h2>Mis Clínicas</h2>

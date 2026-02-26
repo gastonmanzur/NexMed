@@ -76,7 +76,7 @@ export function PatientPage() {
 
   return (
     <>
-      {user && <Navbar user={user} onLogout={onLogout} />}
+      {user && <Navbar user={user} token={token} onLogout={onLogout} />}
       <div className="page">
         <Card>
           <h3>Mis clínicas</h3>

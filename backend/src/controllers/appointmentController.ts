@@ -9,6 +9,17 @@ import { Clinic } from "../models/Clinic";
 import { fail, ok } from "../utils/http";
 import { cancelPendingReminders } from "../services/reminders/reminderService";
 import { enqueueEmailJobs } from "../services/email/emailQueue";
+import { createNotification } from "../services/notifications/notificationService";
+
+const AR_TZ = "America/Argentina/Buenos_Aires";
+
+function formatDateTimeAr(value: Date) {
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: AR_TZ,
+  }).format(value);
+}
 
 function dateOnlyToUtcStart(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
@@ -117,6 +128,24 @@ export async function confirmAppointment(req: Request, res: Response) {
   const email = await enqueueEmailJobs("appointment.confirmed_by_clinic", appointment, {
     dedupeKey: `appointment.confirmed_by_clinic:${String(appointment._id)}`,
   });
+
+  if (appointment.patientId) {
+    await createNotification({
+      userId: String(appointment.patientId),
+      userType: "patient",
+      type: "appointment.confirmed",
+      title: "Turno confirmado",
+      message: `Tu turno fue confirmado por ${clinic?.name ?? "la clínica"} para ${formatDateTimeAr(appointment.startAt)} con ${professionalFullName}.`,
+      data: {
+        appointmentId: String(appointment._id),
+        clinicSlug: appointment.clinicSlug,
+        startAt: appointment.startAt,
+        professionalName: professionalFullName,
+        specialtyName: specialty?.name,
+      },
+      dedupeKey: `appointment.confirmed:${String(appointment._id)}`,
+    });
+  }
 
   return ok(res, {
     appointment: {

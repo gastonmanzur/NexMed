@@ -218,3 +218,29 @@ export type PaginatedAppointmentHistory = {
   limit: number;
   total: number;
 };
+
+
+export type InAppNotification = {
+  _id: string;
+  userId: string;
+  userType: "patient" | "clinic";
+  type: string;
+  title: string;
+  message: string;
+  data?: {
+    appointmentId?: string;
+    clinicSlug?: string;
+    startAt?: string;
+    professionalName?: string;
+    specialtyName?: string;
+  };
+  readAt?: string | null;
+  createdAt: string;
+};
+
+export type PaginatedNotifications = {
+  items: InAppNotification[];
+  page: number;
+  limit: number;
+  total: number;
+};

@@ -115,7 +115,7 @@ export function ProfilePage() {
 
   return (
     <>
-      <Navbar user={user} clinicName={clinic?.name} onLogout={() => { logout(); window.location.href = "/login"; }} />
+      <Navbar user={user} token={token} clinicName={clinic?.name} onLogout={() => { logout(); window.location.href = "/login"; }} />
       <div className="page">
         <h2 style={{ color: "white" }}>Mi Perfil</h2>
         {loading && <Card><p>Cargando...</p></Card>}
