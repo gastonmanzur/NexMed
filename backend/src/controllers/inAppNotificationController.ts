@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { fail, ok } from "../utils/http";
 import { NotificationUserType } from "../models/Notification";
-import { getUnreadCount, listNotifications, markAllRead, markRead } from "../services/notifications/notificationService";
+import { listNotifications, markAllRead, markRead, unreadCount } from "../services/notificationService";
 
 function getAuthUser(req: Request) {
   if (!req.auth?.id || !req.auth?.type) return null;
@@ -29,7 +29,7 @@ export async function getInAppUnreadCount(req: Request, res: Response) {
   const authUser = getAuthUser(req);
   if (!authUser) return fail(res, "No autorizado", 401);
 
-  return ok(res, await getUnreadCount(authUser));
+  return ok(res, await unreadCount(authUser));
 }
 
 export async function markInAppRead(req: Request, res: Response) {
@@ -37,7 +37,7 @@ export async function markInAppRead(req: Request, res: Response) {
   if (!authUser) return fail(res, "No autorizado", 401);
 
   const params = (res.locals.validated?.params ?? req.params) as { id: string };
-  const result = await markRead({ ...authUser, notificationId: params.id });
+  const result = await markRead({ ...authUser, id: params.id });
 
   if (!result.updated) return fail(res, "Notificación no encontrada", 404);
   return ok(res, result.notification);

@@ -9,7 +9,7 @@ import { Clinic } from "../models/Clinic";
 import { fail, ok } from "../utils/http";
 import { cancelPendingReminders } from "../services/reminders/reminderService";
 import { enqueueEmailJobs } from "../services/email/emailQueue";
-import { createNotification } from "../services/notifications/notificationService";
+import { createNotificationIdempotent } from "../services/notificationService";
 
 const AR_TZ = "America/Argentina/Buenos_Aires";
 
@@ -103,6 +103,7 @@ export async function confirmAppointment(req: Request, res: Response) {
   if (!clinicId) return fail(res, "No autorizado", 401);
 
   const appointment = await Appointment.findOne({ _id: req.params.id, clinicId } as any);
+  console.info("[appointment.confirm] confirm request", { appointmentId: req.params.id, clinicId });
   if (!appointment) return fail(res, "Turno no encontrado", 404);
   if (appointment.status !== "booked") return fail(res, "Solo podés confirmar turnos reservados", 400);
 
@@ -130,21 +131,38 @@ export async function confirmAppointment(req: Request, res: Response) {
   });
 
   if (appointment.patientId) {
-    await createNotification({
-      userId: String(appointment.patientId),
-      userType: "patient",
-      type: "appointment.confirmed",
-      title: "Turno confirmado",
-      message: `Tu turno fue confirmado por ${clinic?.name ?? "la clínica"} para ${formatDateTimeAr(appointment.startAt)} con ${professionalFullName}.`,
-      data: {
+    try {
+      const notificationResult = await createNotificationIdempotent({
+        userId: String(appointment.patientId),
+        userType: "patient",
+        type: "appointment.confirmed",
+        title: "Turno confirmado",
+        message: `Tu turno fue confirmado por ${clinic?.name ?? "la clínica"} para ${formatDateTimeAr(appointment.startAt)} con ${professionalFullName}.`,
+        data: {
+          appointmentId: String(appointment._id),
+          clinicId: clinic?._id ? String(clinic._id) : undefined,
+          clinicSlug: clinic?.slug ?? appointment.clinicSlug,
+          startAt: appointment.startAt,
+          professionalId: appointment.professionalId ? String(appointment.professionalId) : undefined,
+          professionalFullName,
+          specialtyId: appointment.specialtyId ? String(appointment.specialtyId) : undefined,
+          specialtyName: specialty?.name,
+        },
+        dedupeKey: `appointment.confirmed:${String(appointment._id)}`,
+      });
+
+      console.info("[appointment.confirm] in-app notification processed", {
         appointmentId: String(appointment._id),
-        clinicSlug: appointment.clinicSlug,
-        startAt: appointment.startAt,
-        professionalName: professionalFullName,
-        specialtyName: specialty?.name,
-      },
-      dedupeKey: `appointment.confirmed:${String(appointment._id)}`,
-    });
+        patientId: String(appointment.patientId),
+        created: notificationResult.created,
+      });
+    } catch (error) {
+      console.error("[appointment.confirm] failed to create in-app notification", {
+        appointmentId: String(appointment._id),
+        patientId: String(appointment.patientId),
+        error,
+      });
+    }
   }
 
   return ok(res, {
