@@ -25,9 +25,16 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, token
     },
   });
 
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    const text = await res.text();
+    throw new ApiError(`API error ${res.status}: non-JSON response: ${text.slice(0, 200)}`, res.status);
+  }
+
   const payload = (await res.json()) as ApiResponse<T>;
-  if (!res.ok || !payload.ok || !payload.data) {
+  if (!res.ok || !payload.ok || payload.data === undefined) {
     throw new ApiError(payload.error || "Error inesperado", res.status, payload.code, payload.details);
   }
+
   return payload.data;
 }
