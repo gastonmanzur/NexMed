@@ -30,7 +30,7 @@ const notificationSchema = new Schema<NotificationDocument>(
   { timestamps: true }
 );
 
-notificationSchema.index({ userId: 1, readAt: 1, createdAt: -1 });
-notificationSchema.index({ userId: 1, createdAt: -1 });
+notificationSchema.index({ userId: 1, userType: 1, readAt: 1, createdAt: -1 });
+notificationSchema.index({ userId: 1, userType: 1, createdAt: -1 });
 
 export const Notification = model<NotificationDocument>("Notification", notificationSchema);
