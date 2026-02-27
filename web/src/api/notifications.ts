@@ -15,4 +15,4 @@ export const markNotificationRead = (token: string, id: string) =>
   apiFetch<InAppNotification>(`/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }, token);
 
 export const markAllNotificationsRead = (token: string) =>
-  apiFetch<{ modifiedCount: number }>("/notifications/read-all", { method: "POST" }, token);
+  apiFetch<{ updated: number }>("/notifications/read-all", { method: "POST" }, token);

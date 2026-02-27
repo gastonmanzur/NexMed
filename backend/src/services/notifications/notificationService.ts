@@ -41,7 +41,7 @@ export async function createNotification(params: {
 
 export async function listNotifications(params: { userId: string; userType: NotificationUserType; page?: number; limit?: number }) {
   const page = Math.max(1, params.page ?? 1);
-  const limit = Math.min(50, Math.max(1, params.limit ?? 20));
+  const limit = Math.min(50, Math.max(1, params.limit ?? 50));
 
   const filter = {
     userId: new Types.ObjectId(params.userId),
@@ -79,7 +79,7 @@ export async function markAllRead(params: { userId: string; userType: Notificati
     { $set: { readAt: new Date() } }
   );
 
-  return { modifiedCount: result.modifiedCount };
+  return { updated: result.modifiedCount };
 }
 
 export async function markRead(params: { userId: string; userType: NotificationUserType; notificationId: string }) {

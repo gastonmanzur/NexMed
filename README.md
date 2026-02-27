@@ -45,3 +45,9 @@ Opcional seed rápido:
      - `ETHEREAL_USER=...`
      - `ETHEREAL_PASS=...`
   2. El worker registrará en consola el identificador del envío.
+
+## Debug rápido de notificaciones
+- Probar contador de no leídas:
+  `curl -H "Authorization: Bearer <token>" http://localhost:5000/api/notifications/unread-count`
+- Probar listado paginado:
+  `curl -H "Authorization: Bearer <token>" "http://localhost:5000/api/notifications?page=1&limit=50"`
