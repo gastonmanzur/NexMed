@@ -1,10 +1,11 @@
 import { InAppNotification, PaginatedNotifications } from "../types";
 import { apiFetch } from "./client";
 
-export const listNotifications = (token: string, params?: { page?: number; limit?: number }) => {
+export const listNotifications = (token: string, params?: { page?: number; limit?: number; unreadOnly?: boolean }) => {
   const query = new URLSearchParams();
   if (params?.page) query.set("page", String(params.page));
   if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.unreadOnly) query.set("unreadOnly", "1");
   const suffix = query.toString() ? `?${query.toString()}` : "";
   return apiFetch<PaginatedNotifications>(`/notifications${suffix}`, {}, token);
 };

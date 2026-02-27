@@ -11,6 +11,13 @@ import { listNotificationsQuerySchema, notificationIdParamSchema } from "../sche
 
 const router = Router();
 
+router.use((req, _res, next) => {
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[notifications.api] hit", { method: req.method, path: req.originalUrl, userId: req.auth?.id, userType: req.auth?.type });
+  }
+  next();
+});
+
 router.get("/", authRequired, validateQuery(listNotificationsQuerySchema), listInAppNotifications);
 router.get("/unread-count", authRequired, getInAppUnreadCount);
 router.post("/:id/read", authRequired, validateParams(notificationIdParamSchema), markInAppRead);

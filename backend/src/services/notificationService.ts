@@ -42,14 +42,18 @@ export async function createNotificationIdempotent(params: CreateNotificationPar
   }
 }
 
-export async function listNotifications(params: { userId: string; userType: NotificationUserType; page?: number; limit?: number }) {
+export async function listNotifications(params: { userId: string; userType: NotificationUserType; page?: number; limit?: number; unreadOnly?: boolean }) {
   const page = Math.max(1, params.page ?? 1);
   const limit = Math.min(50, Math.max(1, params.limit ?? 50));
 
-  const filter = {
+  const filter: Record<string, unknown> = {
     userId: new Types.ObjectId(params.userId),
     userType: params.userType,
   };
+
+  if (params.unreadOnly) {
+    filter.readAt = null;
+  }
 
   const [items, total] = await Promise.all([
     Notification.find(filter)
@@ -63,7 +67,7 @@ export async function listNotifications(params: { userId: string; userType: Noti
   return { items, total, page, limit };
 }
 
-export async function unreadCount(params: { userId: string; userType: NotificationUserType }) {
+export async function getUnreadCount(params: { userId: string; userType: NotificationUserType }) {
   const count = await Notification.countDocuments({
     userId: new Types.ObjectId(params.userId),
     userType: params.userType,

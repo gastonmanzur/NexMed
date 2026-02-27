@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
-import { getUnreadNotificationsCount, listNotifications, markAllNotificationsRead, markNotificationRead } from "../api/notifications";
+import { listNotifications, markAllNotificationsRead, markNotificationRead } from "../api/notifications";
 import { InAppNotification } from "../types";
+import { refreshUnreadCount, setLastSeenNotificationId, subscribeNotificationsStore } from "../state/notificationsStore";
 import styles from "./NotificationsBell.module.css";
 
 type NotificationsBellProps = {
   token: string;
+  notificationsHref?: string;
 };
 
 function getTimeAgoLabel(value: string) {
@@ -19,8 +21,8 @@ function getTimeAgoLabel(value: string) {
   return rtf.format(days, "day");
 }
 
-export function NotificationsBell({ token }: NotificationsBellProps) {
-  const [unreadCount, setUnreadCount] = useState(0);
+export function NotificationsBell({ token, notificationsHref = "/patient/notifications" }: NotificationsBellProps) {
+  const [unreadCount, setUnreadCountState] = useState(0);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<InAppNotification[]>([]);
@@ -33,17 +35,13 @@ export function NotificationsBell({ token }: NotificationsBellProps) {
     return String(unreadCount);
   }, [unreadCount]);
 
-  const refreshUnread = async () => {
-    const data = await getUnreadNotificationsCount(token);
-    setUnreadCount(data.unreadCount);
-  };
-
   const loadLatest = async () => {
     setLoading(true);
     setError("");
     try {
       const data = await listNotifications(token, { page: 1, limit: 5 });
       setItems(data.items);
+      if (data.items[0]?._id) setLastSeenNotificationId(data.items[0]._id);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -52,15 +50,20 @@ export function NotificationsBell({ token }: NotificationsBellProps) {
   };
 
   useEffect(() => {
-    refreshUnread().catch(() => undefined);
-    const interval = window.setInterval(() => {
-      refreshUnread().catch(() => undefined);
-    }, 30_000);
+    const unsubscribe = subscribeNotificationsStore((nextState) => {
+      setUnreadCountState(nextState.unreadCount);
+    });
 
-    const onFocus = () => refreshUnread().catch(() => undefined);
+    refreshUnreadCount(token).catch(() => undefined);
+    const interval = window.setInterval(() => {
+      refreshUnreadCount(token).catch(() => undefined);
+    }, 25_000);
+
+    const onFocus = () => refreshUnreadCount(token).catch(() => undefined);
     window.addEventListener("focus", onFocus);
 
     return () => {
+      unsubscribe();
       window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
@@ -80,23 +83,23 @@ export function NotificationsBell({ token }: NotificationsBellProps) {
     const next = !open;
     setOpen(next);
     if (next) {
-      await Promise.all([refreshUnread(), loadLatest()]);
+      await Promise.all([refreshUnreadCount(token), loadLatest()]);
     }
   };
 
   const onReadOne = async (id: string) => {
     await markNotificationRead(token, id);
-    await Promise.all([refreshUnread(), loadLatest()]);
+    await Promise.all([refreshUnreadCount(token), loadLatest()]);
   };
 
   const onReadAll = async () => {
     await markAllNotificationsRead(token);
-    await Promise.all([refreshUnread(), loadLatest()]);
+    await Promise.all([refreshUnreadCount(token), loadLatest()]);
   };
 
   return (
     <div ref={wrapperRef} className={styles.wrapper}>
-      <button type="button" className={styles.bellButton} aria-label="Notificaciones" onClick={toggleOpen}>
+      <button type="button" className={`${styles.bellButton} ${unreadCount > 0 ? styles.bellButtonAlert : ""}`} aria-label="Notificaciones" onClick={toggleOpen}>
         <Bell size={18} />
         {unreadCount > 0 && <span className={styles.badge}>{badgeLabel}</span>}
       </button>
@@ -133,7 +136,7 @@ export function NotificationsBell({ token }: NotificationsBellProps) {
               </button>
             ))}
 
-          <a className={styles.viewAll} href="/patient/notifications">
+          <a className={styles.viewAll} href={notificationsHref}>
             Ver todas
           </a>
         </div>

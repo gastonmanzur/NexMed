@@ -4,6 +4,7 @@ import { Card } from "../../components/Card";
 import { Navbar } from "../../components/Navbar";
 import { useAuth } from "../../hooks/useAuth";
 import { InAppNotification } from "../../types";
+import { refreshUnreadCount, setLastSeenNotificationId } from "../../state/notificationsStore";
 
 function formatTimeAgo(date: string) {
   const deltaMinutes = Math.round((new Date(date).getTime() - Date.now()) / 60000);
@@ -28,6 +29,8 @@ export function PatientNotificationsPage() {
     try {
       const data = await listNotifications(token, { page: 1, limit: 50 });
       setNotifications(data.items);
+      if (data.items[0]?._id) setLastSeenNotificationId(data.items[0]._id);
+      await refreshUnreadCount(token);
     } catch (e) {
       setError((e as Error).message);
     } finally {

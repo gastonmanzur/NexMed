@@ -120,7 +120,7 @@ export function Navbar({ user, token, clinicName, onLogout }: NavbarProps) {
 
         {user && (
           <div className={styles.actions} ref={dropdownRef}>
-            {token && <NotificationsBell token={token} />}
+            {token && <NotificationsBell token={token} notificationsHref={user.type === "clinic" ? "/clinic/notifications" : "/patient/notifications"} />}
             <button
               type="button"
               className={styles.userButton}

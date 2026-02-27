@@ -17,6 +17,13 @@
   transition: transform 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
 
+
+.bellButtonAlert {
+  border-color: #ef4444;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
 .bellButton:hover {
   transform: scale(1.03);
   background: #f8fafc;
