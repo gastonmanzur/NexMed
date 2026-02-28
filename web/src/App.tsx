@@ -5,18 +5,15 @@ import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminProfessionalsPage } from "./pages/AdminProfessionalsPage";
 import { AdminSchedulesPage } from "./pages/AdminSchedulesPage";
 import { AdminSettingsPage } from "./pages/AdminSettingsPage";
-import { AdminNotificationsPage } from "./pages/AdminNotificationsPage";
 import { AdminSpecialtiesPage } from "./pages/AdminSpecialtiesPage";
 import { JoinClinicPage } from "./pages/JoinClinicPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PatientAppointmentsPage } from "./pages/patient/PatientAppointmentsPage";
 import { PatientClinicsPage } from "./pages/patient/PatientClinicsPage";
 import { PatientReschedulePage } from "./pages/patient/PatientReschedulePage";
-import { PatientNotificationsPage } from "./pages/patient/PatientNotificationsPage";
 import { PatientHistoryPage } from "./pages/patient/PatientHistoryPage";
 import { PublicBookingPage } from "./pages/PublicBookingPage";
 import { ProfilePage } from "./pages/ProfilePage";
-import { NotificationsPrompt } from "./components/NotificationsPrompt";
 import { RegisterPage } from "./pages/RegisterPage";
 
 function App() {
@@ -41,38 +38,16 @@ function App() {
     return <LoginPage />;
   }
 
-  if (path === "/profile") return <>
-    <NotificationsPrompt />
-    <ProfilePage />
-  </>;
+  if (path === "/profile") return <ProfilePage />;
 
   if (user.type === "patient") {
-    if (path === "/patient" || path === "/patient/appointments") return <>
-      <NotificationsPrompt />
-      <PatientAppointmentsPage />
-    </>;
-    if (path === "/patient/clinics") return <>
-      <NotificationsPrompt />
-      <PatientClinicsPage />
-    </>;
-    if (path === "/patient/reschedule") return <>
-      <NotificationsPrompt />
-      <PatientReschedulePage />
-    </>;
-    if (path === "/patient/notifications") return <>
-      <NotificationsPrompt />
-      <PatientNotificationsPage />
-    </>;
-    if (path === "/patient/history") return <>
-      <NotificationsPrompt />
-      <PatientHistoryPage />
-    </>;
+    if (path === "/patient" || path === "/patient/appointments") return <PatientAppointmentsPage />;
+    if (path === "/patient/clinics") return <PatientClinicsPage />;
+    if (path === "/patient/reschedule") return <PatientReschedulePage />;
+    if (path === "/patient/history") return <PatientHistoryPage />;
 
     window.history.replaceState({}, "", "/patient/appointments");
-    return <>
-      <NotificationsPrompt />
-      <PatientAppointmentsPage />
-    </>;
+    return <PatientAppointmentsPage />;
   }
 
   let content = <AdminDashboardPage />;
@@ -81,8 +56,7 @@ function App() {
   if (path === "/admin/specialties") content = <AdminSpecialtiesPage />;
   if (path === "/admin/professionals") content = <AdminProfessionalsPage />;
   if (path === "/admin/schedules") content = <AdminSchedulesPage />;
-  if (path === "/clinic/notifications") content = <AdminNotificationsPage />;
-  if (!["/admin", "/admin/settings", "/admin/appointments", "/admin/specialties", "/admin/professionals", "/admin/schedules", "/clinic/notifications"].includes(path)) {
+  if (!["/admin", "/admin/settings", "/admin/appointments", "/admin/specialties", "/admin/professionals", "/admin/schedules"].includes(path)) {
     window.history.replaceState({}, "", "/admin");
   }
 
