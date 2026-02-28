@@ -1,11 +1,6 @@
 import { Router } from "express";
 import { getMe, updateSettings } from "../controllers/clinicController";
 import {
-  getClinicNotificationSettings,
-  previewClinicNotificationSchedule,
-  updateClinicNotificationSettings,
-} from "../controllers/notificationController";
-import {
   createProfessional,
   createProfessionalTimeOff,
   createSpecialty,
@@ -21,7 +16,7 @@ import {
   updateSpecialty,
 } from "../controllers/clinicManagementController";
 import { authRequired, clinicOnly } from "../middlewares/auth";
-import { validateBody, validateParams, validateQuery } from "../middlewares/validate";
+import { validateBody, validateParams } from "../middlewares/validate";
 import { updateSettingsSchema } from "../schemas/clinicSchemas";
 import { bookingSettingsSchema, updateReminderSettingsSchema } from "../schemas/clinicSettingsSchemas";
 import {
@@ -30,7 +25,6 @@ import {
   updateClinicBookingSettings,
   updateClinicReminderSettings,
 } from "../controllers/clinicSettingsController";
-import { notificationPreviewQuerySchema, updateNotificationSettingsSchema } from "../schemas/notificationSchemas";
 import {
   createProfessionalSchema,
   createSpecialtySchema,
@@ -50,9 +44,6 @@ router.get("/settings/reminders", authRequired, clinicOnly, getClinicReminderSet
 router.put("/settings/reminders", authRequired, clinicOnly, validateBody(updateReminderSettingsSchema), updateClinicReminderSettings);
 router.get("/settings/booking", authRequired, clinicOnly, getClinicBookingSettings);
 router.put("/settings/booking", authRequired, clinicOnly, validateBody(bookingSettingsSchema), updateClinicBookingSettings);
-router.get("/notifications/settings", authRequired, clinicOnly, getClinicNotificationSettings);
-router.put("/notifications/settings", authRequired, clinicOnly, validateBody(updateNotificationSettingsSchema), updateClinicNotificationSettings);
-router.get("/notifications/preview", authRequired, clinicOnly, validateQuery(notificationPreviewQuerySchema), previewClinicNotificationSchedule);
 router.get("/specialties", authRequired, clinicOnly, listSpecialties);
 router.post("/specialties", authRequired, clinicOnly, validateBody(createSpecialtySchema), createSpecialty);
 router.put("/specialties/:id", authRequired, clinicOnly, validateParams(idParamSchema), validateBody(updateSpecialtySchema), updateSpecialty);

@@ -81,21 +81,6 @@ export const getReminderSettings = (token: string) =>
 export const updateReminderSettings = (token: string, body: ClinicReminderSettings) =>
   apiFetch<ClinicReminderSettings>("/clinic/settings/reminders", { method: "PUT", body: JSON.stringify(body) }, token);
 
-export const previewNotificationSchedule = (token: string, appointmentId: string) =>
-  apiFetch<{
-    appointmentId: string;
-    startAt: string;
-    preview: {
-      ruleId: string;
-      label: string;
-      scheduledFor: string;
-      skipped: boolean;
-      channel: "email";
-      offsetValue: number;
-      offsetUnit: "days" | "hours";
-    }[];
-  }>(`/clinic/notifications/preview?appointmentId=${encodeURIComponent(appointmentId)}`, {}, token);
-
 
 export const getBookingSettings = (token: string) =>
   apiFetch<ClinicBookingSettings>("/clinic/settings/booking", {}, token);

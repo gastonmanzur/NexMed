@@ -9,7 +9,6 @@ import { Clinic } from "../models/Clinic";
 import { fail, ok } from "../utils/http";
 import { cancelPendingReminders } from "../services/reminders/reminderService";
 import { enqueueEmailJobs } from "../services/email/emailQueue";
-import { createNotificationIdempotent } from "../services/notificationService";
 
 const AR_TZ = "America/Argentina/Buenos_Aires";
 
@@ -130,40 +129,6 @@ export async function confirmAppointment(req: Request, res: Response) {
     dedupeKey: `appointment.confirmed_by_clinic:${String(appointment._id)}`,
   });
 
-  if (appointment.patientId) {
-    try {
-      const notificationResult = await createNotificationIdempotent({
-        userId: String(appointment.patientId),
-        userType: "patient",
-        type: "appointment.confirmed",
-        title: "Turno confirmado",
-        message: `Tu turno fue confirmado por ${clinic?.name ?? "la clínica"} para ${formatDateTimeAr(appointment.startAt)} con ${professionalFullName}.`,
-        data: {
-          appointmentId: String(appointment._id),
-          clinicId: clinic?._id ? String(clinic._id) : undefined,
-          clinicSlug: clinic?.slug ?? appointment.clinicSlug,
-          startAt: appointment.startAt,
-          professionalId: appointment.professionalId ? String(appointment.professionalId) : undefined,
-          professionalFullName,
-          specialtyId: appointment.specialtyId ? String(appointment.specialtyId) : undefined,
-          specialtyName: specialty?.name,
-        },
-        dedupeKey: `appointment.confirmed:${String(appointment._id)}`,
-      });
-
-      console.info("[appointment.confirm] in-app notification processed", {
-        appointmentId: String(appointment._id),
-        patientId: String(appointment.patientId),
-        created: notificationResult.created,
-      });
-    } catch (error) {
-      console.error("[appointment.confirm] failed to create in-app notification", {
-        appointmentId: String(appointment._id),
-        patientId: String(appointment.patientId),
-        error,
-      });
-    }
-  }
 
   return ok(res, {
     appointment: {

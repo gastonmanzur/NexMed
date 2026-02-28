@@ -195,22 +195,6 @@ export type ClinicReminderSettings = {
   updatedAt?: string;
 };
 
-export type PatientNotification = {
-  _id: string;
-  appointmentId: string;
-  scheduledFor: string;
-  sentAt?: string;
-  payloadSnapshot: {
-    clinicName: string;
-    patientName: string;
-    startAt: string;
-    professionalName?: string;
-    address?: string;
-    city?: string;
-    phone?: string;
-  };
-};
-
 
 export type PaginatedAppointmentHistory = {
   items: Appointment[];
@@ -220,27 +204,3 @@ export type PaginatedAppointmentHistory = {
 };
 
 
-export type InAppNotification = {
-  _id: string;
-  userId: string;
-  userType: "patient" | "clinic";
-  type: string;
-  title: string;
-  message: string;
-  data?: {
-    appointmentId?: string;
-    clinicSlug?: string;
-    startAt?: string;
-    professionalName?: string;
-    specialtyName?: string;
-  };
-  readAt?: string | null;
-  createdAt: string;
-};
-
-export type PaginatedNotifications = {
-  items: InAppNotification[];
-  page: number;
-  limit: number;
-  total: number;
-};
