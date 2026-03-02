@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AuthUser } from "../types";
+import { NotificationsBell } from "./NotificationsBell";
 import styles from "./Navbar.module.css";
 
 type NavItem = { label: string; href: string };
@@ -39,7 +40,7 @@ function isActiveLink(pathname: string, href: string) {
   return pathname === href;
 }
 
-export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
+export function Navbar({ user, token, clinicName, onLogout }: NavbarProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -117,6 +118,7 @@ export function Navbar({ user, clinicName, onLogout }: NavbarProps) {
 
         {user && (
           <div className={styles.actions} ref={dropdownRef}>
+            <NotificationsBell token={token} enabled={user.type === "patient"} />
             <button
               type="button"
               className={styles.userButton}

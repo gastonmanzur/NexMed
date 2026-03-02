@@ -204,3 +204,24 @@ export type PaginatedAppointmentHistory = {
 };
 
 
+
+
+export type NotificationItem = {
+  _id: string;
+  recipientUserId: string;
+  recipientType: "patient" | "clinic";
+  type: string;
+  title: string;
+  message: string;
+  data?: Record<string, any> | null;
+  readAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NotificationListResponse = {
+  items: NotificationItem[];
+  page: number;
+  limit: number;
+  total: number;
+};
