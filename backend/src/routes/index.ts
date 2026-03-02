@@ -8,6 +8,7 @@ import patientAppointmentRoutes from "./patientAppointmentRoutes";
 import profileRoutes from "./profileRoutes";
 import clinicInviteRoutes from "./clinicInviteRoutes";
 import devRoutes from "./devRoutes";
+import notificationRoutes from "./notificationRoutes";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use("/clinics", clinicRoutes);
 router.use("/clinic", clinicRoutes);
 router.use("/public", publicRoutes);
 router.use("/appointments", appointmentRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/patient/clinics", patientClinicRoutes);
 router.use("/patient/appointments", patientAppointmentRoutes);
 router.use("/profile", profileRoutes);
