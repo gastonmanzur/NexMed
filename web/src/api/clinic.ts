@@ -13,7 +13,7 @@ export const updateSettings = (token: string, settings: Clinic["settings"]) =>
 
 export const createInvite = (token: string, body: { label?: string }) =>
   apiFetch<{ token: string; url: string }>(
-    "/clinics/invites",
+    "/clinic/invites",
     {
       method: "POST",
       body: JSON.stringify(body),
@@ -21,7 +21,7 @@ export const createInvite = (token: string, body: { label?: string }) =>
     token
   );
 
-export const listInvites = (token: string) => apiFetch<ClinicInvite[]>("/clinics/invites", {}, token);
+export const listInvites = (token: string) => apiFetch<ClinicInvite[]>("/clinic/invites", {}, token);
 
 export const listSpecialties = (token: string) => apiFetch<Specialty[]>("/clinics/specialties", {}, token);
 export const createSpecialty = (token: string, body: { name: string; description?: string }) =>

@@ -11,9 +11,9 @@ import { createClinicInviteSchema, idParamSchema, updateClinicInviteSchema } fro
 
 const router = Router();
 
-router.post("/invites", authRequired, clinicOnly, validateBody(createClinicInviteSchema), createClinicInvite);
-router.get("/invites", authRequired, clinicOnly, listClinicInvites);
-router.put("/invites/:id", authRequired, clinicOnly, validateParams(idParamSchema), validateBody(updateClinicInviteSchema), updateClinicInvite);
-router.post("/invites/default", authRequired, clinicOnly, ensureDefaultClinicInvite);
+router.post("/", authRequired, clinicOnly, validateBody(createClinicInviteSchema), createClinicInvite);
+router.get("/", authRequired, clinicOnly, listClinicInvites);
+router.put("/:id", authRequired, clinicOnly, validateParams(idParamSchema), validateBody(updateClinicInviteSchema), updateClinicInvite);
+router.post("/default", authRequired, clinicOnly, ensureDefaultClinicInvite);
 
 export default router;
