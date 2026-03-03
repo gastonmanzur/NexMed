@@ -124,7 +124,7 @@ export async function confirmAppointment(req: Request, res: Response) {
     Clinic.findById(appointment.clinicId).select("name slug address city phone").lean(),
   ]);
 
-  const professionalFullName = professional?.displayName || `${professional?.firstName ?? ""} ${professional?.lastName ?? ""}`.trim() || "Profesional a confirmar";
+  const professionalFullName = professional?.displayName || `${professional?.firstName ?? ""} ${professional?.lastName ?? ""}`.trim() || "Profesional asignado";
 
   const email = await enqueueEmailJobs("appointment.confirmed_by_clinic", appointment, {
     dedupeKey: `appointment.confirmed_by_clinic:${String(appointment._id)}`,
@@ -153,11 +153,13 @@ export async function confirmAppointment(req: Request, res: Response) {
         data: {
           appointmentId: String(appointment._id),
           clinicSlug: appointment.clinicSlug || clinic.slug,
+          clinicName: clinic.name,
           clinicId: String(clinic._id),
           startAt: appointment.startAt.toISOString(),
+          endAt: appointment.endAt.toISOString(),
           professionalId: appointment.professionalId ? String(appointment.professionalId) : null,
           professionalFullName,
-          url: `/patient/appointments`,
+          url: `/patient/my-appointments`,
         },
       });
     } catch (notificationError) {
