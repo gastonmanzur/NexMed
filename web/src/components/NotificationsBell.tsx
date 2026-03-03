@@ -1,5 +1,6 @@
 import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ApiError } from "../api/client";
 import { getUnreadCount } from "../api/notifications";
 import styles from "./Navbar.module.css";
 
@@ -20,8 +21,15 @@ export function NotificationsBell({ token, enabled }: { token?: string | null; e
         if (!cancelled) {
           setUnreadCount(data.unreadCount);
         }
-      } catch {
-        if (!cancelled) setUnreadCount(0);
+      } catch (error) {
+        if (cancelled) return;
+
+        if (error instanceof ApiError && error.status === 401) {
+          setUnreadCount(0);
+          return;
+        }
+
+        setUnreadCount(0);
       }
     };
 
