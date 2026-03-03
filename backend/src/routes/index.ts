@@ -14,6 +14,7 @@ const router = Router();
 
 router.use("/auth", authRoutes);
 router.use("/clinics", clinicRoutes);
+router.use("/clinic/invites", clinicInviteRoutes);
 router.use("/clinic", clinicRoutes);
 router.use("/public", publicRoutes);
 router.use("/appointments", appointmentRoutes);
@@ -21,7 +22,6 @@ router.use("/notifications", notificationRoutes);
 router.use("/patient/clinics", patientClinicRoutes);
 router.use("/patient/appointments", patientAppointmentRoutes);
 router.use("/profile", profileRoutes);
-router.use("/clinic/invites", clinicInviteRoutes);
 if (process.env.NODE_ENV !== "production") {
   router.use("/dev", devRoutes);
 }
