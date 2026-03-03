@@ -21,7 +21,7 @@ router.use("/notifications", notificationRoutes);
 router.use("/patient/clinics", patientClinicRoutes);
 router.use("/patient/appointments", patientAppointmentRoutes);
 router.use("/profile", profileRoutes);
-router.use("/clinic", clinicInviteRoutes);
+router.use("/clinic/invites", clinicInviteRoutes);
 if (process.env.NODE_ENV !== "production") {
   router.use("/dev", devRoutes);
 }
