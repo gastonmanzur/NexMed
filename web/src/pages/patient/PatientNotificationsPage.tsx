@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ApiError } from "../../api/client";
 import { getUnreadCount, listNotifications, markAllRead, markNotificationRead } from "../../api/notifications";
 import { Navbar } from "../../components/Navbar";
 import { Card } from "../../components/Card";
@@ -12,17 +13,32 @@ export function PatientNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unauthorized, setUnauthorized] = useState(false);
 
   const load = async () => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      setUnauthorized(true);
+      return;
+    }
+
     setLoading(true);
     setError("");
+    setUnauthorized(false);
+
     try {
       const [listData, countData] = await Promise.all([listNotifications(token), getUnreadCount(token)]);
       setNotifications(listData.items);
       setUnreadCount(countData.unreadCount);
-    } catch (e: any) {
-      setError(e.message || "No se pudieron cargar las notificaciones");
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) {
+        setUnauthorized(true);
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
+
+      setError(e instanceof Error ? e.message : "No se pudieron cargar las notificaciones");
     } finally {
       setLoading(false);
     }
@@ -53,6 +69,10 @@ export function PatientNotificationsPage() {
     window.location.href = "/login";
   };
 
+  const onGoToLogin = () => {
+    window.location.href = "/login";
+  };
+
   return (
     <>
       {user && <Navbar user={user} token={token} onLogout={onLogout} />}
@@ -63,7 +83,7 @@ export function PatientNotificationsPage() {
               <h2 style={{ marginBottom: 4 }}>Notificaciones</h2>
               <p style={{ margin: 0, color: "#6b7280" }}>{unreadCount} sin leer</p>
             </div>
-            <button className="btn" type="button" onClick={onMarkAllRead} disabled={unreadCount === 0 || loading}>
+            <button className="btn" type="button" onClick={onMarkAllRead} disabled={unreadCount === 0 || loading || unauthorized}>
               Marcar todas como leídas
             </button>
           </div>
@@ -73,6 +93,13 @@ export function PatientNotificationsPage() {
               <Skeleton variant="card" height="4rem" />
               <Skeleton variant="card" height="4rem" />
               <Skeleton variant="card" height="4rem" />
+            </div>
+          ) : unauthorized ? (
+            <div style={{ display: "grid", gap: 8 }}>
+              <p className="error" style={{ marginBottom: 0 }}>Iniciá sesión para ver tus notificaciones.</p>
+              <button className="btn" type="button" onClick={onGoToLogin}>
+                Ir a iniciar sesión
+              </button>
             </div>
           ) : error ? (
             <p className="error">{error}</p>
