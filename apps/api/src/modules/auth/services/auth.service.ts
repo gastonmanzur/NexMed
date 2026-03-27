@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import type { UserRole } from '@starter/shared-types';
+import type { AuthSessionContextDto, AuthUserDto, UserRole } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { env } from '../../../config/env.js';
 import { ActionTokenRepository } from '../repositories/action-token.repository.js';
@@ -8,25 +8,13 @@ import { UserRepository } from '../repositories/user.repository.js';
 import { GoogleAuthService } from './google-auth.service.js';
 import { MailService } from './mail.service.js';
 import { TokenService } from './token.service.js';
+import { OrganizationService } from '../../organizations/services/organization.service.js';
 
 interface AuthResult {
   accessToken: string;
   refreshToken: string;
-  user: {
-    id: string;
-    email: string;
-    role: UserRole;
-    provider: 'local' | 'google';
-    emailVerified: boolean;
-    avatar: {
-      url: string;
-      width: number;
-      height: number;
-      mimeType: string;
-      sizeBytes: number;
-      updatedAt: string;
-    } | null;
-  };
+  user: AuthUserDto;
+  context: AuthSessionContextDto;
 }
 
 export class AuthService {
@@ -36,11 +24,19 @@ export class AuthService {
     private readonly actionTokens = new ActionTokenRepository(),
     private readonly tokenService = new TokenService(),
     private readonly mailService = new MailService(),
-    private readonly googleAuth = new GoogleAuthService()
+    private readonly googleAuth = new GoogleAuthService(),
+    private readonly organizationService = new OrganizationService()
   ) {}
 
-  async registerLocal(email: string, password: string): Promise<void> {
-    const normalizedEmail = email.toLowerCase().trim();
+  async registerLocal(
+    inputOrEmail: { firstName: string; lastName: string; email: string; password: string } | string,
+    maybePassword?: string
+  ): Promise<AuthResult> {
+    const input = typeof inputOrEmail === 'string'
+      ? { firstName: 'New', lastName: 'User', email: inputOrEmail, password: maybePassword ?? '' }
+      : inputOrEmail;
+
+    const normalizedEmail = input.email.toLowerCase().trim();
     const existing = await this.users.findByEmail(normalizedEmail);
     if (existing && existing.provider !== 'local') {
       throw new AppError('PROVIDER_CONFLICT', 409, 'This email is already registered with Google sign-in');
@@ -49,15 +45,20 @@ export class AuthService {
       throw new AppError('EMAIL_ALREADY_EXISTS', 409, 'Email is already registered');
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(input.password, 12);
     const user = await this.users.create({
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
       email: normalizedEmail,
       provider: 'local',
       passwordHash,
-      emailVerified: false
+      emailVerified: true,
+      role: 'user',
+      globalRole: 'user',
+      status: 'active'
     });
 
-    await this.createAndSendVerifyEmail(user._id.toString(), user.email);
+    return this.createSession(user);
   }
 
   async verifyEmail(token: string): Promise<void> {
@@ -83,8 +84,8 @@ export class AuthService {
     if (!user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new AppError('INVALID_CREDENTIALS', 401, 'Invalid email or password');
     }
-    if (!user.emailVerified) {
-      throw new AppError('EMAIL_NOT_VERIFIED', 403, 'Verify your email before logging in');
+    if (user.status !== 'active') {
+      throw new AppError('FORBIDDEN', 403, 'User account is not active');
     }
 
     return this.createSession(user);
@@ -96,19 +97,26 @@ export class AuthService {
     const existing = await this.users.findByEmail(profile.email);
     const existingProvider = existing?.provider?.toLowerCase();
 
-    console.log('GOOGLE PROFILE =>', profile);
-
     if (existing && existingProvider !== 'google') {
       throw new AppError('PROVIDER_CONFLICT', 409, 'This email is already registered with email/password');
     }
 
     if (!existing) {
+      const [localPart = 'Google'] = profile.email.split('@');
+      const [firstName = 'Google', ...lastNameParts] = localPart.replace(/[._-]+/g, ' ').split(' ');
+      const lastName = lastNameParts.join(' ');
+
       const user = await this.users.create({
+      firstName: firstName || 'Google',
+      lastName: lastName || 'User',
         email: profile.email,
         provider: 'google',
         googleId: profile.googleId,
         ...(googlePictureUrl ? { googlePictureUrl } : {}),
-        emailVerified: profile.emailVerified
+        emailVerified: profile.emailVerified,
+        role: 'user',
+        globalRole: 'user',
+        status: 'active'
       });
 
       return this.createSession(user);
@@ -196,24 +204,59 @@ export class AuthService {
     await this.sessions.revokeAllByUserId(userId);
   }
 
-  async getProfile(userId: string): Promise<AuthResult['user']> {
+  async getSessionContext(userId: string): Promise<AuthSessionContextDto> {
     const user = await this.users.findById(userId);
     if (!user) {
       throw new AppError('USER_NOT_FOUND', 404, 'User not found');
     }
 
+    return this.buildSessionContext(user);
+  }
+
+  async getProfile(userId: string): Promise<AuthUserDto> {
+    const context = await this.getSessionContext(userId);
+    return context.user;
+  }
+
+  private mapGlobalRoleToLegacy(globalRole: 'super_admin' | 'user'): UserRole {
+    return globalRole === 'super_admin' ? 'admin' : 'user';
+  }
+
+  private async buildSessionContext(user: NonNullable<Awaited<ReturnType<UserRepository['findById']>>>): Promise<AuthSessionContextDto> {
+    let orgContext: Awaited<ReturnType<OrganizationService['getMyOrganizations']>> = {
+      organizations: [],
+      memberships: []
+    };
+
+    try {
+      orgContext = await this.organizationService.getMyOrganizations(user._id.toString());
+    } catch {
+      orgContext = { organizations: [], memberships: [] };
+    }
+    const activeMemberships = orgContext.memberships.filter((membership) => membership.status === 'active');
+    const activeOrganizationId = activeMemberships.length === 1 ? (activeMemberships[0]?.organizationId ?? null) : null;
+    const globalRole = (user.globalRole ?? 'user') as 'super_admin' | 'user';
+
     return {
-      id: user._id.toString(),
-      email: user.email,
-      role: user.role,
-      provider: user.provider,
-      emailVerified: user.emailVerified,
-      avatar: this.resolveUserAvatar(user)
+      user: {
+        id: user._id.toString(),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: this.mapGlobalRoleToLegacy(globalRole),
+        globalRole,
+        provider: user.provider,
+        emailVerified: user.emailVerified,
+        status: (user.status ?? 'active') as 'active' | 'inactive' | 'blocked',
+        avatar: this.resolveUserAvatar(user)
+      },
+      organizations: orgContext.organizations,
+      memberships: orgContext.memberships,
+      activeOrganizationId
     };
   }
 
-
-  private resolveUserAvatar(user: NonNullable<Awaited<ReturnType<UserRepository['findById']>>>): AuthResult['user']['avatar'] {
+  private resolveUserAvatar(user: NonNullable<Awaited<ReturnType<UserRepository['findById']>>>): AuthUserDto['avatar'] {
     if (user.provider === 'google') {
       if (!user.googlePictureUrl) {
         return null;
@@ -272,19 +315,20 @@ export class AuthService {
     });
     await this.users.updateLastLogin(userId);
 
-    const accessToken = this.tokenService.generateAccessToken({ sub: userId, role: user.role, email: user.email });
+    const globalRole = (user.globalRole ?? 'user') as 'super_admin' | 'user';
+    const accessToken = this.tokenService.generateAccessToken({
+      sub: userId,
+      role: this.mapGlobalRoleToLegacy(globalRole),
+      globalRole,
+      email: user.email
+    });
+    const context = await this.buildSessionContext(user);
 
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: userId,
-        email: user.email,
-        role: user.role,
-        provider: user.provider,
-        emailVerified: user.emailVerified,
-        avatar: this.resolveUserAvatar(user)
-      }
+      user: context.user,
+      context
     };
   }
 }

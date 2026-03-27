@@ -20,6 +20,8 @@ export class UserRepository {
   }
 
   async create(input: {
+    firstName: string;
+    lastName: string;
     email: string;
     provider: 'local' | 'google';
     passwordHash?: string;
@@ -27,6 +29,8 @@ export class UserRepository {
     googleId?: string;
     googlePictureUrl?: string;
     role?: UserRole;
+    globalRole?: 'super_admin' | 'user';
+    status?: 'active' | 'inactive' | 'blocked';
   }): Promise<UserDocument> {
     return UserModel.create(input);
   }

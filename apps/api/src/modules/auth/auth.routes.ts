@@ -3,7 +3,7 @@ import { env } from '../../config/env.js';
 import { asyncHandler } from '../../core/async-handler.js';
 import { createRateLimiter } from '../../core/rate-limit-middleware.js';
 import { authController } from './controllers/auth.controller.js';
-import { requireAuth, requireRoles } from './middleware/auth.middleware.js';
+import { requireAuth, requireGlobalRole } from './middleware/auth.middleware.js';
 
 export const authRouter = Router();
 
@@ -25,4 +25,4 @@ authRouter.post('/reset-password', authRateLimiter, asyncHandler(authController.
 authRouter.get('/me', requireAuth, asyncHandler(authController.me));
 authRouter.post('/change-password', requireAuth, asyncHandler(authController.changePassword));
 authRouter.post('/logout-all', requireAuth, asyncHandler(authController.logoutAll));
-authRouter.get('/admin-only', requireAuth, requireRoles('admin'), asyncHandler(authController.adminOnly));
+authRouter.get('/admin-only', requireAuth, requireGlobalRole('super_admin'), asyncHandler(authController.adminOnly));

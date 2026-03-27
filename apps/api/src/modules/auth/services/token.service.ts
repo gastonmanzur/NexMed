@@ -5,6 +5,7 @@ import { env } from '../../../config/env.js';
 export interface AccessTokenPayload {
   sub: string;
   role: 'admin' | 'user';
+  globalRole?: 'super_admin' | 'user';
   email: string;
 }
 

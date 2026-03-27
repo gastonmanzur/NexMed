@@ -48,7 +48,7 @@ export const DashboardPage = (): ReactElement => {
     try {
       await authApi.uploadMyAvatar(accessToken, file);
       const refreshedUser = await authApi.me(accessToken);
-      updateUser(refreshedUser);
+      updateUser(refreshedUser.user);
       setFeedback(t('profile.avatar.uploadSuccess'));
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : t('profile.avatar.unexpectedError'));
@@ -70,7 +70,7 @@ export const DashboardPage = (): ReactElement => {
     try {
       await authApi.deleteMyAvatar(accessToken);
       const refreshedUser = await authApi.me(accessToken);
-      updateUser(refreshedUser);
+      updateUser(refreshedUser.user);
       setFeedback(t('profile.avatar.deleteSuccess'));
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : t('profile.avatar.unexpectedError'));

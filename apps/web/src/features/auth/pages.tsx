@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { FirebaseError } from 'firebase/app';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { getFirebaseAuth } from '../../lib/firebase-client';
 import { authApi } from './auth-api';
@@ -28,27 +28,90 @@ const getGoogleLoginErrorMessage = (cause: unknown): string => {
   }
 };
 
+const useGoogleLogin = () => {
+  const navigate = useNavigate();
+  const { setSession } = useAuth();
+
+  return async (): Promise<void> => {
+    const provider = new GoogleAuthProvider();
+    const auth = getFirebaseAuth();
+    const result = await signInWithPopup(auth, provider);
+
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const idToken = credential?.idToken;
+
+    if (!idToken) {
+      throw new Error('No se pudo obtener el Google ID token');
+    }
+
+    const session = await authApi.loginGoogle({ idToken, photoURL: result.user.photoURL });
+    setSession(session);
+    navigate('/post-login');
+  };
+};
+
 export const RegisterPage = (): ReactElement => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { setSession } = useAuth();
+  const loginWithGoogle = useGoogleLogin();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   return (
     <main style={viewStyle}>
       <Card title={t('auth.register.title')}>
+        <input placeholder="Nombre" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+        <input placeholder="Apellido" value={lastName} onChange={(e) => setLastName(e.target.value)} />
         <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input placeholder="Confirmar password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
         <button
           type="button"
+          disabled={loading}
           onClick={async () => {
-            await authApi.register(email, password);
-            setMessage(t('auth.register.success'));
+            try {
+              setError('');
+              setLoading(true);
+              if (password !== confirmPassword) {
+                throw new Error('Las contraseñas no coinciden');
+              }
+
+              const session = await authApi.register({ firstName, lastName, email, password });
+              setSession(session);
+              navigate('/post-login');
+            } catch (cause) {
+              setError((cause as Error).message);
+            } finally {
+              setLoading(false);
+            }
           }}
         >
-          {t('auth.register.submit')}
+          {loading ? 'Creando cuenta...' : t('auth.register.submit')}
         </button>
-        <p>{message}</p>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={async () => {
+            try {
+              setLoading(true);
+              setError('');
+              await loginWithGoogle();
+            } catch (cause) {
+              setError(getGoogleLoginErrorMessage(cause));
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          {t('auth.login.google')}
+        </button>
+        <p style={{ color: 'crimson' }}>{error}</p>
         <Link to="/login">{t('auth.common.goLogin')}</Link>
       </Card>
     </main>
@@ -59,9 +122,11 @@ export const LoginPage = (): ReactElement => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { setSession } = useAuth();
+  const loginWithGoogle = useGoogleLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   return (
     <main style={viewStyle}>
@@ -70,56 +135,69 @@ export const LoginPage = (): ReactElement => {
         <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <button
           type="button"
+          disabled={loading}
           onClick={async () => {
             try {
+              setLoading(true);
+              setError('');
               const session = await authApi.login(email, password);
-              setSession(session.accessToken, session.user);
-              navigate('/dashboard');
+              setSession(session);
+              navigate('/post-login');
             } catch (cause) {
               setError((cause as Error).message);
+            } finally {
+              setLoading(false);
             }
           }}
         >
-          {t('auth.login.submit')}
+          {loading ? 'Ingresando...' : t('auth.login.submit')}
         </button>
-       <button
-  type="button"
-  onClick={async () => {
-    
-    try {
-      const provider = new GoogleAuthProvider();
-      const auth = getFirebaseAuth();
-      const result = await signInWithPopup(auth, provider);
-
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const idToken = credential?.idToken;
-
-      console.log('GOOGLE CREDENTIAL =>', credential);
-console.log('GOOGLE USER =>', result.user);
-console.log('GOOGLE PHOTO URL =>', result.user.photoURL);
-
-      if (!idToken) {
-        throw new Error('No se pudo obtener el Google ID token');
-      }
-
-      const session = await authApi.loginGoogle({ idToken, photoURL: result.user.photoURL });
-      setSession(session.accessToken, session.user);
-      navigate('/dashboard');
-    } catch (cause) {
-      setError(getGoogleLoginErrorMessage(cause));
-    }
-    
-  }}
-  
-  >
-  
-  {t('auth.login.google')}
-</button>
-        <p>{error}</p>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={async () => {
+            try {
+              setLoading(true);
+              setError('');
+              await loginWithGoogle();
+            } catch (cause) {
+              setError(getGoogleLoginErrorMessage(cause));
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          {t('auth.login.google')}
+        </button>
+        <p style={{ color: 'crimson' }}>{error}</p>
+        <Link to="/register">Crear cuenta</Link>
+        <br />
         <Link to="/forgot-password">{t('auth.login.forgot')}</Link>
       </Card>
     </main>
   );
+};
+
+export const PostLoginResolverPage = (): ReactElement => {
+  const { loading, user, organizations } = useAuth();
+
+  if (loading) {
+    return <p>Cargando...</p>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (organizations.length === 0) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (organizations.length === 1) {
+    return <Navigate to="/app" replace />;
+  }
+
+  return <Navigate to="/select-organization" replace />;
 };
 
 export const VerifyEmailPage = (): ReactElement => {
