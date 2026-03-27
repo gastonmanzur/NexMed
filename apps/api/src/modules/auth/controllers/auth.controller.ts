@@ -5,11 +5,16 @@ import { AuthService } from '../services/auth.service.js';
 import type { AuthenticatedRequest } from '../types/auth-request.js';
 
 const registerSchema = z.object({
-  email: z.string().email(),
+  firstName: z.string().trim().min(1).max(120),
+  lastName: z.string().trim().min(1).max(120),
+  email: z.string().trim().email(),
   password: z.string().min(8).max(128)
 });
 
-const loginSchema = registerSchema;
+const loginSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(8).max(128)
+});
 
 const googleSchema = z.object({
   idToken: z.string().min(10),
@@ -43,12 +48,14 @@ const refreshCookieOptions = {
 export const authController = {
   register: async (req: Request, res: Response): Promise<void> => {
     const data = registerSchema.parse(req.body);
-    await authService.registerLocal(data.email, data.password);
+    const session = await authService.registerLocal(data);
 
+    res.cookie(refreshCookieName, session.refreshToken, refreshCookieOptions);
     res.status(201).json({
       success: true,
       data: {
-        message: 'Registration successful. Check your email to verify account.'
+        accessToken: session.accessToken,
+        ...session.context
       }
     });
   },
@@ -74,7 +81,7 @@ export const authController = {
       success: true,
       data: {
         accessToken: session.accessToken,
-        user: session.user
+        ...session.context
       }
     });
   },
@@ -88,7 +95,7 @@ export const authController = {
       success: true,
       data: {
         accessToken: session.accessToken,
-        user: session.user
+        ...session.context
       }
     });
   },
@@ -113,7 +120,7 @@ export const authController = {
       success: true,
       data: {
         accessToken: session.accessToken,
-        user: session.user
+        ...session.context
       }
     });
   },
@@ -188,11 +195,11 @@ export const authController = {
   },
 
   me: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const profile = await authService.getProfile(req.auth!.userId);
+    const context = await authService.getSessionContext(req.auth!.userId);
 
     res.status(200).json({
       success: true,
-      data: profile
+      data: context
     });
   },
 

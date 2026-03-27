@@ -14,6 +14,7 @@ import { healthRouter } from './modules/health/health.routes.js';
 import { pushRouter } from './modules/push/push.routes.js';
 import { paymentsRouter } from './modules/payments/payments.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
+import { organizationsRouter } from './modules/organizations/organizations.routes.js';
 
 export const createApp = () => {
   const app = express();
@@ -57,6 +58,7 @@ export const createApp = () => {
   app.use('/api/push', pushRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/organizations', organizationsRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

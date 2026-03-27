@@ -1,4 +1,4 @@
-import type { AuthUserDto, AvatarDto } from '@starter/shared-types';
+import type { AuthSessionContextDto, AvatarDto } from '@starter/shared-types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
 
@@ -12,8 +12,7 @@ interface AuthResponse {
   success: true;
   data: {
     accessToken: string;
-    user: AuthUserDto;
-  };
+  } & AuthSessionContextDto;
 }
 
 interface ApiErrorPayload {
@@ -60,8 +59,9 @@ const request = async <T>(path: string, init: RequestInit): Promise<T> => {
 };
 
 export const authApi = {
-  register: async (email: string, password: string): Promise<void> => {
-    await request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+  register: async (input: { firstName: string; lastName: string; email: string; password: string }): Promise<AuthResponse['data']> => {
+    const result = await request<AuthResponse>('/auth/register', { method: 'POST', body: JSON.stringify(input) });
+    return result.data;
   },
   login: async (email: string, password: string): Promise<AuthResponse['data']> => {
     const result = await request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
@@ -94,8 +94,8 @@ export const authApi = {
   logoutAll: async (accessToken: string): Promise<void> => {
     await request('/auth/logout-all', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } });
   },
-  me: async (accessToken: string): Promise<AuthUserDto> => {
-    const result = await request<{ success: true; data: AuthUserDto }>('/auth/me', {
+  me: async (accessToken: string): Promise<AuthSessionContextDto> => {
+    const result = await request<{ success: true; data: AuthSessionContextDto }>('/auth/me', {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` }
     });

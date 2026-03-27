@@ -18,6 +18,7 @@ export const requireAuth = (req: AuthenticatedRequest, _res: Response, next: Nex
     req.auth = {
     userId: payload.sub,
     role: payload.role,
+    globalRole: payload.globalRole ?? (payload.role === 'admin' ? 'super_admin' : 'user'),
     email: payload.email
     };
   } catch {
@@ -27,16 +28,21 @@ export const requireAuth = (req: AuthenticatedRequest, _res: Response, next: Nex
   next();
 };
 
-export const requireRoles = (...roles: Array<'admin' | 'user'>) => {
+export const requireGlobalRole = (...roles: Array<'super_admin' | 'user'>) => {
   return (req: AuthenticatedRequest, _res: Response, next: NextFunction): void => {
     if (!req.auth) {
       throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
     }
 
-    if (!roles.includes(req.auth.role)) {
+    if (!roles.includes(req.auth.globalRole)) {
       throw new AppError('FORBIDDEN', 403, 'Insufficient permissions');
     }
 
     next();
   };
+};
+
+export const requireRoles = (...roles: Array<'admin' | 'user'>) => {
+  const mapped = roles.map((role) => (role === 'admin' ? 'super_admin' : 'user'));
+  return requireGlobalRole(...mapped);
 };

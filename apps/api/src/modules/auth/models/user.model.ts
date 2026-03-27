@@ -1,6 +1,8 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 export const authProviders = ['local', 'google'] as const;
+export const globalRoles = ['super_admin', 'user'] as const;
+export const userStatuses = ['active', 'inactive', 'blocked'] as const;
 
 const avatarSchema = new mongoose.Schema(
   {
@@ -17,6 +19,16 @@ const avatarSchema = new mongoose.Schema(
 
 const userSchema = new mongoose.Schema(
   {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    lastName: {
+      type: String,
+      required: true,
+      trim: true
+    },
     email: {
       type: String,
       required: true,
@@ -38,9 +50,19 @@ const userSchema = new mongoose.Schema(
       enum: ['admin', 'user'],
       default: 'user'
     },
+    globalRole: {
+      type: String,
+      enum: globalRoles,
+      default: 'user'
+    },
     emailVerified: {
       type: Boolean,
       default: false
+    },
+    status: {
+      type: String,
+      enum: userStatuses,
+      default: 'active'
     },
     googleId: {
       type: String,

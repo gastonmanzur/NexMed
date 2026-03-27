@@ -1,11 +1,25 @@
 import type { ReactElement } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomePage } from '../features/home/HomePage';
 import { AdminPage } from '../features/admin/AdminPage';
-import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage, ChangePasswordPage } from '../features/auth/pages';
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  VerifyEmailPage,
+  ChangePasswordPage,
+  PostLoginResolverPage
+} from '../features/auth/pages';
 import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { UnauthorizedPage } from '../features/auth/UnauthorizedPage';
 import { DashboardPage } from '../features/protected/DashboardPage';
+import {
+  AppPlaceholderPage,
+  CreateOrganizationPage,
+  OnboardingPage,
+  SelectOrganizationPage
+} from '../features/organizations/pages';
 
 export const App = (): ReactElement => {
   return (
@@ -17,9 +31,49 @@ export const App = (): ReactElement => {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
-        path="/dashboard"
+        path="/post-login"
         element={
           <ProtectedRoute>
+            <PostLoginResolverPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute>
+            <OnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations/new"
+        element={
+          <ProtectedRoute>
+            <CreateOrganizationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/select-organization"
+        element={
+          <ProtectedRoute>
+            <SelectOrganizationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <AppPlaceholderPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute requireActiveOrganization>
             <DashboardPage />
           </ProtectedRoute>
         }
@@ -41,6 +95,7 @@ export const App = (): ReactElement => {
         }
       />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
