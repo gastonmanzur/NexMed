@@ -31,5 +31,9 @@
     "typescript": "^5.8.2",
     "vite": "^6.2.1",
     "vitest": "^3.0.9"
-  }
+  },
+  "main": "index.js",
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
