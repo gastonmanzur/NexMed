@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'user';
 export type AuthProvider = 'local' | 'google';
 export type GlobalRole = 'super_admin' | 'user';
 export type OrganizationType = 'clinic' | 'office' | 'esthetic_center' | 'professional_cabinet' | 'other';
-export type OrganizationStatus = 'onboarding' | 'active' | 'inactive';
+export type OrganizationStatus = 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
 export type OrganizationMemberRole = 'owner' | 'admin' | 'staff' | 'patient';
 export type OrganizationMemberStatus = 'active' | 'inactive' | 'blocked';
 
@@ -36,6 +36,7 @@ export interface AuthUserDto {
 export interface OrganizationDto {
   id: string;
   name: string;
+  displayName: string | null;
   slug: string | null;
   type: OrganizationType;
   contactEmail: string | null;
@@ -43,8 +44,21 @@ export interface OrganizationDto {
   address: string | null;
   city: string | null;
   country: string | null;
+  description: string | null;
+  logoUrl: string | null;
   status: OrganizationStatus;
+  onboardingCompleted: boolean;
   createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrganizationSettingsDto {
+  organizationId: string;
+  timezone: string;
+  locale: string | null;
+  currency: string | null;
+  onboardingStep: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +67,21 @@ export interface OrganizationMembershipDto {
   organizationId: string;
   role: OrganizationMemberRole;
   status: OrganizationMemberStatus;
+}
+
+export interface OrganizationProfileDto {
+  organization: OrganizationDto;
+  settings: OrganizationSettingsDto | null;
+  membership: OrganizationMembershipDto;
+  onboarding: OrganizationOnboardingStatusDto;
+}
+
+export interface OrganizationOnboardingStatusDto {
+  organizationId: string;
+  status: OrganizationStatus;
+  onboardingCompleted: boolean;
+  missingFields: string[];
+  nextStep: string | null;
 }
 
 export interface AuthSessionContextDto {

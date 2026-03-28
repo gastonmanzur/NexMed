@@ -1,11 +1,12 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 export const organizationTypes = ['clinic', 'office', 'esthetic_center', 'professional_cabinet', 'other'] as const;
-export const organizationStatuses = ['onboarding', 'active', 'inactive'] as const;
+export const organizationStatuses = ['onboarding', 'active', 'inactive', 'suspended', 'blocked'] as const;
 
 const organizationSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
+    displayName: { type: String, required: false, trim: true },
     slug: { type: String, required: false, unique: true, sparse: true, trim: true },
     type: { type: String, enum: organizationTypes, required: true },
     contactEmail: { type: String, required: false, trim: true, lowercase: true },
@@ -13,7 +14,10 @@ const organizationSchema = new mongoose.Schema(
     address: { type: String, required: false, trim: true },
     city: { type: String, required: false, trim: true },
     country: { type: String, required: false, trim: true },
+    description: { type: String, required: false, trim: true },
+    logoUrl: { type: String, required: false, trim: true },
     status: { type: String, enum: organizationStatuses, default: 'onboarding' },
+    onboardingCompleted: { type: Boolean, default: false },
     createdByUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' }
   },
   { timestamps: true }

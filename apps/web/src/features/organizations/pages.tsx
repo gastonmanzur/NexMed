@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
@@ -88,7 +88,7 @@ export const CreateOrganizationPage = (): ReactElement => {
                 activeOrganizationId: result.organization.id
               });
 
-              navigate('/app');
+              navigate('/onboarding/organization');
             } catch (cause) {
               setError((cause as Error).message);
             } finally {
@@ -138,56 +138,10 @@ export const SelectOrganizationPage = (): ReactElement => {
         <button
           type="button"
           onClick={() => {
-            navigate('/app');
+            navigate('/post-login');
           }}
         >
           Continuar
-        </button>
-      </Card>
-    </main>
-  );
-};
-
-export const AppPlaceholderPage = (): ReactElement => {
-  const navigate = useNavigate();
-  const { user, organizations, memberships, activeOrganizationId, clearSession } = useAuth();
-
-  const activeOrganization = useMemo(
-    () => organizations.find((organization) => organization.id === activeOrganizationId) ?? null,
-    [activeOrganizationId, organizations]
-  );
-
-  const activeMembership = useMemo(
-    () => memberships.find((membership) => membership.organizationId === activeOrganizationId) ?? null,
-    [activeOrganizationId, memberships]
-  );
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!activeOrganizationId) {
-    return <Navigate to="/post-login" replace />;
-  }
-
-  return (
-    <main style={containerStyle}>
-      <Card title="App (placeholder protegido)">
-        <p>
-          Usuario: {user.firstName} {user.lastName} ({user.email})
-        </p>
-        <p>Global role: {user.globalRole}</p>
-        <p>Organización activa: {activeOrganization?.name ?? activeOrganizationId}</p>
-        <p>Rol en organización: {activeMembership?.role ?? 'N/A'}</p>
-
-        <button
-          type="button"
-          onClick={async () => {
-            await clearSession();
-            navigate('/login');
-          }}
-        >
-          Logout
         </button>
       </Card>
     </main>

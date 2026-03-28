@@ -1,4 +1,4 @@
-import type { AuthSessionContextDto, AuthUserDto, OrganizationDto, OrganizationMembershipDto } from '@starter/shared-types';
+import type { AuthSessionContextDto, AuthUserDto, OrganizationDto, OrganizationMembershipDto, OrganizationStatus } from '@starter/shared-types';
 import type { ReactElement, ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { authApi } from './auth-api';
@@ -16,11 +16,15 @@ interface AuthState {
   organizations: OrganizationDto[];
   memberships: OrganizationMembershipDto[];
   activeOrganizationId: string | null;
+  activeOrganizationSummary: OrganizationDto | null;
+  onboardingCompleted: boolean;
+  organizationStatus: OrganizationStatus | null;
   loading: boolean;
   setSession: (session: { accessToken: string } & AuthSessionContextDto) => void;
   clearSession: () => Promise<void>;
   setActiveOrganizationId: (organizationId: string | null) => void;
   setOrganizationsContext: (payload: { organizations: OrganizationDto[]; memberships: OrganizationMembershipDto[]; activeOrganizationId?: string | null }) => void;
+  refreshOrganizationsContext: () => Promise<void>;
   updateUser: (user: AuthUserDto) => void;
 }
 
@@ -57,9 +61,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }): ReactElemen
           session.activeOrganizationId ??
           resolveSuggestedActiveOrganizationId({ organizations: session.organizations, memberships: session.memberships });
 
-        const nextActiveOrganizationId = persistedOrganizationId && session.organizations.some((organization) => organization.id === persistedOrganizationId)
-          ? persistedOrganizationId
-          : suggestedOrganizationId;
+        const nextActiveOrganizationId =
+          persistedOrganizationId && session.organizations.some((organization) => organization.id === persistedOrganizationId)
+            ? persistedOrganizationId
+            : suggestedOrganizationId;
 
         setUser(session.user);
         setAccessToken(session.accessToken);
@@ -78,6 +83,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }): ReactElemen
     })();
   }, []);
 
+  const activeOrganizationSummary = useMemo(
+    () => organizations.find((organization) => organization.id === activeOrganizationId) ?? null,
+    [activeOrganizationId, organizations]
+  );
+
   const value = useMemo<AuthState>(
     () => ({
       user,
@@ -85,6 +95,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }): ReactElemen
       organizations,
       memberships,
       activeOrganizationId,
+      activeOrganizationSummary,
+      onboardingCompleted: activeOrganizationSummary?.onboardingCompleted ?? false,
+      organizationStatus: activeOrganizationSummary?.status ?? null,
       loading,
       setSession: (session) => {
         setAccessToken(session.accessToken);
@@ -120,11 +133,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }): ReactElemen
 
         setActiveOrganizationId(nextActiveOrganizationId);
       },
+      refreshOrganizationsContext: async () => {
+        if (!accessToken) {
+          return;
+        }
+
+        const context = await authApi.me(accessToken);
+        setOrganizations(context.organizations);
+        setMemberships(context.memberships);
+
+        const persistedOrganizationId = localStorage.getItem(ACTIVE_ORGANIZATION_STORAGE_KEY);
+        const suggestedOrganizationId =
+          context.activeOrganizationId ??
+          resolveSuggestedActiveOrganizationId({ organizations: context.organizations, memberships: context.memberships });
+
+        const nextActiveOrganizationId =
+          persistedOrganizationId && context.organizations.some((organization) => organization.id === persistedOrganizationId)
+            ? persistedOrganizationId
+            : suggestedOrganizationId;
+
+        setActiveOrganizationId(nextActiveOrganizationId ?? null);
+      },
       updateUser: (nextUser) => {
         setUser(nextUser);
       }
     }),
-    [accessToken, activeOrganizationId, loading, memberships, organizations, user]
+    [accessToken, activeOrganizationId, activeOrganizationSummary, loading, memberships, organizations, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

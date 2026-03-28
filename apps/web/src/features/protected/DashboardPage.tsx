@@ -1,131 +1,74 @@
-import type { ChangeEvent, ReactElement } from 'react';
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import type { ReactElement } from 'react';
+import { useMemo } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { Card } from '@starter/ui';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { authApi } from '../auth/auth-api';
-import { WebPushCard } from '../notifications/WebPushCard';
-import { MonetizationCard } from '../payments/MonetizationCard';
-import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
 
-const MAX_SIZE_BYTES = 2_097_152;
+const MODULES = [
+  { key: 'professionals', title: 'Profesionales', description: 'Próximamente: gestión de profesionales y roles clínicos.' },
+  { key: 'specialties', title: 'Especialidades', description: 'Próximamente: catálogo de especialidades del centro.' },
+  { key: 'schedule', title: 'Agenda', description: 'Próximamente: configuración de agenda y horarios.' },
+  { key: 'appointments', title: 'Turnos', description: 'Próximamente: administración de turnos y estados.' }
+];
 
 export const DashboardPage = (): ReactElement => {
-  const { t } = useTranslation();
-  const { user, accessToken, updateUser } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { user, activeOrganizationId, organizations, memberships, onboardingCompleted } = useAuth();
 
-  const isGoogleUser = user?.provider === 'google';
-  const avatarUrl = user?.avatar?.url ? resolveAvatarUrl(user.avatar.url) : null;
+  const activeOrganization = useMemo(
+    () => organizations.find((organization) => organization.id === activeOrganizationId) ?? null,
+    [activeOrganizationId, organizations]
+  );
 
-  const onAvatarChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+  const activeMembership = useMemo(
+    () => memberships.find((membership) => membership.organizationId === activeOrganizationId) ?? null,
+    [activeOrganizationId, memberships]
+  );
 
-    if (!file.type.startsWith('image/')) {
-      setError(t('profile.avatar.invalidType'));
-      return;
-    }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-    if (file.size > MAX_SIZE_BYTES) {
-      setError(t('profile.avatar.invalidSize'));
-      return;
-    }
+  if (!activeOrganizationId) {
+    return <Navigate to="/post-login" replace />;
+  }
 
-    if (!accessToken || !user) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setFeedback(null);
-
-    try {
-      await authApi.uploadMyAvatar(accessToken, file);
-      const refreshedUser = await authApi.me(accessToken);
-      updateUser(refreshedUser.user);
-      setFeedback(t('profile.avatar.uploadSuccess'));
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : t('profile.avatar.unexpectedError'));
-    } finally {
-      setLoading(false);
-      event.target.value = '';
-    }
-  };
-
-  const onDeleteAvatar = async (): Promise<void> => {
-    if (!accessToken || !user) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setFeedback(null);
-
-    try {
-      await authApi.deleteMyAvatar(accessToken);
-      const refreshedUser = await authApi.me(accessToken);
-      updateUser(refreshedUser.user);
-      setFeedback(t('profile.avatar.deleteSuccess'));
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : t('profile.avatar.unexpectedError'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!onboardingCompleted) {
+    return <Navigate to="/onboarding/organization" replace />;
+  }
 
   return (
-    <main style={{ maxWidth: 760, margin: '2rem auto', padding: '1rem' }}>
-      <Card title={t('profile.title')}>
-        <p>{t('profile.greeting', { email: user?.email ?? '-' })}</p>
-        <p>{t('profile.role', { role: user?.role ?? '-' })}</p>
-
-        <section>
-          <h3>{t('profile.avatar.title')}</h3>
-
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={t('profile.avatar.alt')}
-              width={96}
-              height={96}
-              style={{ borderRadius: '50%', objectFit: 'cover', border: '1px solid #ddd' }}
-            />
-          ) : (
-            <p>{t('profile.avatar.empty')}</p>
-          )}
-
-          {isGoogleUser ? (
-            <p>{t('profile.avatar.googleManaged')}</p>
-          ) : (
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={onAvatarChange}
-                disabled={loading}
-              />
-              <button type="button" onClick={onDeleteAvatar} disabled={loading || !user?.avatar?.url}>
-                {t('profile.avatar.delete')}
-              </button>
-            </div>
-          )}
-
-          {loading ? <p>{t('profile.avatar.loading')}</p> : null}
-          {feedback ? <p style={{ color: 'green' }}>{feedback}</p> : null}
-          {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
-        </section>
-
-        {accessToken ? <WebPushCard accessToken={accessToken} /> : null}
-        {accessToken ? <MonetizationCard accessToken={accessToken} /> : null}
-
-        <Link to="/change-password">{t('profile.changePassword')}</Link>
+    <main style={{ maxWidth: 980, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' }}>
+      <Card title="Dashboard del centro">
+        <p>
+          <strong>Centro:</strong> {activeOrganization?.displayName ?? activeOrganization?.name ?? '-'}
+        </p>
+        <p>
+          <strong>Tipo:</strong> {activeOrganization?.type ?? '-'}
+        </p>
+        <p>
+          <strong>Contacto:</strong> {activeOrganization?.contactEmail ?? activeOrganization?.phone ?? '-'}
+        </p>
+        <p>
+          <strong>Ubicación:</strong> {activeOrganization?.city ?? '-'}, {activeOrganization?.country ?? '-'}
+        </p>
+        <p>
+          <strong>Estado:</strong> {activeOrganization?.status ?? '-'} / onboarding {onboardingCompleted ? 'completo' : 'pendiente'}
+        </p>
+        <p>
+          <strong>Tu rol:</strong> {activeMembership?.role ?? '-'}
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <Link to="/organization/profile">Editar perfil del centro</Link>
+        </div>
       </Card>
+
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+        {MODULES.map((module) => (
+          <Card key={module.key} title={module.title}>
+            <p>{module.description}</p>
+          </Card>
+        ))}
+      </section>
     </main>
   );
 };

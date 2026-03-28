@@ -179,7 +179,7 @@ export const LoginPage = (): ReactElement => {
 };
 
 export const PostLoginResolverPage = (): ReactElement => {
-  const { loading, user, organizations } = useAuth();
+  const { loading, user, organizations, activeOrganizationId } = useAuth();
 
   if (loading) {
     return <p>Cargando...</p>;
@@ -193,11 +193,17 @@ export const PostLoginResolverPage = (): ReactElement => {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (organizations.length === 1) {
-    return <Navigate to="/app" replace />;
+  if (!activeOrganizationId && organizations.length > 1) {
+    return <Navigate to="/select-organization" replace />;
   }
 
-  return <Navigate to="/select-organization" replace />;
+  const activeOrganization = organizations.find((organization) => organization.id === (activeOrganizationId ?? organizations[0]?.id));
+
+  if (!activeOrganization?.onboardingCompleted || activeOrganization.status === 'onboarding') {
+    return <Navigate to="/onboarding/organization" replace />;
+  }
+
+  return <Navigate to="/app" replace />;
 };
 
 export const VerifyEmailPage = (): ReactElement => {
