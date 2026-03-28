@@ -28,8 +28,8 @@ const MODULES: DashboardModule[] = [
   {
     key: 'schedule',
     title: 'Agenda',
-    description: 'Próximamente: configuración de agenda y horarios.',
-    path: ''
+    description: 'Configurá agenda base, bloqueos y disponibilidad por profesional.',
+    path: '/app/professionals'
   },
   {
     key: 'appointments',

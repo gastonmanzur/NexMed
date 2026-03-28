@@ -86,9 +86,10 @@ export const ProfessionalsListPage = (): ReactElement => {
                     ? professional.specialties.map((specialty) => specialty.name).join(', ')
                     : 'Sin especialidades asociadas'}
                 </p>
-                {canManage ? (
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <Link to={`/app/professionals/${professional.id}/edit`}>Editar</Link>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <Link to={`/app/professionals/${professional.id}/availability`}>Agenda</Link>
+                  {canManage ? <Link to={`/app/professionals/${professional.id}/edit`}>Editar</Link> : null}
+                  {canManage ? (
                     <button
                       type="button"
                       onClick={async () => {
@@ -111,8 +112,8 @@ export const ProfessionalsListPage = (): ReactElement => {
                     >
                       {professional.status === 'active' ? 'Desactivar' : 'Activar'}
                     </button>
-                  </div>
-                ) : null}
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
