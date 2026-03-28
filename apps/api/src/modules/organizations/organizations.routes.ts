@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../../core/async-handler.js';
 import { requireAuth } from '../auth/middleware/auth.middleware.js';
 import { organizationController } from './controllers/organization.controller.js';
-import { requireOrganizationMember } from './middleware/organization-auth.middleware.js';
+import { requireOrganizationMember, requireOrganizationRole } from './middleware/organization-auth.middleware.js';
 
 export const organizationsRouter = Router();
 
@@ -15,4 +15,20 @@ organizationsRouter.get(
   '/:organizationId/membership',
   asyncHandler(requireOrganizationMember),
   asyncHandler(organizationController.myMembershipInOrganization)
+);
+organizationsRouter.get(
+  '/:organizationId/profile',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(organizationController.getProfile)
+);
+organizationsRouter.patch(
+  '/:organizationId/profile',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(organizationController.updateProfile)
+);
+organizationsRouter.get(
+  '/:organizationId/onboarding-status',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(organizationController.getOnboardingStatus)
 );

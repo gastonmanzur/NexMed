@@ -1,7 +1,14 @@
-import type { OrganizationDto, OrganizationMembershipDto } from '@starter/shared-types';
+import type {
+  OrganizationDto,
+  OrganizationMembershipDto,
+  OrganizationOnboardingStatusDto,
+  OrganizationProfileDto,
+  OrganizationSettingsDto
+} from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { OrganizationMemberRepository } from '../repositories/organization-member.repository.js';
 import { OrganizationRepository } from '../repositories/organization.repository.js';
+import { OrganizationSettingsRepository } from '../repositories/organization-settings.repository.js';
 
 interface CreateOrganizationInput {
   name: string;
@@ -13,46 +20,65 @@ interface CreateOrganizationInput {
   country?: string | undefined;
 }
 
+interface UpdateOrganizationProfileInput {
+  name: string;
+  displayName?: string | undefined;
+  type: 'clinic' | 'office' | 'esthetic_center' | 'professional_cabinet' | 'other';
+  contactEmail?: string | undefined;
+  phone?: string | undefined;
+  address?: string | undefined;
+  city: string;
+  country: string;
+  description?: string | undefined;
+  logoUrl?: string | undefined;
+  timezone: string;
+  locale?: string | undefined;
+  currency?: string | undefined;
+}
+
+interface GetOrganizationForUserInput {
+  actorUserId: string;
+  actorGlobalRole: 'super_admin' | 'user';
+  organizationId: string;
+}
+
+const ONBOARDING_REQUIRED_FIELDS = ['name', 'type', 'contactChannel', 'city', 'country', 'timezone'] as const;
+
 export class OrganizationService {
   constructor(
     private readonly organizations = new OrganizationRepository(),
-    private readonly members = new OrganizationMemberRepository()
+    private readonly members = new OrganizationMemberRepository(),
+    private readonly settings = new OrganizationSettingsRepository()
   ) {}
 
   async createOrganization(actorUserId: string, input: CreateOrganizationInput): Promise<{ organization: OrganizationDto; membership: OrganizationMembershipDto }> {
     const baseSlug = this.slugify(input.name);
     const slug = await this.resolveUniqueSlug(baseSlug);
 
-    const createPayload: {
-      name: string;
-      slug?: string;
-      type: CreateOrganizationInput['type'];
-      contactEmail?: string;
-      phone?: string;
-      address?: string;
-      city?: string;
-      country?: string;
-      createdByUserId: string;
-    } = {
+    const createPayload = {
       name: input.name.trim(),
+      displayName: input.name.trim(),
       slug,
       type: input.type,
-      createdByUserId: actorUserId
+      createdByUserId: actorUserId,
+      onboardingCompleted: false,
+      status: 'onboarding' as const
     };
 
     const contactEmail = this.normalizeOptionalEmail(input.contactEmail);
-    const phone = this.normalizeOptionalText(input.phone);
+    const phone = this.normalizePhone(input.phone);
     const address = this.normalizeOptionalText(input.address);
     const city = this.normalizeOptionalText(input.city);
     const country = this.normalizeOptionalText(input.country);
 
-    if (contactEmail) createPayload.contactEmail = contactEmail;
-    if (phone) createPayload.phone = phone;
-    if (address) createPayload.address = address;
-    if (city) createPayload.city = city;
-    if (country) createPayload.country = country;
-
-    const organization = await this.organizations.create(createPayload);
+    const organization = await this.organizations.create({
+      ...createPayload,
+      ...(contactEmail ? { contactEmail } : {}),
+      ...(phone ? { phone } : {}),
+      ...(address ? { address } : {}),
+      ...(city ? { city } : {}),
+      ...(country ? { country } : {})
+    });
 
     const membership = await this.members.create({
       organizationId: organization._id.toString(),
@@ -83,7 +109,7 @@ export class OrganizationService {
     };
   }
 
-  async getOrganizationForUser(input: { actorUserId: string; actorGlobalRole: 'super_admin' | 'user'; organizationId: string }): Promise<OrganizationDto> {
+  async getOrganizationForUser(input: GetOrganizationForUserInput): Promise<OrganizationDto> {
     const organization = await this.organizations.findById(input.organizationId);
     if (!organization) {
       throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
@@ -106,6 +132,145 @@ export class OrganizationService {
     }
 
     return this.toMembershipDto(organizationId, membership.role, membership.status);
+  }
+
+  async getProfileForUser(input: { organizationId: string; actorUserId: string }): Promise<OrganizationProfileDto> {
+    const [organization, settings, membership] = await Promise.all([
+      this.organizations.findById(input.organizationId),
+      this.settings.findByOrganizationId(input.organizationId),
+      this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId)
+    ]);
+
+    if (!organization) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    if (!membership || membership.status !== 'active') {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
+
+    const organizationDto = this.toOrganizationDto(organization);
+    const onboarding = this.calculateOnboarding(organizationDto, settings ? this.toOrganizationSettingsDto(settings) : null);
+
+    return {
+      organization: organizationDto,
+      settings: settings ? this.toOrganizationSettingsDto(settings) : null,
+      membership: this.toMembershipDto(input.organizationId, membership.role, membership.status),
+      onboarding
+    };
+  }
+
+  async getOnboardingStatusForUser(input: { organizationId: string; actorUserId: string }): Promise<OrganizationOnboardingStatusDto> {
+    const profile = await this.getProfileForUser(input);
+    return profile.onboarding;
+  }
+
+  async updateProfile(input: {
+    organizationId: string;
+    actorUserId: string;
+    data: UpdateOrganizationProfileInput;
+  }): Promise<OrganizationProfileDto> {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active') {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
+
+    const organization = await this.organizations.findById(input.organizationId);
+    if (!organization) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    const normalizedInput = {
+      name: input.data.name.trim(),
+      displayName: this.normalizeOptionalText(input.data.displayName) ?? input.data.name.trim(),
+      type: input.data.type,
+      contactEmail: this.normalizeOptionalEmail(input.data.contactEmail),
+      phone: this.normalizePhone(input.data.phone),
+      address: this.normalizeOptionalText(input.data.address),
+      city: input.data.city.trim(),
+      country: input.data.country.trim(),
+      description: this.normalizeOptionalText(input.data.description),
+      logoUrl: this.normalizeOptionalText(input.data.logoUrl),
+      timezone: input.data.timezone.trim(),
+      locale: this.normalizeOptionalText(input.data.locale),
+      currency: this.normalizeOptionalText(input.data.currency)
+    };
+
+    const nextSettings = await this.settings.upsertByOrganizationId({
+      organizationId: input.organizationId,
+      timezone: normalizedInput.timezone,
+      locale: normalizedInput.locale,
+      currency: normalizedInput.currency,
+      onboardingStep: 'completed_profile'
+    });
+
+    const onboardingPreview = this.calculateOnboarding(
+      {
+        id: organization._id.toString(),
+        name: normalizedInput.name,
+        type: normalizedInput.type,
+        contactEmail: normalizedInput.contactEmail ?? null,
+        phone: normalizedInput.phone ?? null,
+        city: normalizedInput.city,
+        country: normalizedInput.country,
+        onboardingCompleted: organization.onboardingCompleted ?? false,
+        status: organization.status
+      },
+      this.toOrganizationSettingsDto(nextSettings)
+    );
+
+    const nextStatus = onboardingPreview.onboardingCompleted ? 'active' : 'onboarding';
+
+    const updatedOrganization = await this.organizations.updateById(input.organizationId, {
+      name: normalizedInput.name,
+      displayName: normalizedInput.displayName,
+      type: normalizedInput.type,
+      contactEmail: normalizedInput.contactEmail,
+      phone: normalizedInput.phone,
+      address: normalizedInput.address,
+      city: normalizedInput.city,
+      country: normalizedInput.country,
+      description: normalizedInput.description,
+      logoUrl: normalizedInput.logoUrl,
+      onboardingCompleted: onboardingPreview.onboardingCompleted,
+      status: organization.status === 'blocked' ? 'blocked' : organization.status === 'suspended' ? 'suspended' : nextStatus
+    });
+
+    if (!updatedOrganization) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    return {
+      organization: this.toOrganizationDto(updatedOrganization),
+      settings: this.toOrganizationSettingsDto(nextSettings),
+      membership: this.toMembershipDto(input.organizationId, membership.role, membership.status),
+      onboarding: this.calculateOnboarding(this.toOrganizationDto(updatedOrganization), this.toOrganizationSettingsDto(nextSettings))
+    };
+  }
+
+  private calculateOnboarding(
+    organization: Pick<OrganizationDto, 'id' | 'name' | 'type' | 'contactEmail' | 'phone' | 'city' | 'country' | 'status' | 'onboardingCompleted'>,
+    settings: Pick<OrganizationSettingsDto, 'timezone'> | null
+  ): OrganizationOnboardingStatusDto {
+    const missingFields: string[] = [];
+
+    if (!organization.name?.trim()) missingFields.push('name');
+    if (!organization.type?.trim()) missingFields.push('type');
+    if (!organization.contactEmail?.trim() && !organization.phone?.trim()) missingFields.push('contactChannel');
+    if (!organization.city?.trim()) missingFields.push('city');
+    if (!organization.country?.trim()) missingFields.push('country');
+    if (!settings?.timezone?.trim()) missingFields.push('timezone');
+
+    const onboardingCompleted = missingFields.length === 0;
+    const nextStep = onboardingCompleted ? null : 'complete_organization_profile';
+
+    return {
+      organizationId: organization.id,
+      status: organization.status,
+      onboardingCompleted,
+      missingFields,
+      nextStep
+    };
   }
 
   private async resolveUniqueSlug(baseSlug: string): Promise<string> {
@@ -145,6 +310,15 @@ export class OrganizationService {
     return normalized ? normalized.toLowerCase() : undefined;
   }
 
+  private normalizePhone(value?: string): string | undefined {
+    const normalized = this.normalizeOptionalText(value);
+    if (!normalized) {
+      return undefined;
+    }
+
+    return normalized.replace(/[^\d+()\-\s]/g, '').replace(/\s+/g, ' ');
+  }
+
   private normalizeOptionalText(value?: string): string | undefined {
     const normalized = value?.trim();
     return normalized && normalized.length > 0 ? normalized : undefined;
@@ -153,6 +327,7 @@ export class OrganizationService {
   private toOrganizationDto(org: {
     _id: { toString(): string };
     name: string;
+    displayName?: string | null;
     slug?: string | null;
     type: OrganizationDto['type'];
     contactEmail?: string | null;
@@ -160,7 +335,10 @@ export class OrganizationService {
     address?: string | null;
     city?: string | null;
     country?: string | null;
+    description?: string | null;
+    logoUrl?: string | null;
     status: OrganizationDto['status'];
+    onboardingCompleted?: boolean;
     createdByUserId: { toString(): string };
     createdAt: Date;
     updatedAt: Date;
@@ -168,6 +346,7 @@ export class OrganizationService {
     return {
       id: org._id.toString(),
       name: org.name,
+      displayName: org.displayName ?? null,
       slug: org.slug ?? null,
       type: org.type,
       contactEmail: org.contactEmail ?? null,
@@ -175,10 +354,33 @@ export class OrganizationService {
       address: org.address ?? null,
       city: org.city ?? null,
       country: org.country ?? null,
+      description: org.description ?? null,
+      logoUrl: org.logoUrl ?? null,
       status: org.status,
+      onboardingCompleted: org.onboardingCompleted ?? false,
       createdByUserId: org.createdByUserId.toString(),
       createdAt: org.createdAt.toISOString(),
       updatedAt: org.updatedAt.toISOString()
+    };
+  }
+
+  private toOrganizationSettingsDto(settings: {
+    organizationId: { toString(): string };
+    timezone: string;
+    locale?: string | null;
+    currency?: string | null;
+    onboardingStep?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): OrganizationSettingsDto {
+    return {
+      organizationId: settings.organizationId.toString(),
+      timezone: settings.timezone,
+      locale: settings.locale ?? null,
+      currency: settings.currency ?? null,
+      onboardingStep: settings.onboardingStep ?? null,
+      createdAt: settings.createdAt.toISOString(),
+      updatedAt: settings.updatedAt.toISOString()
     };
   }
 
@@ -194,3 +396,6 @@ export class OrganizationService {
     };
   }
 }
+
+export type { UpdateOrganizationProfileInput };
+export { ONBOARDING_REQUIRED_FIELDS };

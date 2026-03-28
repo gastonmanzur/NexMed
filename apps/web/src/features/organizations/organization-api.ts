@@ -1,4 +1,9 @@
-import type { OrganizationDto, OrganizationMembershipDto } from '@starter/shared-types';
+import type {
+  OrganizationDto,
+  OrganizationMembershipDto,
+  OrganizationOnboardingStatusDto,
+  OrganizationProfileDto
+} from '@starter/shared-types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
 
@@ -63,6 +68,55 @@ export const organizationApi = {
       {
         method: 'POST',
         body: JSON.stringify(input),
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    );
+
+    return result.data;
+  },
+
+  getProfile: async (accessToken: string, organizationId: string): Promise<OrganizationProfileDto> => {
+    const result = await request<{ success: true; data: OrganizationProfileDto }>(`/organizations/${organizationId}/profile`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  updateProfile: async (
+    accessToken: string,
+    organizationId: string,
+    input: {
+      name: string;
+      displayName?: string;
+      type: 'clinic' | 'office' | 'esthetic_center' | 'professional_cabinet' | 'other';
+      contactEmail?: string;
+      phone?: string;
+      address?: string;
+      city: string;
+      country: string;
+      description?: string;
+      logoUrl?: string;
+      timezone: string;
+      locale?: string;
+      currency?: string;
+    }
+  ): Promise<OrganizationProfileDto> => {
+    const result = await request<{ success: true; data: OrganizationProfileDto }>(`/organizations/${organizationId}/profile`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  getOnboardingStatus: async (accessToken: string, organizationId: string): Promise<OrganizationOnboardingStatusDto> => {
+    const result = await request<{ success: true; data: OrganizationOnboardingStatusDto }>(
+      `/organizations/${organizationId}/onboarding-status`,
+      {
+        method: 'GET',
         headers: { Authorization: `Bearer ${accessToken}` }
       }
     );

@@ -15,11 +15,12 @@ import { ProtectedRoute } from '../features/auth/ProtectedRoute';
 import { UnauthorizedPage } from '../features/auth/UnauthorizedPage';
 import { DashboardPage } from '../features/protected/DashboardPage';
 import {
-  AppPlaceholderPage,
   CreateOrganizationPage,
   OnboardingPage,
   SelectOrganizationPage
 } from '../features/organizations/pages';
+import { OrganizationOnboardingPage } from '../features/organizations/OrganizationOnboardingPage';
+import { OrganizationProfilePage } from '../features/organizations/OrganizationProfilePage';
 
 export const App = (): ReactElement => {
   return (
@@ -47,6 +48,14 @@ export const App = (): ReactElement => {
         }
       />
       <Route
+        path="/onboarding/organization"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <OrganizationOnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/organizations/new"
         element={
           <ProtectedRoute>
@@ -63,10 +72,18 @@ export const App = (): ReactElement => {
         }
       />
       <Route
+        path="/organization/profile"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <OrganizationProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/app"
         element={
           <ProtectedRoute requireActiveOrganization>
-            <AppPlaceholderPage />
+            <DashboardPage />
           </ProtectedRoute>
         }
       />
