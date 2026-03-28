@@ -21,6 +21,10 @@ import {
 } from '../features/organizations/pages';
 import { OrganizationOnboardingPage } from '../features/organizations/OrganizationOnboardingPage';
 import { OrganizationProfilePage } from '../features/organizations/OrganizationProfilePage';
+import { ProfessionalsListPage } from '../features/professionals/ProfessionalsListPage';
+import { ProfessionalFormPage } from '../features/professionals/ProfessionalFormPage';
+import { SpecialtiesListPage } from '../features/specialties/SpecialtiesListPage';
+import { SpecialtyFormPage } from '../features/specialties/SpecialtyFormPage';
 
 export const App = (): ReactElement => {
   return (
@@ -92,6 +96,54 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute requireActiveOrganization>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professionals"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <ProfessionalsListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professionals/new"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <ProfessionalFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professionals/:professionalId/edit"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <ProfessionalFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/specialties"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <SpecialtiesListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/specialties/new"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <SpecialtyFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/specialties/:specialtyId/edit"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <SpecialtyFormPage />
           </ProtectedRoute>
         }
       />
