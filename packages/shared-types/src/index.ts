@@ -208,3 +208,31 @@ export interface CalculatedAvailabilityDto {
   consideredRules: Array<Pick<AvailabilityRuleDto, 'id' | 'weekday' | 'startTime' | 'endTime' | 'status'>>;
   appliedExceptions: Array<Pick<AvailabilityExceptionDto, 'id' | 'date' | 'type' | 'startTime' | 'endTime' | 'status'>>;
 }
+
+
+export type AppointmentStatus = 'booked' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
+export type AppointmentSource = 'staff_manual' | 'admin_manual' | 'patient_self_service';
+
+export interface AppointmentDto {
+  id: string;
+  organizationId: string;
+  professionalId: string;
+  specialtyId: string | null;
+  patientProfileId: string | null;
+  patientName: string;
+  patientEmail: string | null;
+  patientPhone: string | null;
+  startAt: string;
+  endAt: string;
+  status: AppointmentStatus;
+  source: AppointmentSource;
+  notes: string | null;
+  createdByUserId: string;
+  canceledByUserId: string | null;
+  canceledAt: string | null;
+  cancelReason: string | null;
+  rescheduledFromAppointmentId: string | null;
+  rescheduledToAppointmentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

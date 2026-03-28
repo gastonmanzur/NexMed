@@ -26,6 +26,10 @@ import { ProfessionalFormPage } from '../features/professionals/ProfessionalForm
 import { ProfessionalAvailabilityPage } from '../features/professionals/ProfessionalAvailabilityPage';
 import { SpecialtiesListPage } from '../features/specialties/SpecialtiesListPage';
 import { SpecialtyFormPage } from '../features/specialties/SpecialtyFormPage';
+import { AppointmentCreatePage } from '../features/appointments/AppointmentCreatePage';
+import { AppointmentsListPage } from '../features/appointments/AppointmentsListPage';
+import { AppointmentDetailPage } from '../features/appointments/AppointmentDetailPage';
+import { AppointmentReschedulePage } from '../features/appointments/AppointmentReschedulePage';
 
 export const App = (): ReactElement => {
   return (
@@ -157,6 +161,39 @@ export const App = (): ReactElement => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/app/appointments"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <AppointmentsListPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/appointments/new"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <AppointmentCreatePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/appointments/:appointmentId"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <AppointmentDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/appointments/:appointmentId/reschedule"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <AppointmentReschedulePage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/change-password"
         element={
