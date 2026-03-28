@@ -1,15 +1,46 @@
+import type { OrganizationMemberRole, OrganizationMemberStatus } from '@starter/shared-types';
 import type { ReactElement } from 'react';
 import { useMemo } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 
-const MODULES = [
-  { key: 'professionals', title: 'Profesionales', description: 'Próximamente: gestión de profesionales y roles clínicos.' },
-  { key: 'specialties', title: 'Especialidades', description: 'Próximamente: catálogo de especialidades del centro.' },
-  { key: 'schedule', title: 'Agenda', description: 'Próximamente: configuración de agenda y horarios.' },
-  { key: 'appointments', title: 'Turnos', description: 'Próximamente: administración de turnos y estados.' }
+interface DashboardModule {
+  key: string;
+  title: string;
+  description: string;
+  path: string;
+}
+
+const MODULES: DashboardModule[] = [
+  {
+    key: 'professionals',
+    title: 'Profesionales',
+    description: 'Gestioná altas, edición, estados y especialidades asociadas.',
+    path: '/app/professionals'
+  },
+  {
+    key: 'specialties',
+    title: 'Especialidades',
+    description: 'Administrá el catálogo de servicios y su estado operativo.',
+    path: '/app/specialties'
+  },
+  {
+    key: 'schedule',
+    title: 'Agenda',
+    description: 'Próximamente: configuración de agenda y horarios.',
+    path: ''
+  },
+  {
+    key: 'appointments',
+    title: 'Turnos',
+    description: 'Próximamente: administración de turnos y estados.',
+    path: ''
+  }
 ];
+
+const canManageByRole = (role: OrganizationMemberRole | undefined, status: OrganizationMemberStatus | undefined): boolean =>
+  status === 'active' && (role === 'owner' || role === 'admin');
 
 export const DashboardPage = (): ReactElement => {
   const { user, activeOrganizationId, organizations, memberships, onboardingCompleted } = useAuth();
@@ -23,6 +54,8 @@ export const DashboardPage = (): ReactElement => {
     () => memberships.find((membership) => membership.organizationId === activeOrganizationId) ?? null,
     [activeOrganizationId, memberships]
   );
+
+  const canManage = canManageByRole(activeMembership?.role, activeMembership?.status);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -57,15 +90,19 @@ export const DashboardPage = (): ReactElement => {
         <p>
           <strong>Tu rol:</strong> {activeMembership?.role ?? '-'}
         </p>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Link to="/organization/profile">Editar perfil del centro</Link>
+          <Link to="/app/professionals">Ir a profesionales</Link>
+          <Link to="/app/specialties">Ir a especialidades</Link>
         </div>
+        {!canManage ? <p style={{ color: '#555' }}>Tenés acceso de lectura para módulos operativos.</p> : null}
       </Card>
 
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
         {MODULES.map((module) => (
           <Card key={module.key} title={module.title}>
             <p>{module.description}</p>
+            {module.path ? <Link to={module.path}>Abrir módulo</Link> : <p style={{ color: '#666' }}>Disponible en una próxima etapa.</p>}
           </Card>
         ))}
       </section>

@@ -109,3 +109,41 @@ export interface PushDeviceDto {
   createdAt: string;
   updatedAt: string;
 }
+
+
+export type ProfessionalStatus = 'active' | 'inactive' | 'archived';
+export type SpecialtyStatus = 'active' | 'inactive' | 'archived';
+
+export interface SpecialtySummaryDto {
+  id: string;
+  name: string;
+  status: SpecialtyStatus;
+}
+
+export interface ProfessionalDto {
+  id: string;
+  organizationId: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+  licenseNumber: string | null;
+  notes: string | null;
+  status: ProfessionalStatus;
+  userId: string | null;
+  specialties: SpecialtySummaryDto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SpecialtyDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string | null;
+  status: SpecialtyStatus;
+  professionalCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
