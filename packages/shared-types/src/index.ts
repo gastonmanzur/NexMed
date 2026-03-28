@@ -147,3 +147,64 @@ export interface SpecialtyDto {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AvailabilityRuleStatus = 'active' | 'inactive' | 'archived';
+export type AvailabilityExceptionStatus = 'active' | 'inactive' | 'archived';
+export type AvailabilityExceptionType = 'full_day_block' | 'partial_block';
+
+export interface AvailabilityRuleDto {
+  id: string;
+  organizationId: string;
+  professionalId: string;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  appointmentDurationMinutes: number;
+  bufferMinutes: number;
+  status: AvailabilityRuleStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AvailabilityExceptionDto {
+  id: string;
+  organizationId: string;
+  professionalId: string;
+  date: string;
+  type: AvailabilityExceptionType;
+  startTime: string | null;
+  endTime: string | null;
+  reason: string | null;
+  status: AvailabilityExceptionStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AvailabilitySlotDto {
+  date: string;
+  startTime: string;
+  endTime: string;
+  startsAtIso: string;
+  endsAtIso: string;
+}
+
+export interface AvailabilityByDateDto {
+  date: string;
+  slots: AvailabilitySlotDto[];
+}
+
+export interface CalculatedAvailabilityDto {
+  professionalId: string;
+  organizationId: string;
+  timezone: string;
+  range: {
+    startDate: string;
+    endDate: string;
+  };
+  professionalStatus: ProfessionalStatus;
+  isBookableInCurrentStage: boolean;
+  note: string;
+  days: AvailabilityByDateDto[];
+  consideredRules: Array<Pick<AvailabilityRuleDto, 'id' | 'weekday' | 'startTime' | 'endTime' | 'status'>>;
+  appliedExceptions: Array<Pick<AvailabilityExceptionDto, 'id' | 'date' | 'type' | 'startTime' | 'endTime' | 'status'>>;
+}

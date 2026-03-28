@@ -23,6 +23,7 @@ import { OrganizationOnboardingPage } from '../features/organizations/Organizati
 import { OrganizationProfilePage } from '../features/organizations/OrganizationProfilePage';
 import { ProfessionalsListPage } from '../features/professionals/ProfessionalsListPage';
 import { ProfessionalFormPage } from '../features/professionals/ProfessionalFormPage';
+import { ProfessionalAvailabilityPage } from '../features/professionals/ProfessionalAvailabilityPage';
 import { SpecialtiesListPage } from '../features/specialties/SpecialtiesListPage';
 import { SpecialtyFormPage } from '../features/specialties/SpecialtyFormPage';
 
@@ -120,6 +121,15 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute requireActiveOrganization>
             <ProfessionalFormPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/app/professionals/:professionalId/availability"
+        element={
+          <ProtectedRoute requireActiveOrganization>
+            <ProfessionalAvailabilityPage />
           </ProtectedRoute>
         }
       />

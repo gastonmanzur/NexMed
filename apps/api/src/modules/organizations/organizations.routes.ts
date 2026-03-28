@@ -4,6 +4,7 @@ import { requireAuth } from '../auth/middleware/auth.middleware.js';
 import { organizationController } from './controllers/organization.controller.js';
 import { requireOrganizationMember, requireOrganizationRole } from './middleware/organization-auth.middleware.js';
 import { professionalsRouter, specialtiesRouter } from '../professionals/professionals.routes.js';
+import { professionalAvailabilityRouter } from '../availability/availability.routes.js';
 
 export const organizationsRouter = Router();
 
@@ -36,3 +37,4 @@ organizationsRouter.get(
 
 organizationsRouter.use('/:organizationId/professionals', professionalsRouter);
 organizationsRouter.use('/:organizationId/specialties', specialtiesRouter);
+organizationsRouter.use('/:organizationId/professionals/:professionalId', professionalAvailabilityRouter);
