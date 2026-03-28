@@ -13,6 +13,7 @@ import { AvailabilityRuleRepository } from '../repositories/availability-rule.re
 import { AvailabilityExceptionRepository } from '../repositories/availability-exception.repository.js';
 import type { AvailabilityRuleDocument } from '../models/availability-rule.model.js';
 import type { AvailabilityExceptionDocument } from '../models/availability-exception.model.js';
+import { AppointmentRepository } from '../../appointments/repositories/appointment.repository.js';
 
 interface CreateAvailabilityRuleInput {
   weekday: number;
@@ -118,7 +119,8 @@ export class AvailabilityService {
     private readonly rules = new AvailabilityRuleRepository(),
     private readonly exceptions = new AvailabilityExceptionRepository(),
     private readonly professionals = new ProfessionalRepository(),
-    private readonly organizationSettings = new OrganizationSettingsRepository()
+    private readonly organizationSettings = new OrganizationSettingsRepository(),
+    private readonly appointments = new AppointmentRepository()
   ) {}
 
   async listRules(organizationId: string, professionalId: string): Promise<AvailabilityRuleDto[]> {
@@ -264,6 +266,13 @@ export class AvailabilityService {
       validatedRange.endDate
     );
 
+    const bookedAppointments = await this.appointments.findBookedByProfessionalAndRange(
+      organizationId,
+      professionalId,
+      new Date(`${validatedRange.startDate}T00:00:00.000Z`),
+      new Date(`${validatedRange.endDate}T23:59:59.999Z`)
+    );
+
     const exceptionsByDate = new Map<string, AvailabilityExceptionDocument[]>();
     for (const exception of activeExceptions) {
       const current = exceptionsByDate.get(exception.date) ?? [];
@@ -286,15 +295,33 @@ export class AvailabilityService {
         const slotStart = parseTimeToMinutes(slot.startTime);
         const slotEnd = parseTimeToMinutes(slot.endTime);
 
-        return dayExceptions.every((exception) => {
+        const blockedByException = dayExceptions.some((exception) => {
           if (exception.type !== 'partial_block' || !exception.startTime || !exception.endTime) {
-            return true;
+            return false;
           }
 
           const blockStart = parseTimeToMinutes(exception.startTime);
           const blockEnd = parseTimeToMinutes(exception.endTime);
-          return !minutesOverlap(slotStart, slotEnd, blockStart, blockEnd);
+          return minutesOverlap(slotStart, slotEnd, blockStart, blockEnd);
         });
+
+        if (blockedByException) {
+          return false;
+        }
+
+        const slotStartAt = new Date(`${slot.startsAtIso}Z`);
+        const slotEndAt = new Date(`${slot.endsAtIso}Z`);
+
+        const blockedByBookedAppointment = bookedAppointments.some((appointment) =>
+          minutesOverlap(
+            slotStartAt.getTime(),
+            slotEndAt.getTime(),
+            appointment.startAt.getTime(),
+            appointment.endAt.getTime()
+          )
+        );
+
+        return !blockedByBookedAppointment;
       });
 
       filteredSlots.sort((a, b) => compareDateStrings(a.startsAtIso, b.startsAtIso));
@@ -308,8 +335,8 @@ export class AvailabilityService {
       timezone,
       range: validatedRange,
       professionalStatus: professional.status,
-      isBookableInCurrentStage: false,
-      note: 'Disponibilidad teórica. En Etapa 5 se excluirán slots ocupados por appointments reales.',
+      isBookableInCurrentStage: true,
+      note: 'Disponibilidad operativa: se aplican reglas, excepciones y turnos booked.',
       days,
       consideredRules: activeRules.map((rule) => ({
         id: rule._id.toString(),

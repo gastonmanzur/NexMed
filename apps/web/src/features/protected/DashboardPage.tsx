@@ -34,8 +34,8 @@ const MODULES: DashboardModule[] = [
   {
     key: 'appointments',
     title: 'Turnos',
-    description: 'Próximamente: administración de turnos y estados.',
-    path: ''
+    description: 'Gestión de turnos: creación, cancelación y reprogramación.',
+    path: '/app/appointments'
   }
 ];
 
@@ -94,6 +94,7 @@ export const DashboardPage = (): ReactElement => {
           <Link to="/organization/profile">Editar perfil del centro</Link>
           <Link to="/app/professionals">Ir a profesionales</Link>
           <Link to="/app/specialties">Ir a especialidades</Link>
+          <Link to="/app/appointments">Ir a turnos</Link>
         </div>
         {!canManage ? <p style={{ color: '#555' }}>Tenés acceso de lectura para módulos operativos.</p> : null}
       </Card>
