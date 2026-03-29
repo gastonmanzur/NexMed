@@ -30,6 +30,13 @@ import { AppointmentCreatePage } from '../features/appointments/AppointmentCreat
 import { AppointmentsListPage } from '../features/appointments/AppointmentsListPage';
 import { AppointmentDetailPage } from '../features/appointments/AppointmentDetailPage';
 import { AppointmentReschedulePage } from '../features/appointments/AppointmentReschedulePage';
+import { JoinPage } from '../features/patient/JoinPage';
+import { PatientOrganizationsPage } from '../features/patient/PatientOrganizationsPage';
+import { PatientBookPage } from '../features/patient/PatientBookPage';
+import { PatientAppointmentsPage } from '../features/patient/PatientAppointmentsPage';
+import { PatientReschedulePage } from '../features/patient/PatientReschedulePage';
+import { PatientProfilePage } from '../features/patient/PatientProfilePage';
+import { PatientNotificationsPage } from '../features/patient/PatientNotificationsPage';
 
 export const App = (): ReactElement => {
   return (
@@ -38,6 +45,7 @@ export const App = (): ReactElement => {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/join/:tokenOrSlug" element={<JoinPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
@@ -209,6 +217,54 @@ export const App = (): ReactElement => {
             <AdminPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/patient/organizations"
+        element={(
+          <ProtectedRoute>
+            <PatientOrganizationsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/organizations/:organizationId/book"
+        element={(
+          <ProtectedRoute>
+            <PatientBookPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/appointments"
+        element={(
+          <ProtectedRoute>
+            <PatientAppointmentsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/appointments/:appointmentId/reschedule"
+        element={(
+          <ProtectedRoute>
+            <PatientReschedulePage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/profile"
+        element={(
+          <ProtectedRoute>
+            <PatientProfilePage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/notifications"
+        element={(
+          <ProtectedRoute>
+            <PatientNotificationsPage />
+          </ProtectedRoute>
+        )}
       />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />

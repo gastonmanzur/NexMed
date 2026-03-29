@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FirebaseError } from 'firebase/app';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,8 @@ import { Card } from '@starter/ui';
 import { getFirebaseAuth } from '../../lib/firebase-client';
 import { authApi } from './auth-api';
 import { useAuth } from './AuthContext';
+import { clearJoinIntent, readJoinIntent } from '../patient/join-intent';
+import { patientApi } from '../patient/patient-api';
 
 const viewStyle = { maxWidth: 560, margin: '2rem auto', padding: '1rem' };
 
@@ -179,10 +181,33 @@ export const LoginPage = (): ReactElement => {
 };
 
 export const PostLoginResolverPage = (): ReactElement => {
-  const { loading, user, organizations, activeOrganizationId } = useAuth();
+  const { loading, user, organizations, activeOrganizationId, accessToken } = useAuth();
+  const [joinResolved, setJoinResolved] = useState(false);
+
+  useEffect(() => {
+    if (!user || !accessToken) {
+      setJoinResolved(true);
+      return;
+    }
+
+    const pendingJoin = readJoinIntent();
+    if (!pendingJoin) {
+      setJoinResolved(true);
+      return;
+    }
+
+    void patientApi.resolveJoin(accessToken, pendingJoin).finally(() => {
+      clearJoinIntent();
+      setJoinResolved(true);
+    });
+  }, [accessToken, user]);
 
   if (loading) {
     return <p>Cargando...</p>;
+  }
+
+  if (!joinResolved) {
+    return <p>Resolviendo vinculación pendiente...</p>;
   }
 
   if (!user) {

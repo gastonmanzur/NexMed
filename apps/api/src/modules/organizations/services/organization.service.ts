@@ -34,6 +34,10 @@ interface UpdateOrganizationProfileInput {
   timezone: string;
   locale?: string | undefined;
   currency?: string | undefined;
+  patientCancellationAllowed?: boolean | undefined;
+  patientCancellationHoursLimit?: number | undefined;
+  patientRescheduleAllowed?: boolean | undefined;
+  patientRescheduleHoursLimit?: number | undefined;
 }
 
 interface GetOrganizationForUserInput {
@@ -193,7 +197,11 @@ export class OrganizationService {
       logoUrl: this.normalizeOptionalText(input.data.logoUrl),
       timezone: input.data.timezone.trim(),
       locale: this.normalizeOptionalText(input.data.locale),
-      currency: this.normalizeOptionalText(input.data.currency)
+      currency: this.normalizeOptionalText(input.data.currency),
+      patientCancellationAllowed: input.data.patientCancellationAllowed,
+      patientCancellationHoursLimit: input.data.patientCancellationHoursLimit,
+      patientRescheduleAllowed: input.data.patientRescheduleAllowed,
+      patientRescheduleHoursLimit: input.data.patientRescheduleHoursLimit
     };
 
     const nextSettings = await this.settings.upsertByOrganizationId({
@@ -201,7 +209,19 @@ export class OrganizationService {
       timezone: normalizedInput.timezone,
       locale: normalizedInput.locale,
       currency: normalizedInput.currency,
-      onboardingStep: 'completed_profile'
+      onboardingStep: 'completed_profile',
+      ...(normalizedInput.patientCancellationAllowed !== undefined
+        ? { patientCancellationAllowed: normalizedInput.patientCancellationAllowed }
+        : {}),
+      ...(normalizedInput.patientCancellationHoursLimit !== undefined
+        ? { patientCancellationHoursLimit: normalizedInput.patientCancellationHoursLimit }
+        : {}),
+      ...(normalizedInput.patientRescheduleAllowed !== undefined
+        ? { patientRescheduleAllowed: normalizedInput.patientRescheduleAllowed }
+        : {}),
+      ...(normalizedInput.patientRescheduleHoursLimit !== undefined
+        ? { patientRescheduleHoursLimit: normalizedInput.patientRescheduleHoursLimit }
+        : {})
     });
 
     const onboardingPreview = this.calculateOnboarding(
@@ -370,6 +390,10 @@ export class OrganizationService {
     locale?: string | null;
     currency?: string | null;
     onboardingStep?: string | null;
+    patientCancellationAllowed?: boolean;
+    patientCancellationHoursLimit?: number;
+    patientRescheduleAllowed?: boolean;
+    patientRescheduleHoursLimit?: number;
     createdAt: Date;
     updatedAt: Date;
   }): OrganizationSettingsDto {
@@ -379,6 +403,10 @@ export class OrganizationService {
       locale: settings.locale ?? null,
       currency: settings.currency ?? null,
       onboardingStep: settings.onboardingStep ?? null,
+      patientCancellationAllowed: settings.patientCancellationAllowed ?? true,
+      patientCancellationHoursLimit: settings.patientCancellationHoursLimit ?? 24,
+      patientRescheduleAllowed: settings.patientRescheduleAllowed ?? true,
+      patientRescheduleHoursLimit: settings.patientRescheduleHoursLimit ?? 24,
       createdAt: settings.createdAt.toISOString(),
       updatedAt: settings.updatedAt.toISOString()
     };

@@ -6,7 +6,11 @@ const organizationSettingsSchema = new mongoose.Schema(
     timezone: { type: String, required: true, trim: true },
     locale: { type: String, required: false, trim: true },
     currency: { type: String, required: false, trim: true },
-    onboardingStep: { type: String, required: false, trim: true }
+    onboardingStep: { type: String, required: false, trim: true },
+    patientCancellationAllowed: { type: Boolean, required: true, default: true },
+    patientCancellationHoursLimit: { type: Number, required: true, default: 24, min: 0, max: 720 },
+    patientRescheduleAllowed: { type: Boolean, required: true, default: true },
+    patientRescheduleHoursLimit: { type: Number, required: true, default: 24, min: 0, max: 720 }
   },
   { timestamps: true }
 );
