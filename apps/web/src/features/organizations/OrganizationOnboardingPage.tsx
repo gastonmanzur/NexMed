@@ -49,6 +49,10 @@ export const OrganizationOnboardingPage = (): ReactElement => {
   );
 
   const canEdit = activeMembership ? ['owner', 'admin'].includes(activeMembership.role) : false;
+  const activeOrganization = useMemo(
+    () => organizations.find((organization) => organization.id === activeOrganizationId) ?? null,
+    [activeOrganizationId, organizations]
+  );
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId) {
@@ -76,13 +80,29 @@ export const OrganizationOnboardingPage = (): ReactElement => {
           currency: profile.settings?.currency ?? 'ARS'
         });
 
-        setOrganizationsContext({
-          organizations: organizations.map((organization) =>
-            organization.id === profile.organization.id ? profile.organization : organization
-          ),
-          memberships,
-          activeOrganizationId
-        });
+        const shouldSyncContext =
+          !activeOrganization ||
+          activeOrganization.name !== profile.organization.name ||
+          activeOrganization.displayName !== profile.organization.displayName ||
+          activeOrganization.type !== profile.organization.type ||
+          activeOrganization.contactEmail !== profile.organization.contactEmail ||
+          activeOrganization.phone !== profile.organization.phone ||
+          activeOrganization.address !== profile.organization.address ||
+          activeOrganization.city !== profile.organization.city ||
+          activeOrganization.country !== profile.organization.country ||
+          activeOrganization.description !== profile.organization.description ||
+          activeOrganization.status !== profile.organization.status ||
+          activeOrganization.onboardingCompleted !== profile.organization.onboardingCompleted;
+
+        if (shouldSyncContext) {
+          setOrganizationsContext({
+            organizations: organizations.map((organization) =>
+              organization.id === profile.organization.id ? profile.organization : organization
+            ),
+            memberships,
+            activeOrganizationId
+          });
+        }
 
         if (profile.onboarding.onboardingCompleted) {
           navigate('/app', { replace: true });
@@ -93,7 +113,7 @@ export const OrganizationOnboardingPage = (): ReactElement => {
         setLoading(false);
       }
     })();
-  }, [accessToken, activeOrganizationId, memberships, navigate, organizations, setOrganizationsContext]);
+  }, [accessToken, activeOrganization, activeOrganizationId, memberships, navigate, organizations, setOrganizationsContext]);
 
   if (!accessToken) {
     return <Navigate to="/login" replace />;
