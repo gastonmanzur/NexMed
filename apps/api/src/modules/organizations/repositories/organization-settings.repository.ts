@@ -6,6 +6,10 @@ interface UpsertOrganizationSettingsInput {
   locale?: string | undefined;
   currency?: string | undefined;
   onboardingStep?: string | undefined;
+  patientCancellationAllowed?: boolean | undefined;
+  patientCancellationHoursLimit?: number | undefined;
+  patientRescheduleAllowed?: boolean | undefined;
+  patientRescheduleHoursLimit?: number | undefined;
 }
 
 export class OrganizationSettingsRepository {
@@ -21,7 +25,19 @@ export class OrganizationSettingsRepository {
           timezone: input.timezone,
           ...(input.locale !== undefined ? { locale: input.locale } : {}),
           ...(input.currency !== undefined ? { currency: input.currency } : {}),
-          ...(input.onboardingStep !== undefined ? { onboardingStep: input.onboardingStep } : {})
+          ...(input.onboardingStep !== undefined ? { onboardingStep: input.onboardingStep } : {}),
+          ...(input.patientCancellationAllowed !== undefined
+            ? { patientCancellationAllowed: input.patientCancellationAllowed }
+            : {}),
+          ...(input.patientCancellationHoursLimit !== undefined
+            ? { patientCancellationHoursLimit: input.patientCancellationHoursLimit }
+            : {}),
+          ...(input.patientRescheduleAllowed !== undefined
+            ? { patientRescheduleAllowed: input.patientRescheduleAllowed }
+            : {}),
+          ...(input.patientRescheduleHoursLimit !== undefined
+            ? { patientRescheduleHoursLimit: input.patientRescheduleHoursLimit }
+            : {})
         }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }

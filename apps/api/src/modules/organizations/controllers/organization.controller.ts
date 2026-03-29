@@ -28,7 +28,11 @@ const updateOrganizationProfileSchema = z.object({
   logoUrl: z.string().trim().url().optional(),
   timezone: z.string().trim().min(1).max(80),
   locale: z.string().trim().min(2).max(35).optional(),
-  currency: z.string().trim().min(3).max(10).optional()
+  currency: z.string().trim().min(3).max(10).optional(),
+  patientCancellationAllowed: z.boolean().optional(),
+  patientCancellationHoursLimit: z.number().int().min(0).max(720).optional(),
+  patientRescheduleAllowed: z.boolean().optional(),
+  patientRescheduleHoursLimit: z.number().int().min(0).max(720).optional()
 });
 
 const organizationIdSchema = z.object({

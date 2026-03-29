@@ -16,6 +16,11 @@ interface ListAppointmentsInput {
   to?: string;
 }
 
+interface ListPatientAppointmentsInput {
+  status?: AppointmentStatus;
+  organizationId?: string;
+}
+
 interface CreateAppointmentInput {
   professionalId: string;
   specialtyId?: string | undefined;
@@ -121,7 +126,12 @@ export class AppointmentsService {
     actorRole: 'owner' | 'admin' | 'staff' | 'patient',
     input: Omit<CreateAppointmentInput, 'source'>
   ): Promise<AppointmentDto> {
-    const source: AppointmentSource = actorRole === 'owner' || actorRole === 'admin' ? 'admin_manual' : 'staff_manual';
+    const source: AppointmentSource =
+      actorRole === 'owner' || actorRole === 'admin'
+        ? 'admin_manual'
+        : actorRole === 'patient'
+          ? 'patient_self_service'
+          : 'staff_manual';
 
     const normalized = await this.validateCreateInput(organizationId, {
       ...input,
@@ -210,6 +220,79 @@ export class AppointmentsService {
     return this.toDto(updated);
   }
 
+  async listPatientAppointments(patientProfileId: string, input: ListPatientAppointmentsInput): Promise<AppointmentDto[]> {
+    if (!isValidObjectId(patientProfileId)) {
+      throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');
+    }
+
+    if (input.organizationId && !isValidObjectId(input.organizationId)) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'organizationId is invalid');
+    }
+
+    const rows = await this.appointments.listByPatientProfile({
+      patientProfileId,
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.organizationId ? { organizationId: input.organizationId } : {})
+    });
+
+    return rows.map((item) => this.toDto(item));
+  }
+
+  async getAppointmentForPatient(patientProfileId: string, appointmentId: string): Promise<AppointmentDto> {
+    if (!isValidObjectId(patientProfileId)) {
+      throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');
+    }
+
+    if (!isValidObjectId(appointmentId)) {
+      throw new AppError('INVALID_APPOINTMENT_ID', 400, 'appointmentId is invalid');
+    }
+
+    const appointment = await this.appointments.findByIdForPatient(appointmentId, patientProfileId);
+    if (!appointment) {
+      throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    }
+
+    return this.toDto(appointment);
+  }
+
+  async cancelAppointmentAsPatient(
+    patientProfileId: string,
+    appointmentId: string,
+    actorUserId: string,
+    reason?: string
+  ): Promise<AppointmentDto> {
+    const appointment = await this.getAppointmentForPatient(patientProfileId, appointmentId);
+
+    if (!ACTIVE_BOOKING_STATUSES.includes(appointment.status)) {
+      throw new AppError('INVALID_APPOINTMENT_STATE', 409, `Appointment is not active (current status: ${appointment.status})`);
+    }
+
+    const updated = await this.appointments.updateByIdInOrganization(appointment.organizationId, appointment.id, {
+      status: 'canceled_by_patient',
+      canceledByUserId: actorUserId,
+      canceledAt: new Date(),
+      cancelReason: normalizeOptionalString(reason) ?? null
+    });
+
+    if (!updated) {
+      throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    }
+
+    await this.auditLogs.create({
+      organizationId: appointment.organizationId,
+      actorUserId,
+      action: 'appointment_canceled',
+      entityType: 'appointment',
+      entityId: appointment.id,
+      payload: {
+        previousStatus: appointment.status,
+        cancelReason: normalizeOptionalString(reason) ?? null
+      }
+    });
+
+    return this.toDto(updated);
+  }
+
   async rescheduleAppointment(
     organizationId: string,
     appointmentId: string,
@@ -223,7 +306,12 @@ export class AppointmentsService {
       throw new AppError('APPOINTMENT_ALREADY_RESCHEDULED', 409, 'Appointment already rescheduled');
     }
 
-    const source: AppointmentSource = actorRole === 'owner' || actorRole === 'admin' ? 'admin_manual' : 'staff_manual';
+    const source: AppointmentSource =
+      actorRole === 'owner' || actorRole === 'admin'
+        ? 'admin_manual'
+        : actorRole === 'patient'
+          ? 'patient_self_service'
+          : 'staff_manual';
 
     const normalized = await this.validateCreateInput(organizationId, {
       professionalId: normalizeOptionalString(input.newProfessionalId) ?? original.professionalId,

@@ -26,6 +26,12 @@ interface ListAppointmentFilters {
   to?: Date;
 }
 
+interface ListPatientAppointmentsFilters {
+  patientProfileId: string;
+  status?: AppointmentStatus;
+  organizationId?: string;
+}
+
 export class AppointmentRepository {
   async create(input: CreateAppointmentInput): Promise<AppointmentDocument> {
     return AppointmentModel.create(input);
@@ -54,6 +60,26 @@ export class AppointmentRepository {
     }
 
     return AppointmentModel.find(query).sort({ startAt: -1, createdAt: -1 }).exec();
+  }
+
+  async listByPatientProfile(filters: ListPatientAppointmentsFilters): Promise<AppointmentDocument[]> {
+    const query: Record<string, unknown> = {
+      patientProfileId: filters.patientProfileId
+    };
+
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    if (filters.organizationId) {
+      query.organizationId = filters.organizationId;
+    }
+
+    return AppointmentModel.find(query).sort({ startAt: 1, createdAt: -1 }).exec();
+  }
+
+  async findByIdForPatient(appointmentId: string, patientProfileId: string): Promise<AppointmentDocument | null> {
+    return AppointmentModel.findOne({ _id: appointmentId, patientProfileId }).exec();
   }
 
   async updateByIdInOrganization(

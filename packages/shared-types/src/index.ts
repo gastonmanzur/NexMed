@@ -59,6 +59,10 @@ export interface OrganizationSettingsDto {
   locale: string | null;
   currency: string | null;
   onboardingStep: string | null;
+  patientCancellationAllowed: boolean;
+  patientCancellationHoursLimit: number;
+  patientRescheduleAllowed: boolean;
+  patientRescheduleHoursLimit: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -233,6 +237,65 @@ export interface AppointmentDto {
   cancelReason: string | null;
   rescheduledFromAppointmentId: string | null;
   rescheduledToAppointmentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PatientOrganizationLinkStatus = 'active' | 'blocked' | 'archived';
+
+export interface PatientProfileDto {
+  id: string;
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  dateOfBirth: string | null;
+  documentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientOrganizationLinkDto {
+  id: string;
+  patientProfileId: string;
+  organizationId: string;
+  status: PatientOrganizationLinkStatus;
+  linkedAt: string;
+  source: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientOrganizationSummaryDto {
+  organization: OrganizationDto;
+  link: PatientOrganizationLinkDto;
+}
+
+export interface PatientMeDto {
+  user: AuthUserDto;
+  patientProfile: PatientProfileDto;
+  organizations: PatientOrganizationSummaryDto[];
+}
+
+export interface JoinOrganizationPreviewDto {
+  tokenOrSlug: string;
+  organization: Pick<OrganizationDto, 'id' | 'name' | 'displayName' | 'slug' | 'status' | 'type'>;
+}
+
+export type UserEventType =
+  | 'patient_joined_organization'
+  | 'patient_appointment_booked'
+  | 'patient_appointment_canceled'
+  | 'patient_appointment_rescheduled';
+
+export interface UserEventDto {
+  id: string;
+  userId: string;
+  organizationId: string | null;
+  type: UserEventType;
+  title: string;
+  body: string | null;
+  readAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
