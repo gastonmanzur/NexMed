@@ -7,6 +7,8 @@ import { SpecialtyRepository } from '../../professionals/repositories/specialty.
 import { ProfessionalSpecialtyRepository } from '../../professionals/repositories/professional-specialty.repository.js';
 import { AppointmentRepository } from '../repositories/appointment.repository.js';
 import { AuditLogRepository } from '../repositories/audit-log.repository.js';
+import { NotificationService } from '../../notifications/services/notification.service.js';
+import { WaitlistService } from '../../waitlist/services/waitlist.service.js';
 import type { AppointmentDocument } from '../models/appointment.model.js';
 
 interface ListAppointmentsInput {
@@ -82,7 +84,9 @@ export class AppointmentsService {
     private readonly specialties = new SpecialtyRepository(),
     private readonly professionalSpecialties = new ProfessionalSpecialtyRepository(),
     private readonly availabilityService = new AvailabilityService(),
-    private readonly auditLogs = new AuditLogRepository()
+    private readonly auditLogs = new AuditLogRepository(),
+    private readonly notifications = new NotificationService(),
+    private readonly waitlist = new WaitlistService()
   ) {}
 
   async listAppointments(organizationId: string, input: ListAppointmentsInput): Promise<AppointmentDto[]> {
@@ -176,7 +180,15 @@ export class AppointmentsService {
         }
       });
 
-      return this.toDto(created);
+      const createdDto = this.toDto(created);
+      await this.notifications.notifyPatientFromAppointment(
+        createdDto,
+        'appointment_booked',
+        'Turno reservado',
+        `Tu turno para ${new Date(createdDto.startAt).toLocaleString('es-AR', { hour12: false })} fue reservado.`
+      );
+
+      return createdDto;
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
         throw new AppError('APPOINTMENT_SLOT_TAKEN', 409, 'El horario acaba de ocuparse. Elegí otro slot.');
@@ -217,7 +229,22 @@ export class AppointmentsService {
       }
     });
 
-    return this.toDto(updated);
+    const updatedDto = this.toDto(updated);
+    await this.notifications.notifyPatientFromAppointment(
+      updatedDto,
+      'appointment_canceled',
+      'Turno cancelado',
+      'Tu turno fue cancelado.'
+    );
+    await this.waitlist.handleSlotFreed({
+      organizationId: updatedDto.organizationId,
+      professionalId: updatedDto.professionalId,
+      specialtyId: updatedDto.specialtyId,
+      startAt: new Date(appointment.startAt),
+      endAt: new Date(appointment.endAt)
+    });
+
+    return updatedDto;
   }
 
   async listPatientAppointments(patientProfileId: string, input: ListPatientAppointmentsInput): Promise<AppointmentDto[]> {
@@ -290,7 +317,17 @@ export class AppointmentsService {
       }
     });
 
-    return this.toDto(updated);
+    const updatedDto = this.toDto(updated);
+    await this.notifications.notifyPatientFromAppointment(updatedDto, 'appointment_canceled', 'Turno cancelado', 'Tu turno fue cancelado.');
+    await this.waitlist.handleSlotFreed({
+      organizationId: appointment.organizationId,
+      professionalId: appointment.professionalId,
+      specialtyId: appointment.specialtyId,
+      startAt: new Date(appointment.startAt),
+      endAt: new Date(appointment.endAt)
+    });
+
+    return updatedDto;
   }
 
   async rescheduleAppointment(
@@ -380,9 +417,25 @@ export class AppointmentsService {
       }
     });
 
+    const originalDto = this.toDto(updatedOriginal);
+    const replacementDto = this.toDto(replacement);
+    await this.notifications.notifyPatientFromAppointment(
+      replacementDto,
+      'appointment_rescheduled',
+      'Turno reprogramado',
+      `Tu turno fue reprogramado para ${new Date(replacementDto.startAt).toLocaleString('es-AR', { hour12: false })}.`
+    );
+    await this.waitlist.handleSlotFreed({
+      organizationId: originalDto.organizationId,
+      professionalId: originalDto.professionalId,
+      specialtyId: originalDto.specialtyId,
+      startAt: new Date(original.startAt),
+      endAt: new Date(original.endAt)
+    });
+
     return {
-      original: this.toDto(updatedOriginal),
-      replacement: this.toDto(replacement)
+      original: originalDto,
+      replacement: replacementDto
     };
   }
 

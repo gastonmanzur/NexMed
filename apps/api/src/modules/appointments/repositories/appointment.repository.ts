@@ -126,4 +126,12 @@ export class AppointmentRepository {
       endAt: { $gt: from }
     }).exec();
   }
+
+  async findBookedStartingBetween(from: Date, to: Date): Promise<AppointmentDocument[]> {
+    return AppointmentModel.find({
+      status: 'booked',
+      startAt: { $gte: from, $lte: to }
+    }).exec();
+  }
+
 }

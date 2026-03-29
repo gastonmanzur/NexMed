@@ -37,6 +37,9 @@ import { PatientAppointmentsPage } from '../features/patient/PatientAppointments
 import { PatientReschedulePage } from '../features/patient/PatientReschedulePage';
 import { PatientProfilePage } from '../features/patient/PatientProfilePage';
 import { PatientNotificationsPage } from '../features/patient/PatientNotificationsPage';
+import { PatientWaitlistPage } from '../features/patient/PatientWaitlistPage';
+import { PatientWaitlistCreatePage } from '../features/patient/PatientWaitlistCreatePage';
+import { OrganizationReminderRulesPage } from '../features/organizations/OrganizationReminderRulesPage';
 
 export const App = (): ReactElement => {
   return (
@@ -255,6 +258,31 @@ export const App = (): ReactElement => {
         element={(
           <ProtectedRoute>
             <PatientProfilePage />
+          </ProtectedRoute>
+        )}
+      />
+
+      <Route
+        path="/patient/waitlist"
+        element={(
+          <ProtectedRoute>
+            <PatientWaitlistPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/waitlist/new"
+        element={(
+          <ProtectedRoute>
+            <PatientWaitlistCreatePage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/organization/settings/reminders"
+        element={(
+          <ProtectedRoute requireActiveOrganization>
+            <OrganizationReminderRulesPage />
           </ProtectedRoute>
         )}
       />

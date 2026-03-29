@@ -6,6 +6,7 @@ import { requireOrganizationMember, requireOrganizationRole } from './middleware
 import { professionalsRouter, specialtiesRouter } from '../professionals/professionals.routes.js';
 import { professionalAvailabilityRouter } from '../availability/availability.routes.js';
 import { appointmentsRouter } from '../appointments/appointments.routes.js';
+import { organizationReminderRouter } from '../reminders/reminder.routes.js';
 
 export const organizationsRouter = Router();
 
@@ -40,3 +41,5 @@ organizationsRouter.use('/:organizationId/professionals', professionalsRouter);
 organizationsRouter.use('/:organizationId/specialties', specialtiesRouter);
 organizationsRouter.use('/:organizationId/professionals/:professionalId', professionalAvailabilityRouter);
 organizationsRouter.use('/:organizationId/appointments', appointmentsRouter);
+
+organizationsRouter.use('/:organizationId/reminder-rules', organizationReminderRouter);

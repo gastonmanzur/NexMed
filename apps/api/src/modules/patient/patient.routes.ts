@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../../core/async-handler.js';
 import { requireAuth } from '../auth/middleware/auth.middleware.js';
 import { patientController } from './controllers/patient.controller.js';
+import { waitlistRouter } from '../waitlist/waitlist.routes.js';
 
 export const joinRouter = Router();
 export const patientRouter = Router();
@@ -23,3 +24,5 @@ patientRouter.patch('/appointments/:appointmentId/cancel', asyncHandler(patientC
 patientRouter.patch('/appointments/:appointmentId/reschedule', asyncHandler(patientController.rescheduleAppointment));
 patientRouter.get('/events', asyncHandler(patientController.listEvents));
 patientRouter.patch('/events/read-all', asyncHandler(patientController.markEventsRead));
+
+patientRouter.use('/waitlist', waitlistRouter);
