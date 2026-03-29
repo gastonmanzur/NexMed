@@ -299,3 +299,58 @@ export interface UserEventDto {
   createdAt: string;
   updatedAt: string;
 }
+
+export type NotificationType =
+  | 'appointment_booked'
+  | 'appointment_canceled'
+  | 'appointment_rescheduled'
+  | 'appointment_reminder'
+  | 'availability_alert'
+  | 'general_event';
+
+export type NotificationChannel = 'in_app' | 'email' | 'push';
+export type NotificationStatus = 'pending' | 'delivered' | 'read' | 'failed';
+
+export interface NotificationDto {
+  id: string;
+  userId: string;
+  organizationId: string | null;
+  patientProfileId: string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  relatedEntityType: string | null;
+  relatedEntityId: string | null;
+  channel: NotificationChannel;
+  status: NotificationStatus;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReminderRuleDto {
+  id: string;
+  organizationId: string;
+  triggerHoursBefore: number;
+  channel: NotificationChannel;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WaitlistRequestDto {
+  id: string;
+  organizationId: string;
+  patientProfileId: string;
+  specialtyId: string | null;
+  professionalId: string | null;
+  startDate: string;
+  endDate: string;
+  timeWindowStart: string | null;
+  timeWindowEnd: string | null;
+  status: 'active' | 'matched' | 'inactive' | 'expired' | 'canceled';
+  matchedAt: string | null;
+  lastNotifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

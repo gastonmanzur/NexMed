@@ -2,7 +2,8 @@ import type {
   OrganizationDto,
   OrganizationMembershipDto,
   OrganizationOnboardingStatusDto,
-  OrganizationProfileDto
+  OrganizationProfileDto,
+  ReminderRuleDto
 } from '@starter/shared-types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
@@ -123,4 +124,35 @@ export const organizationApi = {
 
     return result.data;
   }
+,
+
+  listReminderRules: async (accessToken: string, organizationId: string): Promise<ReminderRuleDto[]> => {
+    const result = await request<{ success: true; data: ReminderRuleDto[] }>(`/organizations/${organizationId}/reminder-rules`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  createReminderRule: async (accessToken: string, organizationId: string, input: { triggerHoursBefore: number; channel: 'in_app' | 'email' | 'push' }): Promise<ReminderRuleDto> => {
+    const result = await request<{ success: true; data: ReminderRuleDto }>(`/organizations/${organizationId}/reminder-rules`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  updateReminderRuleStatus: async (accessToken: string, organizationId: string, ruleId: string, status: 'active' | 'inactive'): Promise<ReminderRuleDto> => {
+    const result = await request<{ success: true; data: ReminderRuleDto }>(`/organizations/${organizationId}/reminder-rules/${ruleId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  }
+
 };
