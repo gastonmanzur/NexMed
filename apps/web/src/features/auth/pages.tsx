@@ -181,7 +181,7 @@ export const LoginPage = (): ReactElement => {
 };
 
 export const PostLoginResolverPage = (): ReactElement => {
-  const { loading, user, organizations, activeOrganizationId, accessToken } = useAuth();
+  const { loading, user, organizations, memberships, activeOrganizationId, accessToken } = useAuth();
   const [joinResolved, setJoinResolved] = useState(false);
 
   useEffect(() => {
@@ -222,7 +222,15 @@ export const PostLoginResolverPage = (): ReactElement => {
     return <Navigate to="/select-organization" replace />;
   }
 
-  const activeOrganization = organizations.find((organization) => organization.id === (activeOrganizationId ?? organizations[0]?.id));
+  const resolvedOrganizationId = activeOrganizationId ?? organizations[0]?.id ?? null;
+  const activeOrganization = organizations.find((organization) => organization.id === resolvedOrganizationId);
+  const activeMembership = memberships.find(
+    (membership) => membership.organizationId === resolvedOrganizationId && membership.status === 'active'
+  );
+
+  if (activeMembership?.role === 'patient') {
+    return <Navigate to="/patient/organizations" replace />;
+  }
 
   if (!activeOrganization?.onboardingCompleted || activeOrganization.status === 'onboarding') {
     return <Navigate to="/onboarding/organization" replace />;

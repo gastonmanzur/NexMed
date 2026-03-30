@@ -6,7 +6,12 @@ import { professionalsController } from './controllers/professionals.controller.
 export const professionalsRouter = Router({ mergeParams: true });
 export const specialtiesRouter = Router({ mergeParams: true });
 
-professionalsRouter.get('/', asyncHandler(requireOrganizationMember), asyncHandler(professionalsController.listProfessionals));
+professionalsRouter.get(
+  '/',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(professionalsController.listProfessionals)
+);
 professionalsRouter.post(
   '/',
   asyncHandler(requireOrganizationMember),
@@ -16,6 +21,7 @@ professionalsRouter.post(
 professionalsRouter.get(
   '/:professionalId',
   asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(professionalsController.getProfessional)
 );
 professionalsRouter.patch(
@@ -37,14 +43,24 @@ professionalsRouter.put(
   asyncHandler(professionalsController.replaceProfessionalSpecialties)
 );
 
-specialtiesRouter.get('/', asyncHandler(requireOrganizationMember), asyncHandler(professionalsController.listSpecialties));
+specialtiesRouter.get(
+  '/',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(professionalsController.listSpecialties)
+);
 specialtiesRouter.post(
   '/',
   asyncHandler(requireOrganizationMember),
   asyncHandler(requireOrganizationRole('owner', 'admin')),
   asyncHandler(professionalsController.createSpecialty)
 );
-specialtiesRouter.get('/:specialtyId', asyncHandler(requireOrganizationMember), asyncHandler(professionalsController.getSpecialty));
+specialtiesRouter.get(
+  '/:specialtyId',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(professionalsController.getSpecialty)
+);
 specialtiesRouter.patch(
   '/:specialtyId',
   asyncHandler(requireOrganizationMember),

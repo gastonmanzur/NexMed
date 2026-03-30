@@ -6,6 +6,10 @@ import type {
   OrganizationSettingsDto
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import { AppointmentModel } from '../../appointments/models/appointment.model.js';
+import { ProfessionalModel } from '../../professionals/models/professional.model.js';
+import { PatientOrganizationLinkModel } from '../../patient/models/patient-organization-link.model.js';
+import { WaitlistRequestModel } from '../../waitlist/models/waitlist-request.model.js';
 import { OrganizationMemberRepository } from '../repositories/organization-member.repository.js';
 import { OrganizationRepository } from '../repositories/organization.repository.js';
 import { OrganizationSettingsRepository } from '../repositories/organization-settings.repository.js';
@@ -167,6 +171,73 @@ export class OrganizationService {
   async getOnboardingStatusForUser(input: { organizationId: string; actorUserId: string }): Promise<OrganizationOnboardingStatusDto> {
     const profile = await this.getProfileForUser(input);
     return profile.onboarding;
+  }
+
+  async getDashboardSummaryForUser(input: { organizationId: string; actorUserId: string }): Promise<{
+    generatedAt: string;
+    appointmentsToday: number;
+    appointmentsNext7Days: number;
+    recentCancellations: number;
+    activeProfessionals: number;
+    linkedPatients: number;
+    activeWaitlistRequests: number;
+  }> {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active') {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setUTCHours(0, 0, 0, 0);
+
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setUTCDate(startOfTomorrow.getUTCDate() + 1);
+
+    const endOfNext7Days = new Date(startOfToday);
+    endOfNext7Days.setUTCDate(endOfNext7Days.getUTCDate() + 7);
+
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+
+    const [appointmentsToday, appointmentsNext7Days, recentCancellations, activeProfessionals, linkedPatients, activeWaitlistRequests] =
+      await Promise.all([
+        AppointmentModel.countDocuments({
+          organizationId: input.organizationId,
+          startAt: { $gte: startOfToday, $lt: startOfTomorrow }
+        }),
+        AppointmentModel.countDocuments({
+          organizationId: input.organizationId,
+          startAt: { $gte: now, $lt: endOfNext7Days }
+        }),
+        AppointmentModel.countDocuments({
+          organizationId: input.organizationId,
+          status: { $in: ['canceled_by_staff', 'canceled_by_patient'] },
+          updatedAt: { $gte: sevenDaysAgo }
+        }),
+        ProfessionalModel.countDocuments({
+          organizationId: input.organizationId,
+          status: 'active'
+        }),
+        PatientOrganizationLinkModel.countDocuments({
+          organizationId: input.organizationId,
+          status: 'active'
+        }),
+        WaitlistRequestModel.countDocuments({
+          organizationId: input.organizationId,
+          status: 'active'
+        })
+      ]);
+
+    return {
+      generatedAt: now.toISOString(),
+      appointmentsToday,
+      appointmentsNext7Days,
+      recentCancellations,
+      activeProfessionals,
+      linkedPatients,
+      activeWaitlistRequests
+    };
   }
 
   async updateProfile(input: {

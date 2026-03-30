@@ -9,19 +9,24 @@ appointmentsRouter.get('/', asyncHandler(requireOrganizationMember), asyncHandle
 appointmentsRouter.post(
   '/',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(appointmentsController.create)
 );
-appointmentsRouter.get('/:appointmentId', asyncHandler(requireOrganizationMember), asyncHandler(appointmentsController.getById));
+appointmentsRouter.get(
+  '/:appointmentId',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(appointmentsController.getById)
+);
 appointmentsRouter.patch(
   '/:appointmentId/cancel',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(appointmentsController.cancel)
 );
 appointmentsRouter.patch(
   '/:appointmentId/reschedule',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(appointmentsController.reschedule)
 );

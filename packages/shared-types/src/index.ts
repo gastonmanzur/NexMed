@@ -18,6 +18,11 @@ export interface AvatarDto {
 export interface HealthDto {
   status: 'ok';
   timestamp: string;
+  uptimeSeconds: number;
+  environment: 'development' | 'test' | 'production';
+  readiness: {
+    database: 'up' | 'down';
+  };
 }
 
 export interface AuthUserDto {

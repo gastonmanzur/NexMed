@@ -123,8 +123,38 @@ export const organizationApi = {
     );
 
     return result.data;
-  }
-,
+  },
+
+  getDashboardSummary: async (
+    accessToken: string,
+    organizationId: string
+  ): Promise<{
+    generatedAt: string;
+    appointmentsToday: number;
+    appointmentsNext7Days: number;
+    recentCancellations: number;
+    activeProfessionals: number;
+    linkedPatients: number;
+    activeWaitlistRequests: number;
+  }> => {
+    const result = await request<{
+      success: true;
+      data: {
+        generatedAt: string;
+        appointmentsToday: number;
+        appointmentsNext7Days: number;
+        recentCancellations: number;
+        activeProfessionals: number;
+        linkedPatients: number;
+        activeWaitlistRequests: number;
+      };
+    }>(`/organizations/${organizationId}/dashboard-summary`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
 
   listReminderRules: async (accessToken: string, organizationId: string): Promise<ReminderRuleDto[]> => {
     const result = await request<{ success: true; data: ReminderRuleDto[] }>(`/organizations/${organizationId}/reminder-rules`, {

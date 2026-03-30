@@ -111,5 +111,18 @@ export const organizationController = {
       success: true,
       data: onboarding
     });
+  },
+
+  getDashboardSummary: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const summary = await service.getDashboardSummaryForUser({
+      organizationId,
+      actorUserId: req.auth!.userId
+    });
+
+    res.status(200).json({
+      success: true,
+      data: summary
+    });
   }
 };

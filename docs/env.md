@@ -62,7 +62,7 @@
 - `PUSH_RATE_LIMIT_MAX=40`
 
 ## Web (`apps/web/.env`)
-- `VITE_API_URL=http://localhost:5000/api`
+- `VITE_API_URL=http://localhost:4000/api`
 - `VITE_FIREBASE_API_KEY=<optional if no push>`
 - `VITE_FIREBASE_AUTH_DOMAIN=<optional if no push>`
 - `VITE_FIREBASE_PROJECT_ID=<optional if no push>`
