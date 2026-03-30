@@ -8,6 +8,7 @@ export const professionalAvailabilityRouter = Router({ mergeParams: true });
 professionalAvailabilityRouter.get(
   '/availability-rules',
   asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(availabilityController.listRules)
 );
 professionalAvailabilityRouter.post(
@@ -19,6 +20,7 @@ professionalAvailabilityRouter.post(
 professionalAvailabilityRouter.get(
   '/availability-rules/:ruleId',
   asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(availabilityController.getRule)
 );
 professionalAvailabilityRouter.patch(
@@ -37,6 +39,7 @@ professionalAvailabilityRouter.patch(
 professionalAvailabilityRouter.get(
   '/availability-exceptions',
   asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(availabilityController.listExceptions)
 );
 professionalAvailabilityRouter.post(
@@ -61,5 +64,6 @@ professionalAvailabilityRouter.patch(
 professionalAvailabilityRouter.get(
   '/availability',
   asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(availabilityController.getCalculatedAvailability)
 );

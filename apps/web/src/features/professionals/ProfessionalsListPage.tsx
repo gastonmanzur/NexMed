@@ -5,6 +5,8 @@ import { Link, Navigate } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { professionalsApi } from './professionals-api';
+import { ConfirmActionButton } from '../../components/ConfirmActionButton';
+import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
 const containerStyle = { maxWidth: 980, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' };
 
@@ -61,13 +63,14 @@ export const ProfessionalsListPage = (): ReactElement => {
       </Card>
 
       <Card title="Listado">
-        {loading ? <p>Cargando profesionales...</p> : null}
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+        {loading ? <LoadingState message="Cargando profesionales..." /> : null}
+        {error ? <ErrorState message={error} /> : null}
         {!loading && !error && professionals.length === 0 ? (
-          <>
-            <p>Aún no hay profesionales cargados.</p>
-            {canManage ? <Link to="/app/professionals/new">Crear primer profesional</Link> : null}
-          </>
+          <EmptyState
+            title="Aún no hay profesionales cargados"
+            description="Cuando incorpores el equipo operativo, aparecerá en este listado."
+            {...(canManage ? { action: <Link to="/app/professionals/new">Crear primer profesional</Link> } : {})}
+          />
         ) : null}
 
         {!loading && !error && professionals.length > 0 ? (
@@ -90,9 +93,9 @@ export const ProfessionalsListPage = (): ReactElement => {
                   <Link to={`/app/professionals/${professional.id}/availability`}>Agenda</Link>
                   {canManage ? <Link to={`/app/professionals/${professional.id}/edit`}>Editar</Link> : null}
                   {canManage ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
+                    <ConfirmActionButton
+                      confirmationMessage={`¿Seguro que querés ${professional.status === 'active' ? 'desactivar' : 'activar'} este profesional?`}
+                      onConfirm={async () => {
                         if (!accessToken) return;
                         const nextStatus = professional.status === 'active' ? 'inactive' : 'active';
                         try {
@@ -111,7 +114,7 @@ export const ProfessionalsListPage = (): ReactElement => {
                       }}
                     >
                       {professional.status === 'active' ? 'Desactivar' : 'Activar'}
-                    </button>
+                    </ConfirmActionButton>
                   ) : null}
                 </div>
               </li>

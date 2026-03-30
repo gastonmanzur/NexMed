@@ -1,9 +1,11 @@
 import type { OrganizationMemberRole, OrganizationMemberStatus } from '@starter/shared-types';
 import type { ReactElement } from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
+import { organizationApi } from '../organizations/organization-api';
+import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
 interface DashboardModule {
   key: string;
@@ -43,7 +45,18 @@ const canManageByRole = (role: OrganizationMemberRole | undefined, status: Organ
   status === 'active' && (role === 'owner' || role === 'admin');
 
 export const DashboardPage = (): ReactElement => {
-  const { user, activeOrganizationId, organizations, memberships, onboardingCompleted } = useAuth();
+  const { user, accessToken, activeOrganizationId, organizations, memberships, onboardingCompleted } = useAuth();
+  const [summary, setSummary] = useState<{
+    generatedAt: string;
+    appointmentsToday: number;
+    appointmentsNext7Days: number;
+    recentCancellations: number;
+    activeProfessionals: number;
+    linkedPatients: number;
+    activeWaitlistRequests: number;
+  } | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
 
   const activeOrganization = useMemo(
     () => organizations.find((organization) => organization.id === activeOrganizationId) ?? null,
@@ -56,6 +69,29 @@ export const DashboardPage = (): ReactElement => {
   );
 
   const canManage = canManageByRole(activeMembership?.role, activeMembership?.status);
+
+  const loadSummary = async (): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) {
+      return;
+    }
+
+    setSummaryLoading(true);
+    setSummaryError('');
+    try {
+      const data = await organizationApi.getDashboardSummary(accessToken, activeOrganizationId);
+      setSummary(data);
+    } catch (cause) {
+      setSummaryError((cause as Error).message);
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadSummary();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, activeOrganizationId]);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -97,6 +133,40 @@ export const DashboardPage = (): ReactElement => {
           <Link to="/app/appointments">Ir a turnos</Link>
         </div>
         {!canManage ? <p style={{ color: '#555' }}>Tenés acceso de lectura para módulos operativos.</p> : null}
+      </Card>
+
+      <Card title="Resumen operativo">
+        {summaryLoading ? <LoadingState message="Cargando métricas operativas..." /> : null}
+        {!summaryLoading && summaryError ? <ErrorState message={summaryError} onRetry={() => void loadSummary()} /> : null}
+        {!summaryLoading && !summaryError && !summary ? (
+          <EmptyState
+            title="Sin métricas disponibles"
+            description="Todavía no pudimos construir el resumen operativo de este centro."
+            action={<button type="button" onClick={() => void loadSummary()}>Reintentar</button>}
+          />
+        ) : null}
+        {!summaryLoading && !summaryError && summary ? (
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
+            <Card title="Turnos hoy">
+              <p>{summary.appointmentsToday}</p>
+            </Card>
+            <Card title="Próx. 7 días">
+              <p>{summary.appointmentsNext7Days}</p>
+            </Card>
+            <Card title="Cancelaciones (7d)">
+              <p>{summary.recentCancellations}</p>
+            </Card>
+            <Card title="Profesionales activos">
+              <p>{summary.activeProfessionals}</p>
+            </Card>
+            <Card title="Pacientes vinculados">
+              <p>{summary.linkedPatients}</p>
+            </Card>
+            <Card title="Waitlist activas">
+              <p>{summary.activeWaitlistRequests}</p>
+            </Card>
+          </section>
+        ) : null}
       </Card>
 
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>

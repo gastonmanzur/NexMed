@@ -94,7 +94,7 @@ export const App = (): ReactElement => {
       <Route
         path="/organization/profile"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             <OrganizationProfilePage />
           </ProtectedRoute>
         }
@@ -102,7 +102,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <DashboardPage />
           </ProtectedRoute>
         }
@@ -110,7 +110,7 @@ export const App = (): ReactElement => {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <DashboardPage />
           </ProtectedRoute>
         }
@@ -118,7 +118,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/professionals"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <ProfessionalsListPage />
           </ProtectedRoute>
         }
@@ -126,7 +126,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/professionals/new"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             <ProfessionalFormPage />
           </ProtectedRoute>
         }
@@ -134,7 +134,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/professionals/:professionalId/edit"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             <ProfessionalFormPage />
           </ProtectedRoute>
         }
@@ -143,7 +143,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/professionals/:professionalId/availability"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <ProfessionalAvailabilityPage />
           </ProtectedRoute>
         }
@@ -151,7 +151,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/specialties"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <SpecialtiesListPage />
           </ProtectedRoute>
         }
@@ -159,7 +159,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/specialties/new"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             <SpecialtyFormPage />
           </ProtectedRoute>
         }
@@ -167,7 +167,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/specialties/:specialtyId/edit"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             <SpecialtyFormPage />
           </ProtectedRoute>
         }
@@ -175,7 +175,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/appointments"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <AppointmentsListPage />
           </ProtectedRoute>
         }
@@ -183,7 +183,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/appointments/new"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <AppointmentCreatePage />
           </ProtectedRoute>
         }
@@ -191,7 +191,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/appointments/:appointmentId"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <AppointmentDetailPage />
           </ProtectedRoute>
         }
@@ -199,7 +199,7 @@ export const App = (): ReactElement => {
       <Route
         path="/app/appointments/:appointmentId/reschedule"
         element={
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             <AppointmentReschedulePage />
           </ProtectedRoute>
         }
@@ -281,7 +281,7 @@ export const App = (): ReactElement => {
       <Route
         path="/organization/settings/reminders"
         element={(
-          <ProtectedRoute requireActiveOrganization>
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             <OrganizationReminderRulesPage />
           </ProtectedRoute>
         )}

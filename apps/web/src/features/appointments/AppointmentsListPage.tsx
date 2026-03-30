@@ -7,6 +7,8 @@ import { useAuth } from '../auth/AuthContext';
 import { appointmentsApi } from './appointments-api';
 import { professionalsApi } from '../professionals/professionals-api';
 import { specialtiesApi } from '../specialties/specialties-api';
+import { ConfirmActionButton } from '../../components/ConfirmActionButton';
+import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
 const appointmentStatuses: AppointmentStatus[] = [
   'booked',
@@ -39,7 +41,7 @@ export const AppointmentsListPage = (): ReactElement => {
     () => memberships.find((item) => item.organizationId === activeOrganizationId) ?? null,
     [activeOrganizationId, memberships]
   );
-  const canManage = activeMembership?.role === 'owner' || activeMembership?.role === 'admin';
+  const canManage = activeMembership?.role === 'owner' || activeMembership?.role === 'admin' || activeMembership?.role === 'staff';
 
   const professionalsById = useMemo(
     () => new Map(professionals.map((item) => [item.id, item.displayName])),
@@ -150,12 +152,18 @@ export const AppointmentsListPage = (): ReactElement => {
           <button type="submit">Aplicar filtros</button>
         </form>
 
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+        {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
       </Card>
 
       <Card title="Listado">
-        {loading ? <p>Cargando turnos...</p> : null}
-        {!loading && appointments.length === 0 ? <p>No hay turnos para los filtros seleccionados.</p> : null}
+        {loading ? <LoadingState message="Cargando turnos..." /> : null}
+        {!loading && !error && appointments.length === 0 ? (
+          <EmptyState
+            title="No hay turnos para estos filtros"
+            description="Probá cambiar el rango de fechas o crear un nuevo turno."
+            {...(canManage ? { action: <Link to="/app/appointments/new">Crear turno</Link> } : {})}
+          />
+        ) : null}
         {appointments.length > 0 ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -188,9 +196,9 @@ export const AppointmentsListPage = (): ReactElement => {
                       {canManage && appointment.status === 'booked' ? (
                         <>
                           <Link to={`/app/appointments/${appointment.id}/reschedule`}>Reprogramar</Link>
-                          <button
-                            type="button"
-                            onClick={async () => {
+                          <ConfirmActionButton
+                            confirmationMessage="¿Seguro que querés cancelar este turno?"
+                            onConfirm={async () => {
                               const reason = window.prompt('Motivo de cancelación (opcional)') ?? undefined;
                               try {
                                 if (!accessToken) return;
@@ -202,7 +210,7 @@ export const AppointmentsListPage = (): ReactElement => {
                             }}
                           >
                             Cancelar
-                          </button>
+                          </ConfirmActionButton>
                         </>
                       ) : null}
                     </td>

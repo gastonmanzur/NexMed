@@ -23,6 +23,7 @@ organizationsRouter.get(
 organizationsRouter.get(
   '/:organizationId/profile',
   asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(organizationController.getProfile)
 );
 organizationsRouter.patch(
@@ -35,6 +36,12 @@ organizationsRouter.get(
   '/:organizationId/onboarding-status',
   asyncHandler(requireOrganizationMember),
   asyncHandler(organizationController.getOnboardingStatus)
+);
+organizationsRouter.get(
+  '/:organizationId/dashboard-summary',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(organizationController.getDashboardSummary)
 );
 
 organizationsRouter.use('/:organizationId/professionals', professionalsRouter);
