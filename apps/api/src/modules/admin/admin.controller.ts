@@ -65,11 +65,29 @@ const updateOrganizationBetaSchema = z.object({
   betaNotes: z.string().trim().max(500).optional()
 });
 
+
+const listOrganizationsQuerySchema = paginationSchema.extend({
+  status: z.enum(['onboarding', 'active', 'inactive', 'suspended', 'blocked']).optional(),
+  subscriptionStatus: z.enum(['trial', 'active', 'past_due', 'suspended', 'canceled']).optional(),
+  betaEnabled: z.enum(['true', 'false']).optional()
+});
+
+const updateOrganizationStatusSchema = z.object({
+  status: z.enum(['onboarding', 'active', 'inactive', 'suspended', 'blocked']),
+  betaEnabled: z.boolean().optional(),
+  onboardingCompleted: z.boolean().optional()
+});
+
 export class AdminController {
   constructor(private readonly service = new AdminService()) {}
 
   dashboard = async (_req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
     const data = await this.service.getDashboardSummary();
+    res.status(200).json({ success: true, data });
+  };
+
+  summary = async (_req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const data = await this.service.getGlobalSummary();
     res.status(200).json({ success: true, data });
   };
 
@@ -177,6 +195,45 @@ export class AdminController {
       status: parsedBody.status,
       adminNotes: parsedBody.adminNotes,
       severity: parsedBody.severity
+    });
+
+    res.status(200).json({ success: true, data });
+  };
+
+
+  listOrganizations = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const parsed = listOrganizationsQuerySchema.parse(req.query);
+    const filters: {
+      page: number;
+      limit: number;
+      status?: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
+      subscriptionStatus?: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+      betaEnabled?: boolean;
+    } = {
+      page: parsed.page,
+      limit: parsed.limit
+    };
+
+    if (parsed.status) filters.status = parsed.status;
+    if (parsed.subscriptionStatus) filters.subscriptionStatus = parsed.subscriptionStatus;
+    if (parsed.betaEnabled) filters.betaEnabled = parsed.betaEnabled === 'true';
+
+    const data = await this.service.listOrganizations(filters);
+    res.status(200).json({ success: true, data });
+  };
+
+  updateOrganizationStatus = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const parsedBody = updateOrganizationStatusSchema.parse(req.body);
+    const organizationId = Array.isArray(req.params.organizationId) ? req.params.organizationId[0] : req.params.organizationId;
+    if (!organizationId) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'Missing organization id');
+    }
+
+    const data = await this.service.updateOrganizationStatus({
+      organizationId,
+      status: parsedBody.status,
+      ...(parsedBody.betaEnabled !== undefined ? { betaEnabled: parsedBody.betaEnabled } : {}),
+      ...(parsedBody.onboardingCompleted !== undefined ? { onboardingCompleted: parsedBody.onboardingCompleted } : {})
     });
 
     res.status(200).json({ success: true, data });

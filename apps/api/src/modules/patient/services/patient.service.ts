@@ -16,6 +16,7 @@ import { AvailabilityService } from '../../availability/services/availability.se
 import { UserRepository } from '../../auth/repositories/user.repository.js';
 import { OrganizationRepository } from '../../organizations/repositories/organization.repository.js';
 import { OrganizationSettingsRepository } from '../../organizations/repositories/organization-settings.repository.js';
+import { OrganizationAccessLinkRepository } from '../../organizations/repositories/organization-access-link.repository.js';
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
 import { SpecialtyRepository } from '../../professionals/repositories/specialty.repository.js';
 import { PatientOrganizationLinkRepository } from '../repositories/patient-organization-link.repository.js';
@@ -48,6 +49,7 @@ export class PatientService {
     private readonly users = new UserRepository(),
     private readonly organizations = new OrganizationRepository(),
     private readonly organizationSettings = new OrganizationSettingsRepository(),
+    private readonly organizationAccessLinks = new OrganizationAccessLinkRepository(),
     private readonly patientProfiles = new PatientProfileRepository(),
     private readonly links = new PatientOrganizationLinkRepository(),
     private readonly appointmentsService = new AppointmentsService(),
@@ -426,7 +428,16 @@ export class PatientService {
       if (byId) return byId;
     }
 
-    return this.organizations.findBySlug(tokenOrSlug);
+    const bySlug = await this.organizations.findBySlug(tokenOrSlug);
+    if (bySlug) return bySlug;
+
+
+    const accessLink = await this.organizationAccessLinks.findByToken(tokenOrSlug);
+    if (!accessLink || accessLink.status !== 'active') {
+      return null;
+    }
+
+    return this.organizations.findById(accessLink.organizationId.toString());
   }
 
   private toPatientProfileDto(profile: PatientProfileDocument): PatientProfileDto {

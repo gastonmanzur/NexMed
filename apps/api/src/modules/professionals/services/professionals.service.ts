@@ -3,6 +3,8 @@ import { AppError } from '../../../core/errors.js';
 import { ProfessionalRepository } from '../repositories/professional.repository.js';
 import { SpecialtyRepository } from '../repositories/specialty.repository.js';
 import { ProfessionalSpecialtyRepository } from '../repositories/professional-specialty.repository.js';
+import { OrganizationSubscriptionRepository } from '../../payments/repositories/organization-subscription.repository.js';
+import { PlanRepository } from '../../payments/repositories/plan.repository.js';
 
 interface UpsertProfessionalInput {
   firstName: string;
@@ -25,7 +27,9 @@ export class ProfessionalsService {
   constructor(
     private readonly professionals = new ProfessionalRepository(),
     private readonly specialties = new SpecialtyRepository(),
-    private readonly professionalSpecialties = new ProfessionalSpecialtyRepository()
+    private readonly professionalSpecialties = new ProfessionalSpecialtyRepository(),
+    private readonly organizationSubscriptions = new OrganizationSubscriptionRepository(),
+    private readonly plans = new PlanRepository()
   ) {}
 
   async listProfessionals(organizationId: string): Promise<ProfessionalDto[]> {
@@ -67,6 +71,9 @@ export class ProfessionalsService {
 
   async createProfessional(organizationId: string, input: UpsertProfessionalInput): Promise<ProfessionalDto> {
     const normalized = this.normalizeProfessionalInput(input);
+    if ((normalized.status ?? 'active') === 'active') {
+      await this.assertPlanProfessionalLimit(organizationId);
+    }
     await this.validateSpecialtiesBelongToOrganization(organizationId, normalized.specialtyIds ?? []);
 
     const professional = await this.professionals.create({
@@ -128,6 +135,16 @@ export class ProfessionalsService {
       displayName = this.computeDisplayName(normalized.firstName ?? currentNames.firstName, normalized.lastName ?? currentNames.lastName);
     }
 
+    if (normalized.status === 'active') {
+      const current = await this.professionals.findByIdInOrganization(organizationId, professionalId);
+      if (!current) {
+        throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
+      }
+      if (current.status !== 'active') {
+        await this.assertPlanProfessionalLimit(organizationId);
+      }
+    }
+
     const professional = await this.professionals.updateByIdInOrganization(organizationId, professionalId, {
       ...(normalized.firstName !== undefined ? { firstName: normalized.firstName } : {}),
       ...(normalized.lastName !== undefined ? { lastName: normalized.lastName } : {}),
@@ -151,6 +168,16 @@ export class ProfessionalsService {
   }
 
   async updateProfessionalStatus(organizationId: string, professionalId: string, status: ProfessionalStatus): Promise<ProfessionalDto> {
+    if (status === 'active') {
+      const current = await this.professionals.findByIdInOrganization(organizationId, professionalId);
+      if (!current) {
+        throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
+      }
+      if (current.status !== 'active') {
+        await this.assertPlanProfessionalLimit(organizationId);
+      }
+    }
+
     const professional = await this.professionals.updateByIdInOrganization(organizationId, professionalId, { status });
     if (!professional) {
       throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
@@ -290,6 +317,34 @@ export class ProfessionalsService {
     }
   }
 
+
+
+  private async assertPlanProfessionalLimit(organizationId: string): Promise<void> {
+    await this.plans.ensureDefaults();
+
+    const subscription = await this.organizationSubscriptions.findByOrganizationId(organizationId);
+    if (!subscription) {
+      return;
+    }
+
+    if (['suspended', 'past_due', 'canceled'].includes(subscription.status)) {
+      throw new AppError('SUBSCRIPTION_RESTRICTED', 409, 'La suscripción de la organización no permite activar profesionales.');
+    }
+
+    const plan = await this.plans.findById(subscription.planId.toString());
+    if (!plan) {
+      return;
+    }
+
+    const activeProfessionals = await this.professionals.countActiveByOrganization(organizationId);
+    if (activeProfessionals >= plan.maxProfessionalsActive) {
+      throw new AppError(
+        'PLAN_LIMIT_REACHED',
+        409,
+        `Límite del plan alcanzado: ${plan.maxProfessionalsActive} profesionales activos.`
+      );
+    }
+  }
 
   private isDuplicateSpecialtyError(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 11000;

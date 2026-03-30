@@ -44,6 +44,31 @@ organizationsRouter.get(
   asyncHandler(organizationController.getDashboardSummary)
 );
 
+
+organizationsRouter.get(
+  '/:organizationId/invite-link',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(organizationController.getInviteLink)
+);
+organizationsRouter.post(
+  '/:organizationId/invite-link/regenerate',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(organizationController.regenerateInviteLink)
+);
+organizationsRouter.get(
+  '/:organizationId/subscription',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(organizationController.getSubscription)
+);
+organizationsRouter.post(
+  '/:organizationId/subscription/checkout',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(organizationController.checkoutSubscription)
+);
+
 organizationsRouter.use('/:organizationId/professionals', professionalsRouter);
 organizationsRouter.use('/:organizationId/specialties', specialtiesRouter);
 organizationsRouter.use('/:organizationId/professionals/:professionalId', professionalAvailabilityRouter);

@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomePage } from '../features/home/HomePage';
 import { AdminPage } from '../features/admin/AdminPage';
+import { AdminOrganizationsPage } from '../features/admin/AdminOrganizationsPage';
 import {
   LoginPage,
   RegisterPage,
@@ -41,6 +42,11 @@ import { PatientWaitlistPage } from '../features/patient/PatientWaitlistPage';
 import { PatientWaitlistCreatePage } from '../features/patient/PatientWaitlistCreatePage';
 import { OrganizationReminderRulesPage } from '../features/organizations/OrganizationReminderRulesPage';
 import { FeedbackPage } from '../features/feedback/FeedbackPage';
+import { AppShell } from '../components/AppShell';
+import { OrganizationInvitePage } from '../features/organizations/OrganizationInvitePage';
+import { OrganizationSubscriptionPage } from '../features/subscription/OrganizationSubscriptionPage';
+
+const shell = (page: ReactElement): ReactElement => <AppShell>{page}</AppShell>;
 
 export const App = (): ReactElement => {
   return (
@@ -96,7 +102,7 @@ export const App = (): ReactElement => {
         path="/organization/profile"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
-            <OrganizationProfilePage />
+            {shell(<OrganizationProfilePage />)}
           </ProtectedRoute>
         }
       />
@@ -104,7 +110,7 @@ export const App = (): ReactElement => {
         path="/app"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <DashboardPage />
+            {shell(<DashboardPage />)}
           </ProtectedRoute>
         }
       />
@@ -112,7 +118,23 @@ export const App = (): ReactElement => {
         path="/dashboard"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <DashboardPage />
+            {shell(<DashboardPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/invite"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
+            {shell(<OrganizationInvitePage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/subscription"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
+            {shell(<OrganizationSubscriptionPage />)}
           </ProtectedRoute>
         }
       />
@@ -120,7 +142,7 @@ export const App = (): ReactElement => {
         path="/app/professionals"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <ProfessionalsListPage />
+            {shell(<ProfessionalsListPage />)}
           </ProtectedRoute>
         }
       />
@@ -128,7 +150,7 @@ export const App = (): ReactElement => {
         path="/app/professionals/new"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
-            <ProfessionalFormPage />
+            {shell(<ProfessionalFormPage />)}
           </ProtectedRoute>
         }
       />
@@ -136,7 +158,7 @@ export const App = (): ReactElement => {
         path="/app/professionals/:professionalId/edit"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
-            <ProfessionalFormPage />
+            {shell(<ProfessionalFormPage />)}
           </ProtectedRoute>
         }
       />
@@ -145,7 +167,7 @@ export const App = (): ReactElement => {
         path="/app/professionals/:professionalId/availability"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <ProfessionalAvailabilityPage />
+            {shell(<ProfessionalAvailabilityPage />)}
           </ProtectedRoute>
         }
       />
@@ -153,7 +175,7 @@ export const App = (): ReactElement => {
         path="/app/specialties"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <SpecialtiesListPage />
+            {shell(<SpecialtiesListPage />)}
           </ProtectedRoute>
         }
       />
@@ -161,7 +183,7 @@ export const App = (): ReactElement => {
         path="/app/specialties/new"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
-            <SpecialtyFormPage />
+            {shell(<SpecialtyFormPage />)}
           </ProtectedRoute>
         }
       />
@@ -169,7 +191,7 @@ export const App = (): ReactElement => {
         path="/app/specialties/:specialtyId/edit"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
-            <SpecialtyFormPage />
+            {shell(<SpecialtyFormPage />)}
           </ProtectedRoute>
         }
       />
@@ -177,7 +199,7 @@ export const App = (): ReactElement => {
         path="/app/appointments"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <AppointmentsListPage />
+            {shell(<AppointmentsListPage />)}
           </ProtectedRoute>
         }
       />
@@ -185,7 +207,7 @@ export const App = (): ReactElement => {
         path="/app/appointments/new"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <AppointmentCreatePage />
+            {shell(<AppointmentCreatePage />)}
           </ProtectedRoute>
         }
       />
@@ -193,7 +215,7 @@ export const App = (): ReactElement => {
         path="/app/appointments/:appointmentId"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <AppointmentDetailPage />
+            {shell(<AppointmentDetailPage />)}
           </ProtectedRoute>
         }
       />
@@ -201,7 +223,7 @@ export const App = (): ReactElement => {
         path="/app/appointments/:appointmentId/reschedule"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
-            <AppointmentReschedulePage />
+            {shell(<AppointmentReschedulePage />)}
           </ProtectedRoute>
         }
       />
@@ -211,7 +233,7 @@ export const App = (): ReactElement => {
         path="/feedback"
         element={(
           <ProtectedRoute>
-            <FeedbackPage />
+            {shell(<FeedbackPage />)}
           </ProtectedRoute>
         )}
       />
@@ -220,7 +242,7 @@ export const App = (): ReactElement => {
         path="/change-password"
         element={
           <ProtectedRoute>
-            <ChangePasswordPage />
+            {shell(<ChangePasswordPage />)}
           </ProtectedRoute>
         }
       />
@@ -228,7 +250,15 @@ export const App = (): ReactElement => {
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <AdminPage />
+            {shell(<AdminPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/organizations"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            {shell(<AdminOrganizationsPage />)}
           </ProtectedRoute>
         }
       />
@@ -236,7 +266,7 @@ export const App = (): ReactElement => {
         path="/patient/organizations"
         element={(
           <ProtectedRoute>
-            <PatientOrganizationsPage />
+            {shell(<PatientOrganizationsPage />)}
           </ProtectedRoute>
         )}
       />
@@ -244,7 +274,7 @@ export const App = (): ReactElement => {
         path="/patient/organizations/:organizationId/book"
         element={(
           <ProtectedRoute>
-            <PatientBookPage />
+            {shell(<PatientBookPage />)}
           </ProtectedRoute>
         )}
       />
@@ -252,7 +282,7 @@ export const App = (): ReactElement => {
         path="/patient/appointments"
         element={(
           <ProtectedRoute>
-            <PatientAppointmentsPage />
+            {shell(<PatientAppointmentsPage />)}
           </ProtectedRoute>
         )}
       />
@@ -260,7 +290,7 @@ export const App = (): ReactElement => {
         path="/patient/appointments/:appointmentId/reschedule"
         element={(
           <ProtectedRoute>
-            <PatientReschedulePage />
+            {shell(<PatientReschedulePage />)}
           </ProtectedRoute>
         )}
       />
@@ -268,7 +298,7 @@ export const App = (): ReactElement => {
         path="/patient/profile"
         element={(
           <ProtectedRoute>
-            <PatientProfilePage />
+            {shell(<PatientProfilePage />)}
           </ProtectedRoute>
         )}
       />
@@ -277,7 +307,7 @@ export const App = (): ReactElement => {
         path="/patient/waitlist"
         element={(
           <ProtectedRoute>
-            <PatientWaitlistPage />
+            {shell(<PatientWaitlistPage />)}
           </ProtectedRoute>
         )}
       />
@@ -285,7 +315,7 @@ export const App = (): ReactElement => {
         path="/patient/waitlist/new"
         element={(
           <ProtectedRoute>
-            <PatientWaitlistCreatePage />
+            {shell(<PatientWaitlistCreatePage />)}
           </ProtectedRoute>
         )}
       />
@@ -293,7 +323,7 @@ export const App = (): ReactElement => {
         path="/organization/settings/reminders"
         element={(
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
-            <OrganizationReminderRulesPage />
+            {shell(<OrganizationReminderRulesPage />)}
           </ProtectedRoute>
         )}
       />
@@ -301,7 +331,7 @@ export const App = (): ReactElement => {
         path="/patient/notifications"
         element={(
           <ProtectedRoute>
-            <PatientNotificationsPage />
+            {shell(<PatientNotificationsPage />)}
           </ProtectedRoute>
         )}
       />

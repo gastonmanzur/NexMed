@@ -45,4 +45,9 @@ export class ProfessionalRepository {
   ): Promise<ProfessionalDocument | null> {
     return ProfessionalModel.findOneAndUpdate({ _id: professionalId, organizationId }, { $set: input }, { new: true }).exec();
   }
+
+  countActiveByOrganization(organizationId: string): Promise<number> {
+    return ProfessionalModel.countDocuments({ organizationId, status: 'active' }).exec();
+  }
 }
+

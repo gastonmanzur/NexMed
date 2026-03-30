@@ -39,6 +39,11 @@ const organizationIdSchema = z.object({
   organizationId: z.string().trim().min(1)
 });
 
+
+const checkoutSchema = z.object({
+  planId: z.string().trim().min(1)
+});
+
 const service = new OrganizationService();
 
 export const organizationController = {
@@ -124,5 +129,52 @@ export const organizationController = {
       success: true,
       data: summary
     });
-  }
+  },
+
+  getInviteLink: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const data = await service.getInviteLinkForUser({
+      organizationId,
+      actorUserId: req.auth!.userId
+    });
+    res.status(200).json({ success: true, data });
+  },
+
+  regenerateInviteLink: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const data = await service.regenerateInviteLinkForUser({
+      organizationId,
+      actorUserId: req.auth!.userId
+    });
+    res.status(200).json({ success: true, data });
+  },
+
+  listPlans: async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const data = await service.listPlansForUser();
+    res.status(200).json({ success: true, data });
+  },
+
+  getSubscription: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const data = await service.getOrganizationSubscriptionForUser({
+      organizationId,
+      actorUserId: req.auth!.userId
+    });
+
+    res.status(200).json({ success: true, data });
+  },
+
+  checkoutSubscription: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const { planId } = checkoutSchema.parse(req.body);
+
+    const data = await service.startOrganizationCheckout({
+      organizationId,
+      actorUserId: req.auth!.userId,
+      planId
+    });
+
+    res.status(200).json({ success: true, data });
+  },
+
 };

@@ -84,6 +84,27 @@ export interface AdminDashboardSummary {
   usersWithAvatar: number;
 }
 
+
+export interface AdminGlobalSummary {
+  organizationsTotal: number;
+  organizationsActive: number;
+  onboardingPending: number;
+  usersTotal: number;
+  subscriptionsByStatus: Record<string, number>;
+}
+
+export interface AdminOrganizationItem {
+  id: string;
+  name: string;
+  status: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
+  onboardingCompleted: boolean;
+  betaEnabled: boolean;
+  subscriptionStatus: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+  subscriptionPlanId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MonetizationConfig {
   monetizationMode: 'one_time_only' | 'subscriptions_only' | 'both';
   subscriptionPeriodMode: 'monthly' | 'yearly' | 'both';
@@ -200,6 +221,34 @@ export const adminApi = {
   },
   updateOrganizationBeta: async (accessToken: string, organizationId: string, input: { betaEnabled: boolean; betaNotes?: string }): Promise<void> => {
     await request(`/admin/organizations/${organizationId}/beta`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+  },
+
+  getSummary: async (accessToken: string): Promise<AdminGlobalSummary> => {
+    const result = await request<{ success: true; data: AdminGlobalSummary }>('/admin/summary', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  listOrganizations: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminOrganizationItem>> => {
+    const result = await request<{ success: true; data: Paginated<AdminOrganizationItem> }>(`/admin/organizations?${query.toString()}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  updateOrganizationStatus: async (
+    accessToken: string,
+    organizationId: string,
+    input: { status: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked'; betaEnabled?: boolean; onboardingCompleted?: boolean }
+  ): Promise<void> => {
+    await request(`/admin/organizations/${organizationId}/status`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify(input)

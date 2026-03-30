@@ -10,6 +10,7 @@ export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRoles('admin'));
 
 adminRouter.get('/dashboard', asyncHandler(controller.dashboard));
+adminRouter.get('/summary', asyncHandler(controller.summary));
 adminRouter.get('/users', asyncHandler(controller.listUsers));
 adminRouter.patch('/users/:userId/role', asyncHandler(controller.updateUserRole));
 adminRouter.get('/payments', asyncHandler(controller.listPayments));
@@ -19,6 +20,8 @@ adminRouter.get('/avatars', asyncHandler(controller.listAvatars));
 adminRouter.delete('/avatars/:userId', asyncHandler(controller.deleteAvatar));
 adminRouter.get('/feedback', asyncHandler(controller.listFeedback));
 adminRouter.patch('/feedback/:feedbackId', asyncHandler(controller.updateFeedback));
+adminRouter.get('/organizations', asyncHandler(controller.listOrganizations));
+adminRouter.patch('/organizations/:organizationId/status', asyncHandler(controller.updateOrganizationStatus));
 adminRouter.patch('/organizations/:organizationId/beta', asyncHandler(controller.updateOrganizationBeta));
 adminRouter.get('/monetization-config', asyncHandler(controller.getMonetizationConfig));
 adminRouter.patch('/monetization-config', asyncHandler(controller.updateMonetizationConfig));
