@@ -39,3 +39,14 @@ npm run test -w @starter/api
 6. Crear pago y suscripción según modo activo.
 7. Ejecutar webhook repetido y confirmar idempotencia.
 8. Acceder panel admin con usuario admin y no-admin.
+
+
+## QA funcional Etapa 9
+
+Checklist manual completa:
+- `docs/qa-stage9-checklist.md`
+
+Incluye validación de:
+- flujos del centro (onboarding, agenda, turnos, reminder rules, dashboard),
+- flujos del paciente (join, reserva self-service, mis turnos, waitlist, notificaciones),
+- flujos transversales (permisos por rol, errores 400/401/403/404/409, regresión por fix crítico).

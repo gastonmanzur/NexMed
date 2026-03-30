@@ -94,6 +94,23 @@ npm run build
 - Arquitectura: `docs/architecture.md`
 - Variables de entorno: `docs/env.md`
 - Testing y validación manual: `docs/testing.md`
+- Checklist QA Etapa 9: `docs/qa-stage9-checklist.md`
+- Runbook staging/producción: `docs/runbook-staging-production.md`
 - Troubleshooting: `docs/troubleshooting.md`
 - Integración de push: `docs/push-notifications.md`
 - Integración de pagos: `docs/payments-mercadopago.md`
+
+
+## Staging y deploy (Etapa 9)
+
+Checklist operativa:
+- QA funcional manual: `docs/qa-stage9-checklist.md`
+- Runbook staging/producción: `docs/runbook-staging-production.md`
+
+Pre-deploy mínimo:
+```bash
+npm run test -w @starter/api
+npm run build
+```
+
+Luego validar smoke post-deploy según runbook (health, login, organización, agenda, turnos, join paciente, reserva self-service, waitlist/notificaciones).
