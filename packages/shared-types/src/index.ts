@@ -68,6 +68,9 @@ export interface OrganizationSettingsDto {
   patientCancellationHoursLimit: number;
   patientRescheduleAllowed: boolean;
   patientRescheduleHoursLimit: number;
+  betaEnabled: boolean;
+  betaStartedAt: string | null;
+  betaNotes: string | null;
   createdAt: string;
   updatedAt: string;
 }

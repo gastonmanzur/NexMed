@@ -8,11 +8,17 @@ import { PaymentTransactionModel } from '../payments/models/payment-transaction.
 import { SubscriptionModel, subscriptionPeriods, subscriptionStatuses } from '../payments/models/subscription.model.js';
 import { MonetizationConfigModel, monetizationModes, subscriptionPeriodModes } from '../payments/models/monetization-config.model.js';
 import { MonetizationConfigRepository } from '../payments/repositories/monetization-config.repository.js';
+import { FeedbackService } from '../feedback/services/feedback.service.js';
+import { OrganizationSettingsRepository } from '../organizations/repositories/organization-settings.repository.js';
+import { OrganizationRepository } from '../organizations/repositories/organization.repository.js';
 
 export class AdminService {
   constructor(
     private readonly pushService = new PushService(),
-    private readonly monetizationConfigRepository = new MonetizationConfigRepository()
+    private readonly monetizationConfigRepository = new MonetizationConfigRepository(),
+    private readonly feedbackService = new FeedbackService(),
+    private readonly organizationSettingsRepository = new OrganizationSettingsRepository(),
+    private readonly organizationRepository = new OrganizationRepository()
   ) {}
 
   async getDashboardSummary() {
@@ -251,6 +257,42 @@ export class AdminService {
     }
     await UserModel.updateOne({ _id: targetUserId }, { $unset: { avatar: '' } }).exec();
     return { actorUserId };
+  }
+
+
+  listFeedback(filters: {
+    status?: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix';
+    category?: 'bug' | 'ux' | 'feature_request' | 'content' | 'support' | 'other';
+    limit: number;
+    page: number;
+  }) {
+    return this.feedbackService.listAdminFeedback(filters);
+  }
+
+  updateFeedback(input: {
+    feedbackId: string;
+    status: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix';
+    adminNotes?: string | undefined;
+    severity?: 'critical' | 'high' | 'medium' | 'low' | undefined;
+  }) {
+    return this.feedbackService.updateAdminFeedback(input);
+  }
+
+  async updateOrganizationBeta(input: { organizationId: string; betaEnabled: boolean; betaNotes?: string | undefined }) {
+    const organization = await this.organizationRepository.findById(input.organizationId);
+    if (!organization) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    const settings = await this.organizationSettingsRepository.updateBetaByOrganizationId(input);
+
+    return {
+      organizationId: settings.organizationId.toString(),
+      betaEnabled: settings.betaEnabled ?? false,
+      betaStartedAt: settings.betaStartedAt ? settings.betaStartedAt.toISOString() : null,
+      betaNotes: settings.betaNotes ?? null,
+      updatedAt: settings.updatedAt.toISOString()
+    };
   }
 
   getMonetizationConfig() {

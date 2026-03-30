@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@starter/ui';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { adminApi, type AdminAvatarItem, type AdminDashboardSummary, type AdminPaymentItem, type AdminSubscriptionItem, type AdminUserItem, type MonetizationConfig } from './admin-api';
+import { adminApi, type AdminAvatarItem, type AdminDashboardSummary, type AdminFeedbackItem, type AdminPaymentItem, type AdminSubscriptionItem, type AdminUserItem, type MonetizationConfig } from './admin-api';
 
-type AdminSection = 'dashboard' | 'users' | 'payments' | 'subscriptions' | 'notifications' | 'avatars' | 'monetization';
+type AdminSection = 'dashboard' | 'users' | 'payments' | 'subscriptions' | 'notifications' | 'avatars' | 'feedback' | 'monetization';
 
 const tableWrapper: CSSProperties = { overflowX: 'auto', width: '100%' };
 const tableStyle: CSSProperties = { width: '100%', borderCollapse: 'collapse', minWidth: 640 };
@@ -23,6 +23,7 @@ export const AdminPage = (): ReactElement => {
   const [payments, setPayments] = useState<AdminPaymentItem[]>([]);
   const [subscriptions, setSubscriptions] = useState<AdminSubscriptionItem[]>([]);
   const [avatars, setAvatars] = useState<AdminAvatarItem[]>([]);
+  const [feedbackItems, setFeedbackItems] = useState<AdminFeedbackItem[]>([]);
   const [monetizationConfig, setMonetizationConfig] = useState<MonetizationConfig | null>(null);
   const [notificationForm, setNotificationForm] = useState({ targetUserId: '', title: '', body: '' });
 
@@ -34,6 +35,7 @@ export const AdminPage = (): ReactElement => {
       { id: 'subscriptions', label: t('admin.navigation.subscriptions') },
       { id: 'notifications', label: t('admin.navigation.notifications') },
       { id: 'avatars', label: t('admin.navigation.avatars') },
+      { id: 'feedback', label: t('admin.navigation.feedback') },
       { id: 'monetization', label: t('admin.navigation.monetization') }
     ],
     [t]
@@ -56,6 +58,7 @@ export const AdminPage = (): ReactElement => {
           setSubscriptions((await adminApi.listSubscriptions(accessToken, new URLSearchParams({ page: '1', limit: '20' }))).items);
         }
         if (section === 'avatars') setAvatars((await adminApi.listAvatars(accessToken, new URLSearchParams({ page: '1', limit: '20', hasAvatar: 'true' }))).items);
+        if (section === 'feedback') setFeedbackItems((await adminApi.listFeedback(accessToken, new URLSearchParams({ page: '1', limit: '50' }))).items);
         if (section === 'monetization') setMonetizationConfig(await adminApi.getMonetizationConfig(accessToken));
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : t('admin.common.loadError'));
@@ -113,6 +116,23 @@ export const AdminPage = (): ReactElement => {
       await adminApi.deleteAvatar(accessToken, userId);
       setAvatars((current) => current.filter((item) => item.userId !== userId));
       setSuccess(t('admin.avatars.deleted'));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('admin.common.actionError'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const onFeedbackStatusChange = async (feedbackId: string, status: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix'): Promise<void> => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await adminApi.updateFeedback(accessToken, feedbackId, { status });
+      setFeedbackItems((current) => current.map((item) => (item.id === feedbackId ? { ...item, status } : item)));
+      setSuccess(t('admin.feedback.updated'));
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : t('admin.common.actionError'));
     } finally {
@@ -186,6 +206,11 @@ export const AdminPage = (): ReactElement => {
 
             {section === 'avatars' ? (
               <div style={tableWrapper}><table style={tableStyle}><thead><tr><th>{t('admin.avatars.user')}</th><th>{t('admin.avatars.avatar')}</th><th>{t('admin.avatars.actions')}</th></tr></thead><tbody>{avatars.map((item) => <tr key={item.userId}><td>{item.email}</td><td>{item.avatarUrl ? <img src={item.avatarUrl} alt={t('admin.avatars.imageAlt')} width={52} height={52} style={{ borderRadius: '50%' }} /> : t('admin.avatars.noAvatar')}</td><td><button type="button" onClick={() => void onDeleteAvatar(item.userId)}>{t('admin.avatars.delete')}</button></td></tr>)}</tbody></table></div>
+            ) : null}
+
+
+            {section === 'feedback' ? (
+              <div style={tableWrapper}><table style={tableStyle}><thead><tr><th>Fecha</th><th>User</th><th>Org</th><th>Categoría</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>{feedbackItems.map((item) => <tr key={item.id}><td>{new Date(item.createdAt).toLocaleString('es-AR', { hour12: false })}</td><td>{item.userId}</td><td>{item.organizationId ?? '-'}</td><td>{item.category}</td><td><select value={item.status} onChange={(event) => { void onFeedbackStatusChange(item.id, event.target.value as 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix'); }}><option value="new">new</option><option value="triaged">triaged</option><option value="planned">planned</option><option value="resolved">resolved</option><option value="wont_fix">wont_fix</option></select></td><td>{item.message.slice(0, 140)}</td></tr>)}</tbody></table></div>
             ) : null}
 
             {section === 'monetization' && monetizationConfig ? (

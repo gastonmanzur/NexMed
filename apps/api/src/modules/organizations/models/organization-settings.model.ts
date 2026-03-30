@@ -10,7 +10,10 @@ const organizationSettingsSchema = new mongoose.Schema(
     patientCancellationAllowed: { type: Boolean, required: true, default: true },
     patientCancellationHoursLimit: { type: Number, required: true, default: 24, min: 0, max: 720 },
     patientRescheduleAllowed: { type: Boolean, required: true, default: true },
-    patientRescheduleHoursLimit: { type: Number, required: true, default: 24, min: 0, max: 720 }
+    patientRescheduleHoursLimit: { type: Number, required: true, default: 24, min: 0, max: 720 },
+    betaEnabled: { type: Boolean, required: true, default: false },
+    betaStartedAt: { type: Date, required: false },
+    betaNotes: { type: String, required: false, trim: true, maxlength: 500 }
   },
   { timestamps: true }
 );

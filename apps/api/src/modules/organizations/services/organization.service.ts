@@ -465,6 +465,9 @@ export class OrganizationService {
     patientCancellationHoursLimit?: number;
     patientRescheduleAllowed?: boolean;
     patientRescheduleHoursLimit?: number;
+    betaEnabled?: boolean;
+    betaStartedAt?: Date | null;
+    betaNotes?: string | null;
     createdAt: Date;
     updatedAt: Date;
   }): OrganizationSettingsDto {
@@ -478,6 +481,9 @@ export class OrganizationService {
       patientCancellationHoursLimit: settings.patientCancellationHoursLimit ?? 24,
       patientRescheduleAllowed: settings.patientRescheduleAllowed ?? true,
       patientRescheduleHoursLimit: settings.patientRescheduleHoursLimit ?? 24,
+      betaEnabled: settings.betaEnabled ?? false,
+      betaStartedAt: settings.betaStartedAt ? settings.betaStartedAt.toISOString() : null,
+      betaNotes: settings.betaNotes ?? null,
       createdAt: settings.createdAt.toISOString(),
       updatedAt: settings.updatedAt.toISOString()
     };

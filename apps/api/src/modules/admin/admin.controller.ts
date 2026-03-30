@@ -48,6 +48,23 @@ const monetizationSchema = z.object({
   subscriptionPeriodMode: z.enum(['monthly', 'yearly', 'both'])
 });
 
+
+const feedbackQuerySchema = paginationSchema.extend({
+  status: z.enum(['new', 'triaged', 'planned', 'resolved', 'wont_fix']).optional(),
+  category: z.enum(['bug', 'ux', 'feature_request', 'content', 'support', 'other']).optional()
+});
+
+const updateFeedbackSchema = z.object({
+  status: z.enum(['new', 'triaged', 'planned', 'resolved', 'wont_fix']),
+  adminNotes: z.string().trim().max(2000).optional(),
+  severity: z.enum(['critical', 'high', 'medium', 'low']).optional()
+});
+
+const updateOrganizationBetaSchema = z.object({
+  betaEnabled: z.boolean(),
+  betaNotes: z.string().trim().max(500).optional()
+});
+
 export class AdminController {
   constructor(private readonly service = new AdminService()) {}
 
@@ -126,6 +143,59 @@ export class AdminController {
     }
     await this.service.deleteAvatar(req.auth!.userId, targetUserId, req.auth!.role);
     res.status(200).json({ success: true, data: { message: 'Avatar deleted' } });
+  };
+
+
+  listFeedback = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const parsed = feedbackQuerySchema.parse(req.query);
+    const filters: {
+      page: number;
+      limit: number;
+      status?: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix';
+      category?: 'bug' | 'ux' | 'feature_request' | 'content' | 'support' | 'other';
+    } = {
+      page: parsed.page,
+      limit: parsed.limit
+    };
+
+    if (parsed.status) filters.status = parsed.status;
+    if (parsed.category) filters.category = parsed.category;
+
+    const data = await this.service.listFeedback(filters);
+    res.status(200).json({ success: true, data });
+  };
+
+  updateFeedback = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const parsedBody = updateFeedbackSchema.parse(req.body);
+    const feedbackId = Array.isArray(req.params.feedbackId) ? req.params.feedbackId[0] : req.params.feedbackId;
+    if (!feedbackId) {
+      throw new AppError('INVALID_FEEDBACK_ID', 400, 'Missing feedback id');
+    }
+
+    const data = await this.service.updateFeedback({
+      feedbackId,
+      status: parsedBody.status,
+      adminNotes: parsedBody.adminNotes,
+      severity: parsedBody.severity
+    });
+
+    res.status(200).json({ success: true, data });
+  };
+
+  updateOrganizationBeta = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const parsedBody = updateOrganizationBetaSchema.parse(req.body);
+    const organizationId = Array.isArray(req.params.organizationId) ? req.params.organizationId[0] : req.params.organizationId;
+    if (!organizationId) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'Missing organization id');
+    }
+
+    const data = await this.service.updateOrganizationBeta({
+      organizationId,
+      betaEnabled: parsedBody.betaEnabled,
+      betaNotes: parsedBody.betaNotes
+    });
+
+    res.status(200).json({ success: true, data });
   };
 
   getMonetizationConfig = async (_req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {

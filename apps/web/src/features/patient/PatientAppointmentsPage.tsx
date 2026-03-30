@@ -37,6 +37,7 @@ export const PatientAppointmentsPage = (): ReactElement => {
   return (
     <main style={{ maxWidth: 980, margin: '2rem auto', padding: '1rem' }}>
       <Card title="Mis turnos">
+        <p><Link to="/feedback" state={{ fromPath: '/patient/appointments' }}>Enviar feedback</Link></p>
         {loading ? <LoadingState message="Cargando turnos..." /> : null}
         {!loading && error ? <ErrorState message={error} onRetry={() => void reload()} /> : null}
         {!loading && !error ? (
