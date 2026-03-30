@@ -131,6 +131,7 @@ export const DashboardPage = (): ReactElement => {
           <Link to="/app/professionals">Ir a profesionales</Link>
           <Link to="/app/specialties">Ir a especialidades</Link>
           <Link to="/app/appointments">Ir a turnos</Link>
+          <Link to="/feedback" state={{ fromPath: '/dashboard' }}>Enviar feedback beta</Link>
         </div>
         {!canManage ? <p style={{ color: '#555' }}>Tenés acceso de lectura para módulos operativos.</p> : null}
       </Card>

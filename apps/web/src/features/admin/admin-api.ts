@@ -89,6 +89,24 @@ export interface MonetizationConfig {
   subscriptionPeriodMode: 'monthly' | 'yearly' | 'both';
 }
 
+
+export interface AdminFeedbackItem {
+  id: string;
+  userId: string;
+  organizationId: string | null;
+  roleSnapshot: string | null;
+  category: 'bug' | 'ux' | 'feature_request' | 'content' | 'support' | 'other';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string | null;
+  message: string;
+  source: 'center_admin' | 'patient' | 'beta_internal';
+  pagePath: string | null;
+  status: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix';
+  adminNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const adminApi = {
   getDashboard: async (accessToken: string): Promise<AdminDashboardSummary> => {
     const result = await request<{ success: true; data: AdminDashboardSummary }>('/admin/dashboard', {
@@ -159,5 +177,32 @@ export const adminApi = {
       body: JSON.stringify(input)
     });
     return result.data;
-  }
+  },
+
+  listFeedback: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminFeedbackItem>> => {
+    const result = await request<{ success: true; data: Paginated<AdminFeedbackItem> }>(`/admin/feedback?${query.toString()}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+  updateFeedback: async (
+    accessToken: string,
+    feedbackId: string,
+    input: { status: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix'; adminNotes?: string; severity?: 'critical' | 'high' | 'medium' | 'low' }
+  ): Promise<void> => {
+    await request(`/admin/feedback/${feedbackId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+  },
+  updateOrganizationBeta: async (accessToken: string, organizationId: string, input: { betaEnabled: boolean; betaNotes?: string }): Promise<void> => {
+    await request(`/admin/organizations/${organizationId}/beta`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+  },
 };

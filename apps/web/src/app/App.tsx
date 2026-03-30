@@ -40,6 +40,7 @@ import { PatientNotificationsPage } from '../features/patient/PatientNotificatio
 import { PatientWaitlistPage } from '../features/patient/PatientWaitlistPage';
 import { PatientWaitlistCreatePage } from '../features/patient/PatientWaitlistCreatePage';
 import { OrganizationReminderRulesPage } from '../features/organizations/OrganizationReminderRulesPage';
+import { FeedbackPage } from '../features/feedback/FeedbackPage';
 
 export const App = (): ReactElement => {
   return (
@@ -203,6 +204,16 @@ export const App = (): ReactElement => {
             <AppointmentReschedulePage />
           </ProtectedRoute>
         }
+      />
+
+
+      <Route
+        path="/feedback"
+        element={(
+          <ProtectedRoute>
+            <FeedbackPage />
+          </ProtectedRoute>
+        )}
       />
 
       <Route

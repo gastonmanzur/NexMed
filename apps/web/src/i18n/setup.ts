@@ -52,7 +52,7 @@ void i18n.use(initReactI18next).init({
         },
         admin: {
           title: 'Panel de administración',
-          navigation: { dashboard: 'Dashboard', users: 'Usuarios', payments: 'Pagos', subscriptions: 'Suscripciones', notifications: 'Notificaciones', avatars: 'Avatares', monetization: 'Monetización' },
+          navigation: { dashboard: 'Dashboard', users: 'Usuarios', payments: 'Pagos', subscriptions: 'Suscripciones', notifications: 'Notificaciones', avatars: 'Avatares', feedback: 'Feedback', monetization: 'Monetización' },
           common: { loading: 'Cargando...', loadError: 'No se pudo cargar la sección.', actionError: 'No se pudo completar la acción.', yes: 'Sí', no: 'No' },
           dashboard: { totalUsers: 'Usuarios totales', adminUsers: 'Admins', payments: 'Pagos', subscriptions: 'Suscripciones', pushDevices: 'Dispositivos push', usersWithAvatar: 'Usuarios con avatar' },
           users: { email: 'Email', role: 'Rol', provider: 'Proveedor', verified: 'Verificado', actions: 'Acciones', toggleRole: 'Cambiar rol', roleUpdated: 'Rol actualizado' },
@@ -60,7 +60,8 @@ void i18n.use(initReactI18next).init({
           subscriptions: { user: 'Usuario', period: 'Periodicidad', status: 'Estado', externalReference: 'Referencia externa' },
           notifications: { targetUserPlaceholder: 'ID de usuario destino', titlePlaceholder: 'Título', bodyPlaceholder: 'Mensaje', submit: 'Enviar notificación', success: 'Notificación enviada', error: 'No se pudo enviar la notificación' },
           avatars: { user: 'Usuario', avatar: 'Avatar', actions: 'Acciones', imageAlt: 'Avatar de usuario', noAvatar: 'Sin avatar', delete: 'Eliminar avatar', deleted: 'Avatar eliminado' },
-          monetization: { mode: 'Modalidad', periodMode: 'Periodicidad permitida', save: 'Guardar configuración', updated: 'Configuración actualizada' }
+          monetization: { mode: 'Modalidad', periodMode: 'Periodicidad permitida', save: 'Guardar configuración', updated: 'Configuración actualizada' },
+          feedback: { updated: 'Feedback actualizado' }
         }
       }
     },
@@ -111,7 +112,7 @@ void i18n.use(initReactI18next).init({
         },
         admin: {
           title: 'Admin panel',
-          navigation: { dashboard: 'Dashboard', users: 'Users', payments: 'Payments', subscriptions: 'Subscriptions', notifications: 'Notifications', avatars: 'Avatars', monetization: 'Monetization' },
+          navigation: { dashboard: 'Dashboard', users: 'Users', payments: 'Payments', subscriptions: 'Subscriptions', notifications: 'Notifications', avatars: 'Avatars', feedback: 'Feedback', monetization: 'Monetization' },
           common: { loading: 'Loading...', loadError: 'Failed to load section.', actionError: 'Action failed.', yes: 'Yes', no: 'No' },
           dashboard: { totalUsers: 'Total users', adminUsers: 'Admins', payments: 'Payments', subscriptions: 'Subscriptions', pushDevices: 'Push devices', usersWithAvatar: 'Users with avatar' },
           users: { email: 'Email', role: 'Role', provider: 'Provider', verified: 'Verified', actions: 'Actions', toggleRole: 'Toggle role', roleUpdated: 'Role updated' },
@@ -119,7 +120,8 @@ void i18n.use(initReactI18next).init({
           subscriptions: { user: 'User', period: 'Period', status: 'Status', externalReference: 'External reference' },
           notifications: { targetUserPlaceholder: 'Target user ID', titlePlaceholder: 'Title', bodyPlaceholder: 'Message', submit: 'Send notification', success: 'Notification sent', error: 'Notification could not be sent' },
           avatars: { user: 'User', avatar: 'Avatar', actions: 'Actions', imageAlt: 'User avatar', noAvatar: 'No avatar', delete: 'Delete avatar', deleted: 'Avatar deleted' },
-          monetization: { mode: 'Mode', periodMode: 'Allowed period', save: 'Save configuration', updated: 'Configuration updated' }
+          monetization: { mode: 'Mode', periodMode: 'Allowed period', save: 'Save configuration', updated: 'Configuration updated' },
+          feedback: { updated: 'Feedback updated' }
         }
       }
     }

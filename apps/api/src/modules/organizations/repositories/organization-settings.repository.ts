@@ -10,6 +10,9 @@ interface UpsertOrganizationSettingsInput {
   patientCancellationHoursLimit?: number | undefined;
   patientRescheduleAllowed?: boolean | undefined;
   patientRescheduleHoursLimit?: number | undefined;
+  betaEnabled?: boolean | undefined;
+  betaStartedAt?: Date | undefined;
+  betaNotes?: string | undefined;
 }
 
 export class OrganizationSettingsRepository {
@@ -37,10 +40,43 @@ export class OrganizationSettingsRepository {
             : {}),
           ...(input.patientRescheduleHoursLimit !== undefined
             ? { patientRescheduleHoursLimit: input.patientRescheduleHoursLimit }
-            : {})
+            : {}),
+          ...(input.betaEnabled !== undefined ? { betaEnabled: input.betaEnabled } : {}),
+          ...(input.betaStartedAt !== undefined ? { betaStartedAt: input.betaStartedAt } : {}),
+          ...(input.betaNotes !== undefined ? { betaNotes: input.betaNotes } : {})
         }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).exec() as Promise<OrganizationSettingsDocument>;
+  }
+
+  async updateBetaByOrganizationId(input: {
+    organizationId: string;
+    betaEnabled: boolean;
+    betaNotes?: string | undefined;
+  }): Promise<OrganizationSettingsDocument> {
+    const existing = await this.findByOrganizationId(input.organizationId);
+
+    if (existing) {
+      return OrganizationSettingsModel.findOneAndUpdate(
+        { organizationId: input.organizationId },
+        {
+          $set: {
+            betaEnabled: input.betaEnabled,
+            ...(input.betaEnabled && !existing.betaStartedAt ? { betaStartedAt: new Date() } : {}),
+            ...(input.betaNotes !== undefined ? { betaNotes: input.betaNotes } : {})
+          }
+        },
+        { new: true }
+      ).exec() as Promise<OrganizationSettingsDocument>;
+    }
+
+    return OrganizationSettingsModel.create({
+      organizationId: input.organizationId,
+      timezone: 'UTC',
+      betaEnabled: input.betaEnabled,
+      ...(input.betaEnabled ? { betaStartedAt: new Date() } : {}),
+      ...(input.betaNotes !== undefined ? { betaNotes: input.betaNotes } : {})
+    });
   }
 }
