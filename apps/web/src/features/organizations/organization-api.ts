@@ -183,6 +183,110 @@ export const organizationApi = {
     });
 
     return result.data;
-  }
+  },
+
+  getInviteLink: async (accessToken: string, organizationId: string): Promise<{ inviteUrl: string; token: string; qrValue: string; updatedAt: string }> => {
+    const result = await request<{ success: true; data: { inviteUrl: string; token: string; qrValue: string; updatedAt: string } }>(`/organizations/${organizationId}/invite-link`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  regenerateInviteLink: async (accessToken: string, organizationId: string): Promise<{ inviteUrl: string; token: string; qrValue: string; updatedAt: string }> => {
+    const result = await request<{ success: true; data: { inviteUrl: string; token: string; qrValue: string; updatedAt: string } }>(`/organizations/${organizationId}/invite-link/regenerate`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  listPlans: async (accessToken: string): Promise<Array<{
+    id: string;
+    code: string;
+    name: string;
+    price: number;
+    currency: string;
+    maxProfessionalsActive: number;
+    status: 'active' | 'inactive';
+    description: string | null;
+  }>> => {
+    const result = await request<{ success: true; data: Array<{
+      id: string;
+      code: string;
+      name: string;
+      price: number;
+      currency: string;
+      maxProfessionalsActive: number;
+      status: 'active' | 'inactive';
+      description: string | null;
+    }> }>('/plans', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  getSubscription: async (accessToken: string, organizationId: string): Promise<{
+    subscription: {
+      id: string;
+      status: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+      provider: string;
+      startedAt: string | null;
+      expiresAt: string | null;
+      autoRenew: boolean;
+    };
+    plan: {
+      id: string;
+      code: string;
+      name: string;
+      price: number;
+      currency: string;
+      maxProfessionalsActive: number;
+      status: 'active' | 'inactive';
+      description: string | null;
+    };
+    limits: { maxProfessionalsActive: number };
+  }> => {
+    const result = await request<{ success: true; data: {
+      subscription: {
+        id: string;
+        status: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+        provider: string;
+        startedAt: string | null;
+        expiresAt: string | null;
+        autoRenew: boolean;
+      };
+      plan: {
+        id: string;
+        code: string;
+        name: string;
+        price: number;
+        currency: string;
+        maxProfessionalsActive: number;
+        status: 'active' | 'inactive';
+        description: string | null;
+      };
+      limits: { maxProfessionalsActive: number };
+    } }>(`/organizations/${organizationId}/subscription`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  checkoutSubscription: async (accessToken: string, organizationId: string, planId: string): Promise<{ checkoutUrl: string; subscriptionId: string; status: string }> => {
+    const result = await request<{ success: true; data: { checkoutUrl: string; subscriptionId: string; status: string } }>(`/organizations/${organizationId}/subscription/checkout`, {
+      method: 'POST',
+      body: JSON.stringify({ planId }),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
 
 };

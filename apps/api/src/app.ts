@@ -19,6 +19,7 @@ import { joinRouter, patientRouter } from './modules/patient/patient.routes.js';
 import { notificationsRouter } from './modules/notifications/notifications.routes.js';
 import { reminderAdminRouter } from './modules/reminders/reminder.routes.js';
 import { feedbackRouter } from './modules/feedback/feedback.routes.js';
+import { plansRouter } from './modules/plans/plans.routes.js';
 
 export const createApp = () => {
   const app = express();
@@ -68,6 +69,7 @@ export const createApp = () => {
   app.use('/api/patient', patientRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/feedback', feedbackRouter);
+  app.use('/api/plans', plansRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

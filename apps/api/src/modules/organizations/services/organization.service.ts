@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type {
   OrganizationDto,
   OrganizationMembershipDto,
@@ -13,6 +14,9 @@ import { WaitlistRequestModel } from '../../waitlist/models/waitlist-request.mod
 import { OrganizationMemberRepository } from '../repositories/organization-member.repository.js';
 import { OrganizationRepository } from '../repositories/organization.repository.js';
 import { OrganizationSettingsRepository } from '../repositories/organization-settings.repository.js';
+import { OrganizationAccessLinkRepository } from '../repositories/organization-access-link.repository.js';
+import { PlanRepository } from '../../payments/repositories/plan.repository.js';
+import { OrganizationSubscriptionRepository } from '../../payments/repositories/organization-subscription.repository.js';
 
 interface CreateOrganizationInput {
   name: string;
@@ -56,7 +60,10 @@ export class OrganizationService {
   constructor(
     private readonly organizations = new OrganizationRepository(),
     private readonly members = new OrganizationMemberRepository(),
-    private readonly settings = new OrganizationSettingsRepository()
+    private readonly settings = new OrganizationSettingsRepository(),
+    private readonly accessLinks = new OrganizationAccessLinkRepository(),
+    private readonly plans = new PlanRepository(),
+    private readonly organizationSubscriptions = new OrganizationSubscriptionRepository()
   ) {}
 
   async createOrganization(actorUserId: string, input: CreateOrganizationInput): Promise<{ organization: OrganizationDto; membership: OrganizationMembershipDto }> {
@@ -361,6 +368,188 @@ export class OrganizationService {
       onboardingCompleted,
       missingFields,
       nextStep
+    };
+  }
+
+
+  async getInviteLinkForUser(input: { organizationId: string; actorUserId: string }): Promise<{
+    organizationId: string;
+    token: string;
+    status: 'active' | 'rotated' | 'disabled';
+    invitePath: string;
+    inviteUrl: string;
+    qrValue: string;
+    createdAt: string;
+    updatedAt: string;
+  }> {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active' || !['owner', 'admin'].includes(membership.role)) {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to manage invite links');
+    }
+
+    const organization = await this.organizations.findById(input.organizationId);
+    if (!organization) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    const existing = await this.accessLinks.findByOrganizationId(input.organizationId);
+    const token = existing?.token ?? organization.slug ?? randomBytes(18).toString('base64url');
+    const link = existing ?? (await this.accessLinks.upsertByOrganizationId({ organizationId: input.organizationId, token, status: 'active' }));
+
+    const invitePath = `/join/${encodeURIComponent(link.token)}`;
+
+    return {
+      organizationId: input.organizationId,
+      token: link.token,
+      status: link.status,
+      invitePath,
+      inviteUrl: invitePath,
+      qrValue: invitePath,
+      createdAt: link.createdAt.toISOString(),
+      updatedAt: link.updatedAt.toISOString()
+    };
+  }
+
+  async regenerateInviteLinkForUser(input: { organizationId: string; actorUserId: string }) {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active' || !['owner', 'admin'].includes(membership.role)) {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to regenerate invite links');
+    }
+
+    await this.accessLinks.upsertByOrganizationId({
+      organizationId: input.organizationId,
+      token: randomBytes(18).toString('base64url'),
+      status: 'active'
+    });
+
+    return this.getInviteLinkForUser(input);
+  }
+
+  async listPlansForUser(): Promise<Array<{
+    id: string;
+    code: string;
+    name: string;
+    price: number;
+    currency: string;
+    maxProfessionalsActive: number;
+    status: 'active' | 'inactive';
+    description: string | null;
+  }>> {
+    await this.plans.ensureDefaults();
+    const plans = await this.plans.listActive();
+
+    return plans.map((plan) => ({
+      id: plan._id.toString(),
+      code: plan.code,
+      name: plan.name,
+      price: plan.price,
+      currency: plan.currency,
+      maxProfessionalsActive: plan.maxProfessionalsActive,
+      status: plan.status,
+      description: plan.description ?? null
+    }));
+  }
+
+  async getOrganizationSubscriptionForUser(input: { organizationId: string; actorUserId: string }) {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active') {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
+
+    await this.plans.ensureDefaults();
+
+    let subscription = await this.organizationSubscriptions.findByOrganizationId(input.organizationId);
+    if (!subscription) {
+      const starter = await this.plans.findByCode('starter');
+      if (!starter) throw new AppError('PLAN_NOT_FOUND', 404, 'Default plan not found');
+
+      subscription = await this.organizationSubscriptions.upsertByOrganizationId({
+        organizationId: input.organizationId,
+        planId: starter._id.toString(),
+        provider: 'internal',
+                status: 'trial',
+        startedAt: new Date(),
+        autoRenew: false
+      });
+    }
+
+    const plan = await this.plans.findById(subscription.planId.toString());
+    if (!plan) throw new AppError('PLAN_NOT_FOUND', 404, 'Plan not found');
+
+    return {
+      subscription: {
+        id: subscription._id.toString(),
+        organizationId: subscription.organizationId.toString(),
+        planId: subscription.planId.toString(),
+        provider: subscription.provider,
+        providerReference: subscription.providerReference ?? null,
+        status: subscription.status,
+        startedAt: subscription.startedAt ? subscription.startedAt.toISOString() : null,
+        expiresAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null,
+        autoRenew: subscription.autoRenew ?? false,
+        createdAt: subscription.createdAt.toISOString(),
+        updatedAt: subscription.updatedAt.toISOString()
+      },
+      plan: {
+        id: plan._id.toString(),
+        code: plan.code,
+        name: plan.name,
+        price: plan.price,
+        currency: plan.currency,
+        maxProfessionalsActive: plan.maxProfessionalsActive,
+        status: plan.status,
+        description: plan.description ?? null
+      },
+      limits: {
+        maxProfessionalsActive: plan.maxProfessionalsActive
+      }
+    };
+  }
+
+  async startOrganizationCheckout(input: { organizationId: string; actorUserId: string; planId: string }) {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active' || !['owner', 'admin'].includes(membership.role)) {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to manage organization subscription');
+    }
+
+    const plan = await this.plans.findById(input.planId);
+    if (!plan || plan.status !== 'active') {
+      throw new AppError('PLAN_NOT_FOUND', 404, 'Plan not found');
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + 1);
+
+    const subscription = await this.organizationSubscriptions.upsertByOrganizationId({
+      organizationId: input.organizationId,
+      planId: plan._id.toString(),
+      provider: 'manual',
+      providerReference: `placeholder_${randomBytes(6).toString('hex')}`,
+      status: plan.price === 0 ? 'trial' : 'active',
+      startedAt: now,
+      expiresAt,
+      autoRenew: true
+    });
+
+    return {
+      checkoutUrl: `/app/subscription?organizationId=${encodeURIComponent(input.organizationId)}&status=started`,
+      subscriptionId: subscription._id.toString(),
+      status: subscription.status
+    };
+  }
+
+  async getPlanLimitSnapshot(organizationId: string): Promise<{ maxProfessionalsActive: number; subscriptionStatus: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled' } | null> {
+    await this.plans.ensureDefaults();
+    const subscription = await this.organizationSubscriptions.findByOrganizationId(organizationId);
+    if (!subscription) return null;
+
+    const plan = await this.plans.findById(subscription.planId.toString());
+    if (!plan) return null;
+
+    return {
+      maxProfessionalsActive: plan.maxProfessionalsActive,
+      subscriptionStatus: subscription.status
     };
   }
 

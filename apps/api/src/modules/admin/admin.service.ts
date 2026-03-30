@@ -11,6 +11,9 @@ import { MonetizationConfigRepository } from '../payments/repositories/monetizat
 import { FeedbackService } from '../feedback/services/feedback.service.js';
 import { OrganizationSettingsRepository } from '../organizations/repositories/organization-settings.repository.js';
 import { OrganizationRepository } from '../organizations/repositories/organization.repository.js';
+import { OrganizationModel } from '../organizations/models/organization.model.js';
+import { OrganizationSettingsModel } from '../organizations/models/organization-settings.model.js';
+import { OrganizationSubscriptionModel } from '../payments/models/organization-subscription.model.js';
 
 export class AdminService {
   constructor(
@@ -39,6 +42,117 @@ export class AdminService {
       subscriptions,
       pushDevices,
       usersWithAvatar
+    };
+  }
+
+
+  async getGlobalSummary() {
+    const [organizationsTotal, organizationsActive, onboardingPending, usersTotal, subscriptionsByStatus] = await Promise.all([
+      OrganizationModel.countDocuments(),
+      OrganizationModel.countDocuments({ status: 'active' }),
+      OrganizationModel.countDocuments({ onboardingCompleted: false }),
+      UserModel.countDocuments(),
+      OrganizationSubscriptionModel.aggregate<{ _id: string; count: number }>([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    return {
+      organizationsTotal,
+      organizationsActive,
+      onboardingPending,
+      usersTotal,
+      subscriptionsByStatus: subscriptionsByStatus.reduce<Record<string, number>>((acc, row) => {
+        acc[row._id] = row.count;
+        return acc;
+      }, {})
+    };
+  }
+
+  async listOrganizations(filters: {
+    page: number;
+    limit: number;
+    status?: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
+    subscriptionStatus?: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+    betaEnabled?: boolean;
+  }) {
+    const query: Record<string, unknown> = {};
+    if (filters.status) query.status = filters.status;
+
+    const skip = (filters.page - 1) * filters.limit;
+    const organizations = await OrganizationModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(filters.limit).lean();
+
+    const organizationIds = organizations.map((item) => item._id);
+
+    const [settings, subscriptions] = await Promise.all([
+      OrganizationSettingsModel.find({ organizationId: { $in: organizationIds } }).lean(),
+      OrganizationSubscriptionModel.find({ organizationId: { $in: organizationIds } }).lean()
+    ]);
+
+    const settingsByOrg = new Map(settings.map((item) => [item.organizationId.toString(), item]));
+    const subscriptionsByOrg = new Map(subscriptions.map((item) => [item.organizationId.toString(), item]));
+
+    const rows = organizations
+      .map((organization) => {
+        const organizationId = organization._id.toString();
+        const setting = settingsByOrg.get(organizationId);
+        const subscription = subscriptionsByOrg.get(organizationId);
+
+        return {
+          id: organizationId,
+          name: organization.displayName ?? organization.name,
+          status: organization.status,
+          onboardingCompleted: organization.onboardingCompleted ?? false,
+          betaEnabled: setting?.betaEnabled ?? false,
+          subscriptionStatus: subscription?.status ?? 'trial',
+          subscriptionPlanId: subscription?.planId?.toString() ?? null,
+          createdAt: organization.createdAt.toISOString(),
+          updatedAt: organization.updatedAt.toISOString()
+        };
+      })
+      .filter((row) => (filters.subscriptionStatus ? row.subscriptionStatus === filters.subscriptionStatus : true))
+      .filter((row) => (typeof filters.betaEnabled === 'boolean' ? row.betaEnabled === filters.betaEnabled : true));
+
+    return {
+      items: rows,
+      page: filters.page,
+      limit: filters.limit,
+      total: rows.length
+    };
+  }
+
+  async updateOrganizationStatus(input: {
+    organizationId: string;
+    status: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
+    betaEnabled?: boolean;
+    onboardingCompleted?: boolean;
+  }) {
+    const organization = await this.organizationRepository.findById(input.organizationId);
+    if (!organization) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    const updated = await this.organizationRepository.updateById(input.organizationId, {
+      status: input.status,
+      ...(input.onboardingCompleted !== undefined ? { onboardingCompleted: input.onboardingCompleted } : {})
+    });
+
+    if (!updated) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    if (input.betaEnabled !== undefined) {
+      await this.organizationSettingsRepository.updateBetaByOrganizationId({
+        organizationId: input.organizationId,
+        betaEnabled: input.betaEnabled
+      });
+    }
+
+    return {
+      id: updated._id.toString(),
+      status: updated.status,
+      onboardingCompleted: updated.onboardingCompleted ?? false,
+      updatedAt: updated.updatedAt.toISOString()
     };
   }
 
