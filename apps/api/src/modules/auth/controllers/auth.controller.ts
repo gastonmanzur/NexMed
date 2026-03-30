@@ -40,8 +40,8 @@ const authService = new AuthService();
 const refreshCookieName = 'refreshToken';
 const refreshCookieOptions = {
   httpOnly: true,
-  sameSite: 'strict' as const,
-  secure: env.NODE_ENV === 'production',
+  sameSite: env.AUTH_COOKIE_SAME_SITE,
+  secure: env.AUTH_COOKIE_SECURE,
   path: '/api/auth'
 };
 

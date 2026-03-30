@@ -6,6 +6,8 @@
 
 ## Login funciona pero refresh falla
 - Revisar cookies bloqueadas en navegador.
+- Revisar `AUTH_COOKIE_SAME_SITE` y `AUTH_COOKIE_SECURE` en API.
+- Si web y api usan dominios distintos, ajustar estrategia de cookie para cross-site.
 - En producción, usar HTTPS para cookie `secure`.
 - Confirmar `JWT_REFRESH_SECRET` y reloj del servidor.
 
@@ -25,3 +27,8 @@
 
 ## Tests fallan por dependencias nativas
 - Ejecutar `npm install` en raíz del monorepo para instalar `sharp`, `supertest`, etc.
+
+## Staging levanta pero no autentica
+- Verificar `VITE_API_URL` en web contra dominio real de API.
+- Verificar `CORS_ORIGIN` (se permiten múltiples orígenes separados por coma).
+- Confirmar que `APP_BASE_URL`/`WEB_BASE_URL` sean coherentes con el entorno desplegado.

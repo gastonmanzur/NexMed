@@ -6,9 +6,11 @@
 - `NODE_ENV=development|test|production`
 - `PORT=4000`
 - `MONGO_URI=mongodb://localhost:27017/starter`
-- `CORS_ORIGIN=http://localhost:5173`
+- `CORS_ORIGIN=http://localhost:5173` (permite múltiples orígenes separados por coma)
 - `APP_BASE_URL=http://localhost:4000`
 - `WEB_BASE_URL=http://localhost:5173`
+- `AUTH_COOKIE_SAME_SITE=strict|lax|none`
+- `AUTH_COOKIE_SECURE=true|false` (si no se define, en `production` se asume `true`)
 
 ### Auth
 - `JWT_ACCESS_SECRET=<min 32 chars>`
@@ -69,3 +71,6 @@
 - `VITE_FIREBASE_MESSAGING_SENDER_ID=<optional if no push>`
 - `VITE_FIREBASE_APP_ID=<optional if no push>`
 - `VITE_FIREBASE_WEB_PUSH_VAPID_KEY=<optional if no push>`
+
+
+> En `NODE_ENV=production` se recomienda usar `https://` en `APP_BASE_URL`, `WEB_BASE_URL` y `CORS_ORIGIN`.

@@ -57,7 +57,11 @@ const envSchema = z
     WEBHOOK_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     WEBHOOK_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
     PUSH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
-    PUSH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(40)
+    PUSH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(40),
+    AUTH_COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('strict'),
+    AUTH_COOKIE_SECURE: z
+      .union([z.boolean(), z.enum(['true', 'false']), z.string().length(0)])
+      .optional()
   })
   .transform((data) => {
     const corsOrigins = data.CORS_ORIGIN.split(',')
@@ -72,7 +76,15 @@ const envSchema = z
       ...data,
       MERCADOPAGO_ACCESS_TOKEN: data.MERCADOPAGO_ACCESS_TOKEN ?? data.MP_ACCESS_TOKEN,
       MERCADOPAGO_WEBHOOK_SECRET: data.MERCADOPAGO_WEBHOOK_SECRET ?? data.MP_WEBHOOK_SECRET,
-      CORS_ORIGIN: corsOrigins.length > 0 ? corsOrigins : [data.WEB_BASE_URL]
+      CORS_ORIGIN: corsOrigins.length > 0 ? corsOrigins : [data.WEB_BASE_URL],
+      AUTH_COOKIE_SECURE:
+        typeof data.AUTH_COOKIE_SECURE === 'boolean'
+          ? data.AUTH_COOKIE_SECURE
+          : data.AUTH_COOKIE_SECURE === 'true'
+            ? true
+            : data.AUTH_COOKIE_SECURE === 'false'
+              ? false
+              : data.NODE_ENV === 'production'
     };
   })
   .superRefine((data, ctx) => {
@@ -83,6 +95,26 @@ const envSchema = z
     if (data.NODE_ENV === 'production' && !data.MERCADOPAGO_WEBHOOK_SECRET) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'MERCADOPAGO_WEBHOOK_SECRET is required in production' });
     }
+
+    if (data.AUTH_COOKIE_SAME_SITE === 'none' && !data.AUTH_COOKIE_SECURE) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'AUTH_COOKIE_SECURE must be true when AUTH_COOKIE_SAME_SITE=none'
+      });
+    }
+
+    if (data.NODE_ENV === 'production') {
+      const urlsToCheck = [data.APP_BASE_URL, data.WEB_BASE_URL, ...data.CORS_ORIGIN];
+      const hasInsecureUrl = urlsToCheck.some((url) => url.startsWith('http://'));
+
+      if (hasInsecureUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'APP_BASE_URL, WEB_BASE_URL y CORS_ORIGIN deben usar https:// en production'
+        });
+      }
+    }
+
   });
 
 export const env = envSchema.parse(process.env);
