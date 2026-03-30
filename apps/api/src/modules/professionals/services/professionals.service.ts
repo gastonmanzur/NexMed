@@ -194,14 +194,21 @@ export class ProfessionalsService {
     const normalized = this.normalizeSpecialtyInput(input);
     await this.ensureSpecialtyNameAvailable(organizationId, normalized.name);
 
-    const specialty = await this.specialties.create({
-      organizationId,
-      name: normalized.name,
-      description: normalized.description,
-      status: normalized.status ?? 'active'
-    });
+    try {
+      const specialty = await this.specialties.create({
+        organizationId,
+        name: normalized.name,
+        description: normalized.description,
+        status: normalized.status ?? 'active'
+      });
 
-    return this.toSpecialtyDto(specialty, 0);
+      return this.toSpecialtyDto(specialty, 0);
+    } catch (error) {
+      if (this.isDuplicateSpecialtyError(error)) {
+        throw new AppError('SPECIALTY_DUPLICATED', 409, 'Specialty name already exists in this organization');
+      }
+      throw error;
+    }
   }
 
   async getSpecialty(organizationId: string, specialtyId: string): Promise<SpecialtyDto> {
@@ -233,17 +240,24 @@ export class ProfessionalsService {
       }
     }
 
-    const specialty = await this.specialties.updateByIdInOrganization(organizationId, specialtyId, {
-      ...(normalized.name !== undefined ? { name: normalized.name } : {}),
-      ...(normalized.description !== undefined ? { description: normalized.description } : {}),
-      ...(normalized.status !== undefined ? { status: normalized.status } : {})
-    });
+    try {
+      const specialty = await this.specialties.updateByIdInOrganization(organizationId, specialtyId, {
+        ...(normalized.name !== undefined ? { name: normalized.name } : {}),
+        ...(normalized.description !== undefined ? { description: normalized.description } : {}),
+        ...(normalized.status !== undefined ? { status: normalized.status } : {})
+      });
 
-    if (!specialty) {
-      throw new AppError('SPECIALTY_NOT_FOUND', 404, 'Specialty not found');
+      if (!specialty) {
+        throw new AppError('SPECIALTY_NOT_FOUND', 404, 'Specialty not found');
+      }
+
+      return this.getSpecialty(organizationId, specialtyId);
+    } catch (error) {
+      if (this.isDuplicateSpecialtyError(error)) {
+        throw new AppError('SPECIALTY_DUPLICATED', 409, 'Specialty name already exists in this organization');
+      }
+      throw error;
     }
-
-    return this.getSpecialty(organizationId, specialtyId);
   }
 
   async updateSpecialtyStatus(organizationId: string, specialtyId: string, status: SpecialtyStatus): Promise<SpecialtyDto> {
@@ -274,6 +288,11 @@ export class ProfessionalsService {
     if (specialties.length !== normalized.length) {
       throw new AppError('INVALID_SPECIALTY_ASSOCIATION', 400, 'One or more specialties do not belong to the organization');
     }
+  }
+
+
+  private isDuplicateSpecialtyError(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 11000;
   }
 
   private async ensureSpecialtyNameAvailable(organizationId: string, name: string): Promise<void> {
