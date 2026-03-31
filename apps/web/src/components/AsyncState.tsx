@@ -1,14 +1,7 @@
 import type { ReactElement } from 'react';
 
-const boxStyle = {
-  border: '1px solid #e5e7eb',
-  borderRadius: 8,
-  padding: '0.9rem',
-  background: '#fafafa'
-};
-
 export const LoadingState = ({ message = 'Cargando...' }: { message?: string }): ReactElement => (
-  <div style={boxStyle} role="status" aria-live="polite">
+  <div className="nx-state" role="status" aria-live="polite">
     {message}
   </div>
 );
@@ -22,10 +15,10 @@ export const ErrorState = ({
   onRetry?: () => void;
   retryLabel?: string;
 }): ReactElement => (
-  <div style={{ ...boxStyle, borderColor: '#fecaca', background: '#fff1f2', color: '#9f1239' }} role="alert">
+  <div className="nx-state nx-state--error" role="alert">
     <p style={{ marginTop: 0 }}>{message}</p>
     {onRetry ? (
-      <button type="button" onClick={onRetry}>
+      <button type="button" className="nx-btn-danger" onClick={onRetry}>
         {retryLabel}
       </button>
     ) : null}
@@ -41,9 +34,9 @@ export const EmptyState = ({
   description: string;
   action?: ReactElement;
 }): ReactElement => (
-  <div style={boxStyle}>
+  <div className="nx-state">
     <p style={{ margin: 0, fontWeight: 600 }}>{title}</p>
-    <p style={{ marginBottom: action ? '0.75rem' : 0 }}>{description}</p>
+    <p style={{ marginBottom: action ? '0.75rem' : 0, color: 'var(--text-soft)' }}>{description}</p>
     {action ?? null}
   </div>
 );

@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { resolveAvatarUrl } from '../lib/resolve-avatar-url';
 
 interface NavItem {
   label: string;
@@ -34,38 +35,76 @@ const adminItems: NavItem[] = [
   { label: 'Control global', to: '/admin' }
 ];
 
+const initialsFor = (firstName?: string, lastName?: string, email?: string): string => {
+  const fullInitials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.trim().toUpperCase();
+  if (fullInitials) {
+    return fullInitials;
+  }
+  return (email?.[0] ?? 'U').toUpperCase();
+};
+
 export const AppShell = ({ children }: { children: ReactNode }): ReactElement => {
   const location = useLocation();
-  const { user, memberships, activeOrganizationId, activeOrganizationSummary } = useAuth();
+  const navigate = useNavigate();
+  const { user, memberships, activeOrganizationId, activeOrganizationSummary, clearSession } = useAuth();
 
   const membership = memberships.find((item) => item.organizationId === activeOrganizationId && item.status === 'active');
   const isSuperAdmin = user?.globalRole === 'super_admin';
   const isPatient = membership?.role === 'patient' || location.pathname.startsWith('/patient');
   const items = isSuperAdmin && location.pathname.startsWith('/admin') ? adminItems : isPatient ? patientItems : centerItems;
+  const sectionTitle = isSuperAdmin && location.pathname.startsWith('/admin')
+    ? 'Panel Super Admin'
+    : isPatient
+      ? 'Portal Paciente'
+      : activeOrganizationSummary?.displayName ?? activeOrganizationSummary?.name ?? 'Centro';
+
+  const avatarUrl = user?.avatar?.url ? resolveAvatarUrl(user.avatar.url) : null;
 
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '240px 1fr' }}>
-      <aside style={{ borderRight: '1px solid #e6e6e6', padding: '1rem', background: '#fafafa' }}>
-        <h3 style={{ marginTop: 0 }}>NexMed</h3>
-        <p style={{ color: '#666', fontSize: '0.9rem' }}>
-          {isSuperAdmin && location.pathname.startsWith('/admin')
-            ? 'Panel Super Admin'
-            : isPatient
-              ? 'Portal Paciente'
-              : activeOrganizationSummary?.displayName ?? activeOrganizationSummary?.name ?? 'Centro'}
-        </p>
-        <nav style={{ display: 'grid', gap: '0.4rem' }}>
+    <div className="nx-shell">
+      <aside className="nx-sidebar">
+        <div className="nx-brand">
+          <h3>NexMed</h3>
+          <p>{sectionTitle}</p>
+        </div>
+        <nav className="nx-nav">
           {items.map((item) => {
             const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
             return (
-              <Link key={item.to} to={item.to} style={{ fontWeight: active ? 700 : 500 }}>
+              <Link key={item.to} to={item.to} className={`nx-nav-link${active ? ' is-active' : ''}`}>
                 {item.label}
               </Link>
             );
           })}
         </nav>
       </aside>
-      <div>{children}</div>
+      <div className="nx-main">
+        <header className="nx-topbar">
+          <p className="nx-topbar__title">{sectionTitle}</p>
+          <div className="nx-user">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar de usuario" className="nx-avatar" />
+            ) : (
+              <span className="nx-avatar nx-avatar--fallback">{initialsFor(user?.firstName, user?.lastName, user?.email)}</span>
+            )}
+            <div className="nx-user__meta">
+              <div className="nx-user__name">{`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Usuario'}</div>
+              <div className="nx-user__email">{user?.email ?? 'Sin email'}</div>
+            </div>
+            <button
+              type="button"
+              className="nx-btn-danger"
+              onClick={async () => {
+                await clearSession();
+                navigate('/login', { replace: true });
+              }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </header>
+        <div>{children}</div>
+      </div>
     </div>
   );
 };

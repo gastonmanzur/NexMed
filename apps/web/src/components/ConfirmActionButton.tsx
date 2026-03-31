@@ -22,6 +22,7 @@ export const ConfirmActionButton = ({
 
         void onConfirm();
       }}
+      className="nx-btn-danger"
     >
       {children}
     </button>
