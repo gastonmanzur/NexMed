@@ -10,15 +10,7 @@ import { specialtiesApi } from '../specialties/specialties-api';
 import { ConfirmActionButton } from '../../components/ConfirmActionButton';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
-const appointmentStatuses: AppointmentStatus[] = [
-  'booked',
-  'canceled_by_staff',
-  'canceled_by_patient',
-  'rescheduled',
-  'completed',
-  'no_show'
-];
-
+const appointmentStatuses: AppointmentStatus[] = ['booked', 'canceled_by_staff', 'canceled_by_patient', 'rescheduled', 'completed', 'no_show'];
 const formatDateTime = (value: string): string => new Date(value).toLocaleString();
 
 export const AppointmentsListPage = (): ReactElement => {
@@ -30,12 +22,7 @@ export const AppointmentsListPage = (): ReactElement => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [filters, setFilters] = useState<{ professionalId: string; status: string; from: string; to: string }>({
-    professionalId: '',
-    status: '',
-    from: '',
-    to: ''
-  });
+  const [filters, setFilters] = useState<{ professionalId: string; status: string; from: string; to: string }>({ professionalId: '', status: '', from: '', to: '' });
 
   const activeMembership = useMemo(
     () => memberships.find((item) => item.organizationId === activeOrganizationId) ?? null,
@@ -43,15 +30,8 @@ export const AppointmentsListPage = (): ReactElement => {
   );
   const canManage = activeMembership?.role === 'owner' || activeMembership?.role === 'admin' || activeMembership?.role === 'staff';
 
-  const professionalsById = useMemo(
-    () => new Map(professionals.map((item) => [item.id, item.displayName])),
-    [professionals]
-  );
-
-  const specialtiesById = useMemo(
-    () => new Map(specialties.map((item) => [item.id, item.name])),
-    [specialties]
-  );
+  const professionalsById = useMemo(() => new Map(professionals.map((item) => [item.id, item.displayName])), [professionals]);
+  const specialtiesById = useMemo(() => new Map(specialties.map((item) => [item.id, item.name])), [specialties]);
 
   const load = async (): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
@@ -86,116 +66,97 @@ export const AppointmentsListPage = (): ReactElement => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeOrganizationId]);
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!activeOrganizationId) {
-    return <Navigate to="/post-login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
 
   return (
-    <main style={{ maxWidth: 1200, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' }}>
-      <Card title="Turnos">
+    <main className="nx-page">
+      <Card title="Turnos" subtitle="Listado completo con filtros por profesional, estado y rango de fechas.">
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link to="/app">Volver al dashboard</Link>
-          {canManage ? <Link to="/app/appointments/new">Crear turno</Link> : null}
-          <button type="button" onClick={() => void load()} disabled={loading}>
-            Recargar
-          </button>
+          <Link className="nx-btn-secondary" to="/app">Volver al dashboard</Link>
+          {canManage ? <Link className="nx-btn" to="/app/appointments/new">Crear turno</Link> : null}
+          <button type="button" className="nx-btn-secondary" onClick={() => void load()} disabled={loading}>Recargar</button>
         </div>
 
         <form
-          style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', alignItems: 'end' }}
+          className="nx-form-grid"
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', marginTop: '0.95rem', alignItems: 'end' }}
           onSubmit={async (event) => {
             event.preventDefault();
             await load();
           }}
         >
-          <label>
+          <label className="nx-field">
             Profesional
-            <select
-              value={filters.professionalId}
-              onChange={(event) => setFilters((current) => ({ ...current, professionalId: event.target.value }))}
-            >
+            <select value={filters.professionalId} onChange={(event) => setFilters((current) => ({ ...current, professionalId: event.target.value }))}>
               <option value="">Todos</option>
               {professionals.map((professional) => (
-                <option key={professional.id} value={professional.id}>
-                  {professional.displayName}
-                </option>
+                <option key={professional.id} value={professional.id}>{professional.displayName}</option>
               ))}
             </select>
           </label>
 
-          <label>
+          <label className="nx-field">
             Estado
             <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
               <option value="">Todos</option>
               {appointmentStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
+                <option key={status} value={status}>{status}</option>
               ))}
             </select>
           </label>
 
-          <label>
+          <label className="nx-field">
             Desde
             <input type="date" value={filters.from} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} />
           </label>
 
-          <label>
+          <label className="nx-field">
             Hasta
             <input type="date" value={filters.to} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} />
           </label>
 
-          <button type="submit">Aplicar filtros</button>
+          <button type="submit" className="nx-btn">Aplicar filtros</button>
         </form>
 
         {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
       </Card>
 
-      <Card title="Listado">
+      <Card title="Listado" subtitle="Turnos registrados para la organización activa.">
         {loading ? <LoadingState message="Cargando turnos..." /> : null}
         {!loading && !error && appointments.length === 0 ? (
-          <EmptyState
-            title="No hay turnos para estos filtros"
-            description="Probá cambiar el rango de fechas o crear un nuevo turno."
-            {...(canManage ? { action: <Link to="/app/appointments/new">Crear turno</Link> } : {})}
-          />
+          <EmptyState title="No hay turnos para estos filtros" description="Probá cambiar el rango de fechas o crear un nuevo turno." {...(canManage ? { action: <Link className="nx-btn" to="/app/appointments/new">Crear turno</Link> } : {})} />
         ) : null}
         {appointments.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="nx-table-wrap">
+            <table className="nx-table">
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Paciente</th>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Profesional</th>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Especialidad</th>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Inicio</th>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Fin</th>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Estado</th>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Origen</th>
-                  <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd' }}>Acciones</th>
+                  <th>Paciente</th>
+                  <th>Profesional</th>
+                  <th>Especialidad</th>
+                  <th>Inicio</th>
+                  <th>Fin</th>
+                  <th>Estado</th>
+                  <th>Origen</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {appointments.map((appointment) => (
                   <tr key={appointment.id}>
-                    <td style={{ padding: '0.4rem 0' }}>{appointment.patientName}</td>
+                    <td>{appointment.patientName}</td>
                     <td>{professionalsById.get(appointment.professionalId) ?? appointment.professionalId}</td>
                     <td>{appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) ?? appointment.specialtyId : '-'}</td>
                     <td>{formatDateTime(appointment.startAt)}</td>
                     <td>{formatDateTime(appointment.endAt)}</td>
-                    <td>
-                      <strong>{appointment.status}</strong>
-                    </td>
+                    <td><span className="nx-badge">{appointment.status}</span></td>
                     <td>{appointment.source}</td>
                     <td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <Link to={`/app/appointments/${appointment.id}`}>Ver</Link>
+                      <Link className="nx-btn-secondary" to={`/app/appointments/${appointment.id}`}>Ver</Link>
                       {canManage && appointment.status === 'booked' ? (
                         <>
-                          <Link to={`/app/appointments/${appointment.id}/reschedule`}>Reprogramar</Link>
+                          <Link className="nx-btn-secondary" to={`/app/appointments/${appointment.id}/reschedule`}>Reprogramar</Link>
                           <ConfirmActionButton
                             confirmationMessage="¿Seguro que querés cancelar este turno?"
                             onConfirm={async () => {
