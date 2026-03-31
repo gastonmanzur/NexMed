@@ -185,6 +185,9 @@ export const PostLoginResolverPage = (): ReactElement => {
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
 
+  const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
+
+
   useEffect(() => {
     let cancelled = false;
 
@@ -199,9 +202,42 @@ export const PostLoginResolverPage = (): ReactElement => {
 
       const pendingJoin = readJoinIntent();
 
+      let joinResolved = !pendingJoin;
+      let patientOrganizationsDetected = false;
+
+
       try {
         if (pendingJoin) {
           await patientApi.resolveJoin(accessToken, pendingJoin);
+
+          joinResolved = true;
+        }
+      } catch {
+        joinResolved = false;
+      }
+
+      try {
+        await refreshOrganizationsContext();
+      } catch {
+        // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
+      }
+
+      try {
+        const patientMe = await patientApi.getMe(accessToken);
+        patientOrganizationsDetected = patientMe.organizations.length > 0;
+      } catch {
+        patientOrganizationsDetected = false;
+      } finally {
+        if (!cancelled) {
+          setHasPatientOrganizations(patientOrganizationsDetected);
+          setJoinResolutionFailed(Boolean(pendingJoin) && !joinResolved && !patientOrganizationsDetected);
+          setBootstrapResolved(true);
+        }
+
+        if (!pendingJoin || joinResolved || patientOrganizationsDetected) {
+          clearJoinIntent();
+        }
+
           await refreshOrganizationsContext();
         }
 
@@ -218,6 +254,7 @@ export const PostLoginResolverPage = (): ReactElement => {
         if (!cancelled) {
           setBootstrapResolved(true);
         }
+
       }
     };
 
@@ -239,6 +276,12 @@ export const PostLoginResolverPage = (): ReactElement => {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+
+  if (joinResolutionFailed) {
+    return <p>No pudimos completar tu vinculación al centro. Reintentá desde el enlace de invitación.</p>;
+  }
+
 
   if (organizations.length === 0 && !hasPatientOrganizations) {
     return <Navigate to="/onboarding" replace />;
