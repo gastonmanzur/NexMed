@@ -4,7 +4,7 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { organizationApi } from './organization-api';
 
-const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/api\/?$/, '');
+const APP_URL = (import.meta.env.VITE_PUBLIC_APP_URL ?? window.location.origin).replace(/\/$/, '');
 
 export const OrganizationInvitePage = (): ReactElement => {
   const { accessToken, activeOrganizationId } = useAuth();
@@ -20,7 +20,7 @@ export const OrganizationInvitePage = (): ReactElement => {
 
   const absoluteLink = useMemo(() => {
     if (!data?.inviteUrl) return '';
-    return data.inviteUrl.startsWith('http') ? data.inviteUrl : `${API_URL}${data.inviteUrl}`;
+    return data.inviteUrl.startsWith('http') ? data.inviteUrl : `${APP_URL}${data.inviteUrl}`;
   }, [data?.inviteUrl]);
 
   const qrUrl = useMemo(() => {
