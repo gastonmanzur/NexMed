@@ -184,7 +184,9 @@ export const PostLoginResolverPage = (): ReactElement => {
   const { loading, user, organizations, memberships, activeOrganizationId, accessToken, refreshOrganizationsContext } = useAuth();
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
+
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -199,12 +201,15 @@ export const PostLoginResolverPage = (): ReactElement => {
       }
 
       const pendingJoin = readJoinIntent();
+
       let joinResolved = !pendingJoin;
       let patientOrganizationsDetected = false;
+
 
       try {
         if (pendingJoin) {
           await patientApi.resolveJoin(accessToken, pendingJoin);
+
           joinResolved = true;
         }
       } catch {
@@ -232,6 +237,24 @@ export const PostLoginResolverPage = (): ReactElement => {
         if (!pendingJoin || joinResolved || patientOrganizationsDetected) {
           clearJoinIntent();
         }
+
+          await refreshOrganizationsContext();
+        }
+
+        const patientMe = await patientApi.getMe(accessToken);
+        if (!cancelled) {
+          setHasPatientOrganizations(patientMe.organizations.length > 0);
+        }
+      } catch {
+        if (!cancelled) {
+          setHasPatientOrganizations(false);
+        }
+      } finally {
+        clearJoinIntent();
+        if (!cancelled) {
+          setBootstrapResolved(true);
+        }
+
       }
     };
 
@@ -254,9 +277,11 @@ export const PostLoginResolverPage = (): ReactElement => {
     return <Navigate to="/login" replace />;
   }
 
+
   if (joinResolutionFailed) {
     return <p>No pudimos completar tu vinculación al centro. Reintentá desde el enlace de invitación.</p>;
   }
+
 
   if (organizations.length === 0 && !hasPatientOrganizations) {
     return <Navigate to="/onboarding" replace />;
