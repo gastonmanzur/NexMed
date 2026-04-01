@@ -46,7 +46,11 @@ const useGoogleLogin = () => {
       throw new Error('No se pudo obtener el Google ID token');
     }
 
-    const session = await authApi.loginGoogle({ idToken, photoURL: result.user.photoURL });
+    const session = await authApi.loginGoogle({
+      idToken,
+      photoURL: result.user.photoURL,
+    });
+
     setSession(session);
     navigate('/post-login');
   };
@@ -57,6 +61,7 @@ export const RegisterPage = (): ReactElement => {
   const navigate = useNavigate();
   const { setSession } = useAuth();
   const loginWithGoogle = useGoogleLogin();
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -68,11 +73,34 @@ export const RegisterPage = (): ReactElement => {
   return (
     <main style={viewStyle}>
       <Card title={t('auth.register.title')}>
-        <input placeholder="Nombre" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-        <input placeholder="Apellido" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <input placeholder="Confirmar password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+        <input
+          placeholder="Nombre"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+        />
+        <input
+          placeholder="Apellido"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+        />
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <input
+          placeholder="Confirmar password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+
         <button
           type="button"
           disabled={loading}
@@ -80,11 +108,18 @@ export const RegisterPage = (): ReactElement => {
             try {
               setError('');
               setLoading(true);
+
               if (password !== confirmPassword) {
                 throw new Error('Las contraseñas no coinciden');
               }
 
-              const session = await authApi.register({ firstName, lastName, email, password });
+              const session = await authApi.register({
+                firstName,
+                lastName,
+                email,
+                password,
+              });
+
               setSession(session);
               navigate('/post-login');
             } catch (cause) {
@@ -96,6 +131,7 @@ export const RegisterPage = (): ReactElement => {
         >
           {loading ? 'Creando cuenta...' : t('auth.register.submit')}
         </button>
+
         <button
           type="button"
           disabled={loading}
@@ -113,6 +149,7 @@ export const RegisterPage = (): ReactElement => {
         >
           {t('auth.login.google')}
         </button>
+
         <p style={{ color: 'crimson' }}>{error}</p>
         <Link to="/login">{t('auth.common.goLogin')}</Link>
       </Card>
@@ -125,6 +162,7 @@ export const LoginPage = (): ReactElement => {
   const navigate = useNavigate();
   const { setSession } = useAuth();
   const loginWithGoogle = useGoogleLogin();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -133,8 +171,18 @@ export const LoginPage = (): ReactElement => {
   return (
     <main style={viewStyle}>
       <Card title={t('auth.login.title')}>
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
         <button
           type="button"
           disabled={loading}
@@ -154,6 +202,7 @@ export const LoginPage = (): ReactElement => {
         >
           {loading ? 'Ingresando...' : t('auth.login.submit')}
         </button>
+
         <button
           type="button"
           disabled={loading}
@@ -171,6 +220,7 @@ export const LoginPage = (): ReactElement => {
         >
           {t('auth.login.google')}
         </button>
+
         <p style={{ color: 'crimson' }}>{error}</p>
         <Link to="/register">Crear cuenta</Link>
         <br />
@@ -181,7 +231,16 @@ export const LoginPage = (): ReactElement => {
 };
 
 export const PostLoginResolverPage = (): ReactElement => {
-  const { loading, user, organizations, memberships, activeOrganizationId, accessToken, refreshOrganizationsContext } = useAuth();
+  const {
+    loading,
+    user,
+    organizations,
+    memberships,
+    activeOrganizationId,
+    accessToken,
+    refreshOrganizationsContext,
+  } = useAuth();
+
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
@@ -194,6 +253,7 @@ export const PostLoginResolverPage = (): ReactElement => {
         if (!cancelled) {
           setBootstrapResolved(true);
           setHasPatientOrganizations(false);
+          setJoinResolutionFailed(false);
         }
         return;
       }
@@ -203,30 +263,36 @@ export const PostLoginResolverPage = (): ReactElement => {
       let joinResolved = !pendingJoin;
       let patientOrganizationsDetected = false;
 
-
       try {
         if (pendingJoin) {
           await patientApi.resolveJoin(accessToken, pendingJoin);
-
           joinResolved = true;
         }
       } catch {
         joinResolved = false;
       }
 
+
       void refreshOrganizationsContext().catch(() => {
         // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
       });
 
+  void refreshOrganizationsContext().catch(() => {
+  // Ignorado: no debe bloquear la resolución de la ruta inicial.
+});
+
+
       try {
         const patientMe = await patientApi.getMe(accessToken);
-        patientOrganizationsDetected = patientMe.organizations.length > 0;
+        patientOrganizationsDetected = (patientMe.organizations?.length ?? 0) > 0;
       } catch {
         patientOrganizationsDetected = false;
       } finally {
         if (!cancelled) {
           setHasPatientOrganizations(patientOrganizationsDetected);
-          setJoinResolutionFailed(Boolean(pendingJoin) && !joinResolved && !patientOrganizationsDetected);
+          setJoinResolutionFailed(
+            Boolean(pendingJoin) && !joinResolved && !patientOrganizationsDetected
+          );
           setBootstrapResolved(true);
         }
 
@@ -256,7 +322,12 @@ export const PostLoginResolverPage = (): ReactElement => {
   }
 
   if (joinResolutionFailed) {
-    return <p>No pudimos completar tu vinculación al centro. Reintentá desde el enlace de invitación.</p>;
+    return (
+      <p>
+        No pudimos completar tu vinculación al centro. Reintentá desde el enlace
+        de invitación.
+      </p>
+    );
   }
 
   if (organizations.length === 0 && !hasPatientOrganizations) {
@@ -268,16 +339,25 @@ export const PostLoginResolverPage = (): ReactElement => {
   }
 
   const resolvedOrganizationId = activeOrganizationId ?? organizations[0]?.id ?? null;
-  const activeOrganization = organizations.find((organization) => organization.id === resolvedOrganizationId);
+
+  const activeOrganization = organizations.find(
+    (organization) => organization.id === resolvedOrganizationId
+  );
+
   const activeMembership = memberships.find(
-    (membership) => membership.organizationId === resolvedOrganizationId && membership.status === 'active'
+    (membership) =>
+      membership.organizationId === resolvedOrganizationId &&
+      membership.status === 'active'
   );
 
   if (activeMembership?.role === 'patient' || hasPatientOrganizations) {
     return <Navigate to="/patient/organizations" replace />;
   }
 
-  if (!activeOrganization?.onboardingCompleted || activeOrganization.status === 'onboarding') {
+  if (
+    !activeOrganization?.onboardingCompleted ||
+    activeOrganization.status === 'onboarding'
+  ) {
     return <Navigate to="/onboarding/organization" replace />;
   }
 
@@ -316,7 +396,11 @@ export const ForgotPasswordPage = (): ReactElement => {
   return (
     <main style={viewStyle}>
       <Card title={t('auth.forgot.title')}>
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         <button
           type="button"
           onClick={async () => {
@@ -341,7 +425,11 @@ export const ResetPasswordPage = (): ReactElement => {
   return (
     <main style={viewStyle}>
       <Card title={t('auth.reset.title')}>
-        <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        <input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
         <button
           type="button"
           onClick={async () => {
@@ -367,8 +455,18 @@ export const ChangePasswordPage = (): ReactElement => {
   return (
     <main style={viewStyle}>
       <Card title={t('auth.change.title')}>
-        <input type="password" placeholder={t('auth.change.current')} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-        <input type="password" placeholder={t('auth.change.new')} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        <input
+          type="password"
+          placeholder={t('auth.change.current')}
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder={t('auth.change.new')}
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
         <button
           type="button"
           onClick={async () => {
