@@ -6,9 +6,6 @@ import type {
   OrganizationStatus,
 } from '@starter/shared-types';
 import type { ReactElement, ReactNode } from 'react';
-<<<<<<< codex/fix-postloginresolverpage-blocking-issue
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-=======
 import {
   createContext,
   useCallback,
@@ -17,7 +14,6 @@ import {
   useMemo,
   useState,
 } from 'react';
->>>>>>> master
 import { authApi } from './auth-api';
 
 const ACTIVE_ORGANIZATION_STORAGE_KEY = 'nexmed.activeOrganizationId';
@@ -207,28 +203,6 @@ export const AuthProvider = ({
     [activeOrganizationId, organizations]
   );
 
-  const refreshOrganizationsContext = useCallback(async (): Promise<void> => {
-    if (!accessToken) {
-      return;
-    }
-
-    const context = await authApi.me(accessToken);
-    setOrganizations(context.organizations);
-    setMemberships(context.memberships);
-
-    const persistedOrganizationId = localStorage.getItem(ACTIVE_ORGANIZATION_STORAGE_KEY);
-    const suggestedOrganizationId =
-      context.activeOrganizationId ??
-      resolveSuggestedActiveOrganizationId({ organizations: context.organizations, memberships: context.memberships });
-
-    const nextActiveOrganizationId =
-      persistedOrganizationId && context.organizations.some((organization) => organization.id === persistedOrganizationId)
-        ? persistedOrganizationId
-        : suggestedOrganizationId;
-
-    setActiveOrganizationId(nextActiveOrganizationId ?? null);
-  }, [accessToken]);
-
   const value = useMemo<AuthState>(
     () => ({
       user,
@@ -243,23 +217,6 @@ export const AuthProvider = ({
       setSession,
       clearSession,
       setActiveOrganizationId,
-<<<<<<< codex/fix-postloginresolverpage-blocking-issue
-      setOrganizationsContext: (payload) => {
-        setOrganizations(payload.organizations);
-        setMemberships(payload.memberships);
-
-        const nextActiveOrganizationId =
-          payload.activeOrganizationId ?? resolveSuggestedActiveOrganizationId(payload);
-
-        setActiveOrganizationId(nextActiveOrganizationId);
-      },
-      refreshOrganizationsContext,
-      updateUser: (nextUser) => {
-        setUser(nextUser);
-      }
-    }),
-    [accessToken, activeOrganizationId, activeOrganizationSummary, loading, memberships, organizations, refreshOrganizationsContext, user]
-=======
       setOrganizationsContext,
       refreshOrganizationsContext,
       updateUser,
@@ -279,7 +236,6 @@ export const AuthProvider = ({
       refreshOrganizationsContext,
       updateUser,
     ]
->>>>>>> master
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
