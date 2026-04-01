@@ -1,6 +1,6 @@
 import type { AuthSessionContextDto, AuthUserDto, OrganizationDto, OrganizationMembershipDto, OrganizationStatus } from '@starter/shared-types';
 import type { ReactElement, ReactNode } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { authApi } from './auth-api';
 
 const ACTIVE_ORGANIZATION_STORAGE_KEY = 'nexmed.activeOrganizationId';
@@ -88,6 +88,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }): ReactElemen
     [activeOrganizationId, organizations]
   );
 
+  const refreshOrganizationsContext = useCallback(async (): Promise<void> => {
+    if (!accessToken) {
+      return;
+    }
+
+    const context = await authApi.me(accessToken);
+    setOrganizations(context.organizations);
+    setMemberships(context.memberships);
+
+    const persistedOrganizationId = localStorage.getItem(ACTIVE_ORGANIZATION_STORAGE_KEY);
+    const suggestedOrganizationId =
+      context.activeOrganizationId ??
+      resolveSuggestedActiveOrganizationId({ organizations: context.organizations, memberships: context.memberships });
+
+    const nextActiveOrganizationId =
+      persistedOrganizationId && context.organizations.some((organization) => organization.id === persistedOrganizationId)
+        ? persistedOrganizationId
+        : suggestedOrganizationId;
+
+    setActiveOrganizationId(nextActiveOrganizationId ?? null);
+  }, [accessToken]);
+
   const value = useMemo<AuthState>(
     () => ({
       user,
@@ -133,32 +155,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }): ReactElemen
 
         setActiveOrganizationId(nextActiveOrganizationId);
       },
-      refreshOrganizationsContext: async () => {
-        if (!accessToken) {
-          return;
-        }
-
-        const context = await authApi.me(accessToken);
-        setOrganizations(context.organizations);
-        setMemberships(context.memberships);
-
-        const persistedOrganizationId = localStorage.getItem(ACTIVE_ORGANIZATION_STORAGE_KEY);
-        const suggestedOrganizationId =
-          context.activeOrganizationId ??
-          resolveSuggestedActiveOrganizationId({ organizations: context.organizations, memberships: context.memberships });
-
-        const nextActiveOrganizationId =
-          persistedOrganizationId && context.organizations.some((organization) => organization.id === persistedOrganizationId)
-            ? persistedOrganizationId
-            : suggestedOrganizationId;
-
-        setActiveOrganizationId(nextActiveOrganizationId ?? null);
-      },
+      refreshOrganizationsContext,
       updateUser: (nextUser) => {
         setUser(nextUser);
       }
     }),
-    [accessToken, activeOrganizationId, activeOrganizationSummary, loading, memberships, organizations, user]
+    [accessToken, activeOrganizationId, activeOrganizationSummary, loading, memberships, organizations, refreshOrganizationsContext, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
