@@ -272,9 +272,15 @@ export const PostLoginResolverPage = (): ReactElement => {
         joinResolved = false;
       }
 
+
+      void refreshOrganizationsContext().catch(() => {
+        // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
+      });
+
   void refreshOrganizationsContext().catch(() => {
   // Ignorado: no debe bloquear la resolución de la ruta inicial.
 });
+
 
       try {
         const patientMe = await patientApi.getMe(accessToken);
