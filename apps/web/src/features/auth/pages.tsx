@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FirebaseError } from 'firebase/app';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useTranslation } from 'react-i18next';
@@ -244,8 +244,17 @@ export const PostLoginResolverPage = (): ReactElement => {
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
+  const bootstrapKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const bootstrapKey =
+      user && accessToken ? `${user.id}:${accessToken}` : null;
+
+    if (bootstrapKey && bootstrapKeyRef.current === bootstrapKey) {
+      return;
+    }
+
+    bootstrapKeyRef.current = bootstrapKey;
     let cancelled = false;
 
     const bootstrap = async (): Promise<void> => {
@@ -272,15 +281,9 @@ export const PostLoginResolverPage = (): ReactElement => {
         joinResolved = false;
       }
 
-
-      void refreshOrganizationsContext().catch(() => {
+      await refreshOrganizationsContext().catch(() => {
         // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
       });
-
-  void refreshOrganizationsContext().catch(() => {
-  // Ignorado: no debe bloquear la resolución de la ruta inicial.
-});
-
 
       try {
         const patientMe = await patientApi.getMe(accessToken);
