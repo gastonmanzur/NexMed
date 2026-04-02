@@ -244,36 +244,45 @@ export const PostLoginResolverPage = (): ReactElement => {
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
-  const bootstrapKeyRef = useRef<string | null>(null);
 
-  const lastBootstrapKeyRef = useRef<string | null>(null);
+  const bootstrapKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const bootstrapKey = user && accessToken ? `${user.id}:${accessToken}` : null;
+<<<<<<< HEAD
 
     if (bootstrapKey && bootstrapKeyRef.current === bootstrapKey) {
       return;
     }
 
     bootstrapKeyRef.current = bootstrapKey;
+=======
+>>>>>>> 5ecaf48 (Cambios locales antes de sincronizar2)
 
     if (!user || !accessToken) {
       setBootstrapResolved(true);
       setHasPatientOrganizations(false);
       setJoinResolutionFailed(false);
-      lastBootstrapKeyRef.current = null;
+      bootstrapKeyRef.current = null;
       return;
     }
 
+<<<<<<< HEAD
     if (lastBootstrapKeyRef.current === bootstrapKey) {
       return;
     }
 
     lastBootstrapKeyRef.current = bootstrapKey;
+=======
+    if (bootstrapKeyRef.current === bootstrapKey) {
+      return;
+    }
+
+    bootstrapKeyRef.current = bootstrapKey;
+>>>>>>> 5ecaf48 (Cambios locales antes de sincronizar2)
 
     let cancelled = false;
 
-    // Reset explícito para no arrastrar estado de un usuario anterior
     setBootstrapResolved(false);
     setHasPatientOrganizations(false);
     setJoinResolutionFailed(false);
@@ -293,8 +302,14 @@ export const PostLoginResolverPage = (): ReactElement => {
         joinResolved = false;
       }
 
+<<<<<<< HEAD
       await refreshOrganizationsContext().catch(() => {
         // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
+=======
+      // Refresca en background, pero no bloquea la ruta inicial
+      void refreshOrganizationsContext().catch(() => {
+        // noop
+>>>>>>> 5ecaf48 (Cambios locales antes de sincronizar2)
       });
 
       try {
@@ -322,7 +337,7 @@ export const PostLoginResolverPage = (): ReactElement => {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, refreshOrganizationsContext, user?.id]);
+  }, [accessToken, user?.id]);
 
   if (loading && !bootstrapResolved) {
     return <p>Cargando...</p>;
@@ -357,7 +372,6 @@ export const PostLoginResolverPage = (): ReactElement => {
       membership.status === 'active'
   );
 
-  // Paciente solo si realmente es rol patient o si no tiene org administrativa pero sí vínculos de paciente
   const shouldGoToPatient =
     activeMembership?.role === 'patient' ||
     (organizations.length === 0 && hasPatientOrganizations);
@@ -382,7 +396,6 @@ export const PostLoginResolverPage = (): ReactElement => {
   }
 
   return <Navigate to="/app" replace />;
-
 };
 
 export const VerifyEmailPage = (): ReactElement => {
