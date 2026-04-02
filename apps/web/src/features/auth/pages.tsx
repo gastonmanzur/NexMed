@@ -244,10 +244,21 @@ export const PostLoginResolverPage = (): ReactElement => {
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
+  const bootstrapKeyRef = useRef<string | null>(null);
 
   const lastBootstrapKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
+
+    const bootstrapKey =
+      user && accessToken ? `${user.id}:${accessToken}` : null;
+
+    if (bootstrapKey && bootstrapKeyRef.current === bootstrapKey) {
+      return;
+    }
+
+    bootstrapKeyRef.current = bootstrapKey;
+
     if (!user || !accessToken) {
       setBootstrapResolved(true);
       setHasPatientOrganizations(false);
@@ -262,6 +273,7 @@ export const PostLoginResolverPage = (): ReactElement => {
     }
 
     lastBootstrapKeyRef.current = bootstrapKey;
+
 
     let cancelled = false;
 
@@ -285,13 +297,18 @@ export const PostLoginResolverPage = (): ReactElement => {
         joinResolved = false;
       }
 
+
+      await refreshOrganizationsContext().catch(() => {
+        // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
+      });
+
       try {
         void refreshOrganizationsContext().catch(() => {
           // No debe bloquear la resolución inicial de ruta
         });
       } catch {
         // noop
-      }
+
 
       try {
         const patientMe = await patientApi.getMe(accessToken);
