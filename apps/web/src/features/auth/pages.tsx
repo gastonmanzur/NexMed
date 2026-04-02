@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FirebaseError } from 'firebase/app';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useTranslation } from 'react-i18next';
@@ -245,19 +245,32 @@ export const PostLoginResolverPage = (): ReactElement => {
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
 
+  const lastBootstrapKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (!user || !accessToken) {
+      setBootstrapResolved(true);
+      setHasPatientOrganizations(false);
+      setJoinResolutionFailed(false);
+      lastBootstrapKeyRef.current = null;
+      return;
+    }
+
+    const bootstrapKey = `${user.id}:${accessToken}`;
+    if (lastBootstrapKeyRef.current === bootstrapKey) {
+      return;
+    }
+
+    lastBootstrapKeyRef.current = bootstrapKey;
+
     let cancelled = false;
 
-    const bootstrap = async (): Promise<void> => {
-      if (!user || !accessToken) {
-        if (!cancelled) {
-          setBootstrapResolved(true);
-          setHasPatientOrganizations(false);
-          setJoinResolutionFailed(false);
-        }
-        return;
-      }
+    // Reset explícito para no arrastrar estado de un usuario anterior
+    setBootstrapResolved(false);
+    setHasPatientOrganizations(false);
+    setJoinResolutionFailed(false);
 
+    const bootstrap = async (): Promise<void> => {
       const pendingJoin = readJoinIntent();
 
       let joinResolved = !pendingJoin;
@@ -272,33 +285,31 @@ export const PostLoginResolverPage = (): ReactElement => {
         joinResolved = false;
       }
 
-
-      void refreshOrganizationsContext().catch(() => {
-        // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
-      });
-
-  void refreshOrganizationsContext().catch(() => {
-  // Ignorado: no debe bloquear la resolución de la ruta inicial.
-});
-
+      try {
+        void refreshOrganizationsContext().catch(() => {
+          // No debe bloquear la resolución inicial de ruta
+        });
+      } catch {
+        // noop
+      }
 
       try {
         const patientMe = await patientApi.getMe(accessToken);
         patientOrganizationsDetected = (patientMe.organizations?.length ?? 0) > 0;
       } catch {
         patientOrganizationsDetected = false;
-      } finally {
-        if (!cancelled) {
-          setHasPatientOrganizations(patientOrganizationsDetected);
-          setJoinResolutionFailed(
-            Boolean(pendingJoin) && !joinResolved && !patientOrganizationsDetected
-          );
-          setBootstrapResolved(true);
-        }
+      }
 
-        if (!pendingJoin || joinResolved || patientOrganizationsDetected) {
-          clearJoinIntent();
-        }
+      if (!cancelled) {
+        setHasPatientOrganizations(patientOrganizationsDetected);
+        setJoinResolutionFailed(
+          Boolean(pendingJoin) && !joinResolved && !patientOrganizationsDetected
+        );
+        setBootstrapResolved(true);
+      }
+
+      if (!pendingJoin || joinResolved || patientOrganizationsDetected) {
+        clearJoinIntent();
       }
     };
 
@@ -307,9 +318,9 @@ export const PostLoginResolverPage = (): ReactElement => {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, refreshOrganizationsContext, user]);
+  }, [accessToken, refreshOrganizationsContext, user?.id]);
 
-  if (loading) {
+  if (loading && !bootstrapResolved) {
     return <p>Cargando...</p>;
   }
 
@@ -330,14 +341,6 @@ export const PostLoginResolverPage = (): ReactElement => {
     );
   }
 
-  if (organizations.length === 0 && !hasPatientOrganizations) {
-    return <Navigate to="/onboarding" replace />;
-  }
-
-  if (!activeOrganizationId && organizations.length > 1) {
-    return <Navigate to="/select-organization" replace />;
-  }
-
   const resolvedOrganizationId = activeOrganizationId ?? organizations[0]?.id ?? null;
 
   const activeOrganization = organizations.find(
@@ -350,8 +353,21 @@ export const PostLoginResolverPage = (): ReactElement => {
       membership.status === 'active'
   );
 
-  if (activeMembership?.role === 'patient' || hasPatientOrganizations) {
+  // Paciente solo si realmente es rol patient o si no tiene org administrativa pero sí vínculos de paciente
+  const shouldGoToPatient =
+    activeMembership?.role === 'patient' ||
+    (organizations.length === 0 && hasPatientOrganizations);
+
+  if (shouldGoToPatient) {
     return <Navigate to="/patient/organizations" replace />;
+  }
+
+  if (organizations.length === 0 && !hasPatientOrganizations) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (!activeOrganizationId && organizations.length > 1) {
+    return <Navigate to="/select-organization" replace />;
   }
 
   if (
@@ -362,6 +378,7 @@ export const PostLoginResolverPage = (): ReactElement => {
   }
 
   return <Navigate to="/app" replace />;
+
 };
 
 export const VerifyEmailPage = (): ReactElement => {
