@@ -249,9 +249,7 @@ export const PostLoginResolverPage = (): ReactElement => {
   const lastBootstrapKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-
-    const bootstrapKey =
-      user && accessToken ? `${user.id}:${accessToken}` : null;
+    const bootstrapKey = user && accessToken ? `${user.id}:${accessToken}` : null;
 
     if (bootstrapKey && bootstrapKeyRef.current === bootstrapKey) {
       return;
@@ -267,13 +265,11 @@ export const PostLoginResolverPage = (): ReactElement => {
       return;
     }
 
-    const bootstrapKey = `${user.id}:${accessToken}`;
     if (lastBootstrapKeyRef.current === bootstrapKey) {
       return;
     }
 
     lastBootstrapKeyRef.current = bootstrapKey;
-
 
     let cancelled = false;
 
@@ -297,18 +293,9 @@ export const PostLoginResolverPage = (): ReactElement => {
         joinResolved = false;
       }
 
-
       await refreshOrganizationsContext().catch(() => {
         // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
       });
-
-      try {
-        void refreshOrganizationsContext().catch(() => {
-          // No debe bloquear la resolución inicial de ruta
-        });
-      } catch {
-        // noop
-
 
       try {
         const patientMe = await patientApi.getMe(accessToken);
