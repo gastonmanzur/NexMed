@@ -13,6 +13,7 @@ if (!rawApiUrl) {
 }
 
 const API_URL = rawApiUrl.replace(/\/$/, '');
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 interface ApiErrorPayload {
   success?: boolean;
@@ -23,7 +24,7 @@ interface ApiErrorPayload {
 
 const request = async <T>(path: string, init: RequestInit): Promise<T> => {
   const headers = new Headers(init.headers ?? {});
-  if (!headers.has('Content-Type')) {
+  if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -283,6 +284,32 @@ export const organizationApi = {
     const result = await request<{ success: true; data: { checkoutUrl: string; subscriptionId: string; status: string } }>(`/organizations/${organizationId}/subscription/checkout`, {
       method: 'POST',
       body: JSON.stringify({ planId }),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  uploadLogo: async (accessToken: string, organizationId: string, logoFile: File): Promise<OrganizationProfileDto> => {
+    if (logoFile.size > MAX_IMAGE_BYTES) {
+      throw new Error('El logo excede el tamaño máximo de 2MB.');
+    }
+
+    const formData = new FormData();
+    formData.append('logo', logoFile);
+
+    const result = await request<{ success: true; data: OrganizationProfileDto }>(`/organizations/${organizationId}/logo`, {
+      method: 'POST',
+      body: formData,
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  deleteLogo: async (accessToken: string, organizationId: string): Promise<OrganizationProfileDto> => {
+    const result = await request<{ success: true; data: OrganizationProfileDto }>(`/organizations/${organizationId}/logo`, {
+      method: 'DELETE',
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 

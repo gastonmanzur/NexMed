@@ -1,7 +1,11 @@
 import type { Response } from 'express';
+import multer from 'multer';
 import { z } from 'zod';
+import { AppError } from '../../../core/errors.js';
+import { env } from '../../../config/env.js';
 import type { AuthenticatedRequest } from '../../auth/types/auth-request.js';
 import { OrganizationService } from '../services/organization.service.js';
+import { OrganizationLogoService } from '../services/organization-logo.service.js';
 
 const organizationTypeSchema = z.enum(['clinic', 'office', 'esthetic_center', 'professional_cabinet', 'other']);
 
@@ -45,6 +49,17 @@ const checkoutSchema = z.object({
 });
 
 const service = new OrganizationService();
+const logoService = new OrganizationLogoService();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: env.AVATAR_MAX_SIZE_BYTES } });
+
+export const organizationLogoUploadMiddleware = upload.single('logo');
+export const organizationLogoMulterErrorHandler = (error: unknown): never => {
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    throw new AppError('FILE_TOO_LARGE', 413, 'Logo exceeds max file size');
+  }
+
+  throw error instanceof Error ? error : new AppError('UPLOAD_ERROR', 400, 'Unable to upload logo');
+};
 
 export const organizationController = {
   create: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -174,6 +189,25 @@ export const organizationController = {
       planId
     });
 
+    res.status(200).json({ success: true, data });
+  },
+
+  uploadLogo: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const data = await logoService.uploadLogo({
+      organizationId,
+      actorUserId: req.auth!.userId,
+      file: req.file
+    });
+    res.status(200).json({ success: true, data });
+  },
+
+  deleteLogo: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const data = await logoService.deleteLogo({
+      organizationId,
+      actorUserId: req.auth!.userId
+    });
     res.status(200).json({ success: true, data });
   },
 

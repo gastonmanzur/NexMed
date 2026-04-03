@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { organizationApi } from './organization-api';
+import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
 
 interface FormState {
   name: string;
@@ -42,6 +43,9 @@ export const OrganizationProfilePage = (): ReactElement => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+
+  const logoUrl = activeOrganization?.logoUrl ? resolveAvatarUrl(activeOrganization.logoUrl) : null;
 
   const activeMembership = useMemo(
     () => memberships.find((membership) => membership.organizationId === activeOrganizationId) ?? null,
@@ -91,6 +95,7 @@ export const OrganizationProfilePage = (): ReactElement => {
           activeOrganization.city !== profile.organization.city ||
           activeOrganization.country !== profile.organization.country ||
           activeOrganization.description !== profile.organization.description ||
+          activeOrganization.logoUrl !== profile.organization.logoUrl ||
           activeOrganization.status !== profile.organization.status ||
           activeOrganization.onboardingCompleted !== profile.organization.onboardingCompleted;
 
@@ -135,6 +140,95 @@ export const OrganizationProfilePage = (): ReactElement => {
         {loading ? <p>Cargando datos actuales...</p> : null}
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
         {feedback ? <p style={{ color: 'green' }}>{feedback}</p> : null}
+
+        <h3 style={{ marginBottom: 0 }}>Logo institucional</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo del centro" style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }} />
+          ) : (
+            <div style={{ width: 56, height: 56, borderRadius: 10, border: '1px dashed var(--border)', display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+              Sin logo
+            </div>
+          )}
+          <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+            Este logo es independiente de la foto de perfil del usuario.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <label className="nx-btn-secondary" style={{ cursor: logoBusy ? 'not-allowed' : 'pointer' }}>
+            {logoBusy ? 'Procesando...' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              disabled={logoBusy}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = '';
+                if (!file || !accessToken || !activeOrganizationId) {
+                  return;
+                }
+
+                void (async () => {
+                  try {
+                    setError(null);
+                    setFeedback(null);
+                    setLogoBusy(true);
+                    const profile = await organizationApi.uploadLogo(accessToken, activeOrganizationId, file);
+                    setOrganizationsContext({
+                      organizations: organizations.map((organization) =>
+                        organization.id === profile.organization.id ? profile.organization : organization
+                      ),
+                      memberships,
+                      activeOrganizationId
+                    });
+                    setFeedback('Logo institucional actualizado.');
+                  } catch (cause) {
+                    setError((cause as Error).message);
+                  } finally {
+                    setLogoBusy(false);
+                  }
+                })();
+              }}
+            />
+          </label>
+          {logoUrl ? (
+            <button
+              type="button"
+              className="nx-btn-danger"
+              disabled={logoBusy}
+              onClick={() => {
+                if (!accessToken || !activeOrganizationId) {
+                  return;
+                }
+
+                void (async () => {
+                  try {
+                    setError(null);
+                    setFeedback(null);
+                    setLogoBusy(true);
+                    const profile = await organizationApi.deleteLogo(accessToken, activeOrganizationId);
+                    setOrganizationsContext({
+                      organizations: organizations.map((organization) =>
+                        organization.id === profile.organization.id ? profile.organization : organization
+                      ),
+                      memberships,
+                      activeOrganizationId
+                    });
+                    setFeedback('Logo institucional eliminado.');
+                  } catch (cause) {
+                    setError((cause as Error).message);
+                  } finally {
+                    setLogoBusy(false);
+                  }
+                })();
+              }}
+            >
+              Quitar logo
+            </button>
+          ) : null}
+        </div>
 
         <div style={{ display: 'grid', gap: '0.75rem' }}>
           <input placeholder="Nombre del centro" value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
