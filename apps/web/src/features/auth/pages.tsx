@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FirebaseError } from 'firebase/app';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useTranslation } from 'react-i18next';
@@ -238,56 +238,31 @@ export const PostLoginResolverPage = (): ReactElement => {
     memberships,
     activeOrganizationId,
     accessToken,
-    refreshOrganizationsContext,
   } = useAuth();
 
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
 
-  const bootstrapKeyRef = useRef<string | null>(null);
-
   useEffect(() => {
-    const bootstrapKey = user && accessToken ? `${user.id}:${accessToken}` : null;
-<<<<<<< HEAD
-
-    if (bootstrapKey && bootstrapKeyRef.current === bootstrapKey) {
-      return;
-    }
-
-    bootstrapKeyRef.current = bootstrapKey;
-=======
->>>>>>> 5ecaf48 (Cambios locales antes de sincronizar2)
-
-    if (!user || !accessToken) {
-      setBootstrapResolved(true);
-      setHasPatientOrganizations(false);
-      setJoinResolutionFailed(false);
-      bootstrapKeyRef.current = null;
-      return;
-    }
-
-<<<<<<< HEAD
-    if (lastBootstrapKeyRef.current === bootstrapKey) {
-      return;
-    }
-
-    lastBootstrapKeyRef.current = bootstrapKey;
-=======
-    if (bootstrapKeyRef.current === bootstrapKey) {
-      return;
-    }
-
-    bootstrapKeyRef.current = bootstrapKey;
->>>>>>> 5ecaf48 (Cambios locales antes de sincronizar2)
-
     let cancelled = false;
 
-    setBootstrapResolved(false);
-    setHasPatientOrganizations(false);
-    setJoinResolutionFailed(false);
-
     const bootstrap = async (): Promise<void> => {
+      if (!user || !accessToken) {
+        if (!cancelled) {
+          setBootstrapResolved(true);
+          setHasPatientOrganizations(false);
+          setJoinResolutionFailed(false);
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setBootstrapResolved(false);
+        setHasPatientOrganizations(false);
+        setJoinResolutionFailed(false);
+      }
+
       const pendingJoin = readJoinIntent();
 
       let joinResolved = !pendingJoin;
@@ -301,16 +276,6 @@ export const PostLoginResolverPage = (): ReactElement => {
       } catch {
         joinResolved = false;
       }
-
-<<<<<<< HEAD
-      await refreshOrganizationsContext().catch(() => {
-        // Ignorado: igualmente intentamos hidratar patient/me para resolver ruta inicial.
-=======
-      // Refresca en background, pero no bloquea la ruta inicial
-      void refreshOrganizationsContext().catch(() => {
-        // noop
->>>>>>> 5ecaf48 (Cambios locales antes de sincronizar2)
-      });
 
       try {
         const patientMe = await patientApi.getMe(accessToken);
