@@ -23,40 +23,72 @@ interface FormState {
 
 const containerStyle = { maxWidth: 760, margin: '2rem auto', padding: '1rem' };
 
+const emptyForm = (): FormState => ({
+  name: '',
+  displayName: '',
+  type: 'clinic',
+  contactEmail: '',
+  phone: '',
+  address: '',
+  city: '',
+  country: '',
+  description: '',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  locale: 'es-AR',
+  currency: 'ARS'
+});
+
+const buildFormFromOrganization = (organization: NonNullable<ReturnType<typeof useAuth>['organizations'][number]>): FormState => ({
+  name: organization.name,
+  displayName: organization.displayName ?? '',
+  type: organization.type,
+  contactEmail: organization.contactEmail ?? '',
+  phone: organization.phone ?? '',
+  address: organization.address ?? '',
+  city: organization.city ?? '',
+  country: organization.country ?? '',
+  description: organization.description ?? '',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  locale: 'es-AR',
+  currency: 'ARS'
+});
+
 export const OrganizationProfilePage = (): ReactElement => {
   const { accessToken, activeOrganizationId, organizations, memberships, setOrganizationsContext, onboardingCompleted } = useAuth();
-  const [form, setForm] = useState<FormState>({
-    name: '',
-    displayName: '',
-    type: 'clinic',
-    contactEmail: '',
-    phone: '',
-    address: '',
-    city: '',
-    country: '',
-    description: '',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    locale: 'es-AR',
-    currency: 'ARS'
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [logoBusy, setLogoBusy] = useState(false);
-
-  const logoUrl = activeOrganization?.logoUrl ? resolveAvatarUrl(activeOrganization.logoUrl) : null;
 
   const activeMembership = useMemo(
     () => memberships.find((membership) => membership.organizationId === activeOrganizationId) ?? null,
     [activeOrganizationId, memberships]
   );
 
-  const canEdit = activeMembership ? ['owner', 'admin'].includes(activeMembership.role) : false;
   const activeOrganization = useMemo(
     () => organizations.find((organization) => organization.id === activeOrganizationId) ?? null,
     [activeOrganizationId, organizations]
   );
+
+  const [form, setForm] = useState<FormState>(() => emptyForm());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (!activeOrganization) {
+      return;
+    }
+
+    setForm((previous) => ({
+      ...previous,
+      ...buildFormFromOrganization(activeOrganization)
+    }));
+    setLogoLoadFailed(false);
+  }, [activeOrganization]);
+
+  const logoUrl = !logoLoadFailed && activeOrganization?.logoUrl ? resolveAvatarUrl(activeOrganization.logoUrl) : null;
+
+  const canEdit = activeMembership ? ['owner', 'admin'].includes(activeMembership.role) : false;
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId) {
@@ -128,6 +160,16 @@ export const OrganizationProfilePage = (): ReactElement => {
     return <Navigate to="/onboarding/organization" replace />;
   }
 
+  if (!activeOrganization) {
+    return (
+      <main style={containerStyle}>
+        <Card title="Perfil del centro">
+          <p>Cargando organización activa...</p>
+        </Card>
+      </main>
+    );
+  }
+
   if (!canEdit) {
     return <Navigate to="/unauthorized" replace />;
   }
@@ -144,7 +186,12 @@ export const OrganizationProfilePage = (): ReactElement => {
         <h3 style={{ marginBottom: 0 }}>Logo institucional</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           {logoUrl ? (
-            <img src={logoUrl} alt="Logo del centro" style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }} />
+            <img
+              src={logoUrl}
+              alt="Logo del centro"
+              style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }}
+              onError={() => setLogoLoadFailed(true)}
+            />
           ) : (
             <div style={{ width: 56, height: 56, borderRadius: 10, border: '1px dashed var(--border)', display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               Sin logo
@@ -183,6 +230,7 @@ export const OrganizationProfilePage = (): ReactElement => {
                       memberships,
                       activeOrganizationId
                     });
+                    setLogoLoadFailed(false);
                     setFeedback('Logo institucional actualizado.');
                   } catch (cause) {
                     setError((cause as Error).message);
@@ -216,6 +264,7 @@ export const OrganizationProfilePage = (): ReactElement => {
                       memberships,
                       activeOrganizationId
                     });
+                    setLogoLoadFailed(false);
                     setFeedback('Logo institucional eliminado.');
                   } catch (cause) {
                     setError((cause as Error).message);
