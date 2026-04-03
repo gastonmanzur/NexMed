@@ -51,4 +51,8 @@ export class OrganizationRepository {
   async updateById(id: string, input: UpdateOrganizationInput): Promise<OrganizationDocument | null> {
     return OrganizationModel.findByIdAndUpdate(id, { $set: input }, { new: true }).exec();
   }
+
+  async clearLogoById(id: string): Promise<OrganizationDocument | null> {
+    return OrganizationModel.findByIdAndUpdate(id, { $unset: { logoUrl: 1 } }, { new: true }).exec();
+  }
 }
