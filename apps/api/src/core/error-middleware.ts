@@ -34,6 +34,29 @@ export const errorMiddleware = (
     return;
   }
 
+  const statusCode =
+    typeof error === 'object' && error !== null && 'statusCode' in error && typeof (error as { statusCode: unknown }).statusCode === 'number'
+      ? (error as { statusCode: number }).statusCode
+      : typeof error === 'object' && error !== null && 'status' in error && typeof (error as { status: unknown }).status === 'number'
+        ? (error as { status: number }).status
+        : null;
+
+  const errorCode =
+    typeof error === 'object' && error !== null && 'code' in error && typeof (error as { code: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : null;
+
+  if (statusCode === 404 || errorCode === 'ENOENT') {
+    res.status(404).json({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Resource not found'
+      }
+    });
+    return;
+  }
+
   if (error instanceof ZodError) {
     requestLogger?.error(
       {
