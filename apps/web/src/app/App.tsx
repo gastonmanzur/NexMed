@@ -115,6 +115,14 @@ export const App = (): ReactElement => {
         }
       />
       <Route
+        path="/app/agenda"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
+            <Navigate to="/app/professionals" replace />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/dashboard"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
