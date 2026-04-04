@@ -70,7 +70,18 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
         ? 'Portal Paciente'
         : activeOrganizationSummary?.displayName ?? activeOrganizationSummary?.name ?? 'Centro';
 
-  const avatarUrl = user?.avatar?.url ? resolveAvatarUrl(user.avatar.url) : null;
+  const personalAvatarUrl = user?.avatar?.url ? resolveAvatarUrl(user.avatar.url) : null;
+  const organizationLogoUrl = activeOrganizationSummary?.logoUrl
+    ? resolveAvatarUrl(activeOrganizationSummary.logoUrl)
+    : null;
+  const isGoogleAuth = user?.provider === 'google';
+  const shouldUseOrganizationLogo = !isPatient && !isSuperAdmin && !isGoogleAuth;
+
+  const navbarAvatarUrl = isGoogleAuth
+    ? personalAvatarUrl
+    : shouldUseOrganizationLogo
+      ? (organizationLogoUrl ?? personalAvatarUrl)
+      : personalAvatarUrl;
 
   return (
     <div className="nx-shell">
@@ -103,8 +114,8 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
           <p className="nx-topbar__title">{sectionTitle}</p>
 
           <div className="nx-user">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar de usuario" className="nx-avatar" />
+            {navbarAvatarUrl ? (
+              <img src={navbarAvatarUrl} alt="Avatar de usuario" className="nx-avatar" />
             ) : (
               <span className="nx-avatar nx-avatar--fallback">
                 {initialsFor(user?.firstName, user?.lastName, user?.email)}
