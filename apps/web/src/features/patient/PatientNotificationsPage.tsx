@@ -8,7 +8,7 @@ import { patientApi } from './patient-api';
 
 export const PatientNotificationsPage = (): ReactElement => {
   const { accessToken } = useAuth();
-  const { refreshUnreadCount } = useNotifications();
+  const { refreshUnreadCount, markOneAsReadLocally } = useNotifications();
   const [items, setItems] = useState<NotificationDto[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,11 @@ export const PatientNotificationsPage = (): ReactElement => {
   const markRead = async (id: string) => {
     if (!accessToken) return;
     await patientApi.markNotificationRead(accessToken, id);
-    await load();
+    setItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, readAt: new Date().toISOString() } : item))
+    );
+    markOneAsReadLocally();
+    await refreshUnreadCount();
   };
 
   return (

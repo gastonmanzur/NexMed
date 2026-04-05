@@ -2,13 +2,15 @@ import mongoose from 'mongoose';
 import type { AppointmentDto } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { PatientProfileRepository } from '../../patient/repositories/patient-profile.repository.js';
+import { PushService } from '../../push/services/push.service.js';
 import { NotificationRepository } from '../repositories/notification.repository.js';
 import { notificationChannels, notificationStatuses, notificationTypes } from '../models/notification.model.js';
 
 export class NotificationService {
   constructor(
     private readonly notifications = new NotificationRepository(),
-    private readonly patientProfiles = new PatientProfileRepository()
+    private readonly patientProfiles = new PatientProfileRepository(),
+    private readonly push = new PushService()
   ) {}
 
   async listMyNotifications(userId: string, input: { read?: 'read' | 'unread' | undefined }) {
@@ -55,7 +57,14 @@ export class NotificationService {
       if (exists) return;
     }
 
+    const channel = input.channel ?? 'in_app';
     await this.notifications.create(input);
+    await this.dispatchPushIfEnabled({
+      userId: input.userId,
+      title: input.title,
+      message: input.message,
+      channel
+    });
   }
 
   async notifyPatientFromAppointment(
@@ -116,5 +125,29 @@ export class NotificationService {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     };
+  }
+
+  private async dispatchPushIfEnabled(input: {
+    userId: string;
+    title: string;
+    message: string;
+    channel: (typeof notificationChannels)[number];
+  }): Promise<void> {
+    if (input.channel !== 'in_app' && input.channel !== 'push') {
+      return;
+    }
+
+    try {
+      await this.push.sendToUser({
+        actorUserId: input.userId,
+        actorRole: 'user',
+        targetUserId: input.userId,
+        title: input.title,
+        body: input.message,
+        data: { source: 'notification_service' }
+      });
+    } catch {
+      // Keep in-app notification flow stable even when push delivery fails.
+    }
   }
 }

@@ -2,11 +2,13 @@ import type { ReactElement, ReactNode } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { patientApi } from '../patient/patient-api';
+import { initForegroundPushNotifications, onForegroundPushMessage } from './web-push';
 
 interface NotificationsContextValue {
   unreadCount: number;
   loadingUnread: boolean;
   refreshUnreadCount: () => Promise<void>;
+  markOneAsReadLocally: () => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
@@ -37,9 +39,74 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }): Re
     void refreshUnreadCount();
   }, [refreshUnreadCount]);
 
+  const markOneAsReadLocally = useCallback((): void => {
+    setUnreadCount((current) => (current > 0 ? current - 1 : 0));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !accessToken) {
+      return;
+    }
+
+    const onFocus = () => {
+      void refreshUnreadCount();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshUnreadCount();
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [accessToken, refreshUnreadCount]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void refreshUnreadCount();
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [accessToken, refreshUnreadCount]);
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    void initForegroundPushNotifications().catch(() => undefined);
+
+    let unsubscribe: (() => void) | null = null;
+    void onForegroundPushMessage(() => {
+      void refreshUnreadCount();
+    })
+      .then((listener) => {
+        unsubscribe = listener;
+      })
+      .catch(() => {
+        unsubscribe = null;
+      });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [accessToken, refreshUnreadCount]);
+
   const value = useMemo<NotificationsContextValue>(
-    () => ({ unreadCount, loadingUnread, refreshUnreadCount }),
-    [loadingUnread, refreshUnreadCount, unreadCount]
+    () => ({ unreadCount, loadingUnread, refreshUnreadCount, markOneAsReadLocally }),
+    [loadingUnread, markOneAsReadLocally, refreshUnreadCount, unreadCount]
   );
 
   return (

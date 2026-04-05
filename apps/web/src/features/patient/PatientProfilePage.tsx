@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { authApi } from '../auth/auth-api';
 import { patientApi } from './patient-api';
 import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
+import { WebPushCard } from '../notifications/WebPushCard';
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -177,6 +178,8 @@ export const PatientProfilePage = (): ReactElement => {
           </div>
         </form>
       </Card>
+
+      {accessToken ? <WebPushCard accessToken={accessToken} /> : null}
     </main>
   );
 };
