@@ -147,6 +147,14 @@ export const App = (): ReactElement => {
         }
       />
       <Route
+        path="/app/notifications"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
+            {shell(<PatientNotificationsPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/app/professionals"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>

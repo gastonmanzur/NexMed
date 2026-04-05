@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react';
 import type { NotificationDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
+import { useNotifications } from '../notifications/NotificationsContext';
 import { patientApi } from './patient-api';
 
 export const PatientNotificationsPage = (): ReactElement => {
   const { accessToken } = useAuth();
+  const { refreshUnreadCount } = useNotifications();
   const [items, setItems] = useState<NotificationDto[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,6 +19,7 @@ export const PatientNotificationsPage = (): ReactElement => {
     setError('');
     try {
       setItems(await patientApi.listNotifications(accessToken));
+      await refreshUnreadCount();
     } catch (cause) {
       setError((cause as Error).message);
     } finally {

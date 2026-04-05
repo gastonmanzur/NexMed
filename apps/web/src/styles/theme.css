@@ -109,6 +109,64 @@ button, input, select, textarea { font: inherit; }
 }
 
 .nx-topbar__title { margin: 0; font-size: 0.92rem; color: var(--text-muted); }
+.nx-topbar__actions { display: flex; align-items: center; gap: 0.7rem; }
+
+.nx-bell-button {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: #334155;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, color 120ms ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.nx-bell-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.nx-bell-button:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.nx-bell-button.has-unread {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fff5f5;
+}
+
+.nx-bell-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.nx-bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border: 1.5px solid #ffffff;
+  line-height: 1;
+}
 
 .nx-user {
   display: flex;

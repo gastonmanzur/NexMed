@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { useNotifications } from '../features/notifications/NotificationsContext';
 import { resolveAvatarUrl } from '../lib/resolve-avatar-url';
 
 interface NavItem {
@@ -48,6 +49,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
   const location = useLocation();
   const navigate = useNavigate();
   const { user, memberships, activeOrganizationId, activeOrganizationSummary, clearSession } = useAuth();
+  const { unreadCount, loadingUnread } = useNotifications();
 
   const membership = memberships.find(
     (item) => item.organizationId === activeOrganizationId && item.status === 'active'
@@ -55,6 +57,8 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
   const isSuperAdmin = user?.globalRole === 'super_admin';
   const isPatient = membership?.role === 'patient' || location.pathname.startsWith('/patient');
+  const notificationsPath = isPatient ? '/patient/notifications' : '/app/notifications';
+  const canUseNotifications = !isSuperAdmin;
 
   const items =
     isSuperAdmin && location.pathname.startsWith('/admin')
@@ -113,32 +117,66 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
         <header className="nx-topbar">
           <p className="nx-topbar__title">{sectionTitle}</p>
 
-          <div className="nx-user">
-            {navbarAvatarUrl ? (
-              <img src={navbarAvatarUrl} alt="Avatar de usuario" className="nx-avatar" />
-            ) : (
-              <span className="nx-avatar nx-avatar--fallback">
-                {initialsFor(user?.firstName, user?.lastName, user?.email)}
-              </span>
-            )}
+          <div className="nx-topbar__actions">
+            {canUseNotifications ? (
+              <button
+                type="button"
+                className={`nx-bell-button${unreadCount > 0 ? ' has-unread' : ''}`}
+                aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ''}`}
+                title="Ver notificaciones"
+                disabled={loadingUnread}
+                onClick={() => navigate(notificationsPath)}
+              >
+                <svg
+                  className="nx-bell-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M14.5 18a2.5 2.5 0 0 1-5 0m8-6.5V10a5.5 5.5 0 1 0-11 0v1.5c0 1.2-.4 2.4-1.2 3.3L4 16h16l-1.3-1.2a4.8 4.8 0 0 1-1.2-3.3Z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {unreadCount > 0 ? (
+                  <span className="nx-bell-badge" aria-hidden="true">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
 
-            <div className="nx-user__meta">
-              <div className="nx-user__name">
-                {`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Usuario'}
+            <div className="nx-user">
+              {navbarAvatarUrl ? (
+                <img src={navbarAvatarUrl} alt="Avatar de usuario" className="nx-avatar" />
+              ) : (
+                <span className="nx-avatar nx-avatar--fallback">
+                  {initialsFor(user?.firstName, user?.lastName, user?.email)}
+                </span>
+              )}
+
+              <div className="nx-user__meta">
+                <div className="nx-user__name">
+                  {`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Usuario'}
+                </div>
+                <div className="nx-user__email">{user?.email ?? 'Sin email'}</div>
               </div>
-              <div className="nx-user__email">{user?.email ?? 'Sin email'}</div>
-            </div>
 
-            <button
-              type="button"
-              className="nx-btn-danger"
-              onClick={async () => {
-                await clearSession();
-                navigate('/login', { replace: true });
-              }}
-            >
-              Cerrar sesión
-            </button>
+              <button
+                type="button"
+                className="nx-btn-danger"
+                onClick={async () => {
+                  await clearSession();
+                  navigate('/login', { replace: true });
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </header>
 
