@@ -77,7 +77,11 @@ export const DashboardPage = (): ReactElement => {
 
   return (
     <main className="nx-page">
-      <Card title="Dashboard del centro" subtitle="Visión general del estado operativo y de configuración.">
+      <Card
+        title="Dashboard del centro"
+        subtitle="Visión general del estado operativo y de configuración."
+        className="nx-hero-card"
+      >
         <div className="nx-form-grid">
           <p><strong>Centro:</strong> {activeOrganization?.displayName ?? activeOrganization?.name ?? '-'}</p>
           <p><strong>Tipo:</strong> {activeOrganization?.type ?? '-'}</p>

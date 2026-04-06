@@ -5,11 +5,12 @@ interface CardProps {
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;
+  className?: string;
 }
 
-export const Card = ({ title, subtitle, actions, children }: CardProps): ReactElement => {
+export const Card = ({ title, subtitle, actions, children, className }: CardProps): ReactElement => {
   return (
-    <section className="nx-card">
+    <section className={className ? `nx-card ${className}` : 'nx-card'}>
       <header className="nx-card__header">
         <div>
           <h1 className="nx-card__title">{title}</h1>

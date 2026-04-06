@@ -74,24 +74,25 @@ export const ProfessionalsListPage = (): ReactElement => {
         ) : null}
 
         {!loading && !error && professionals.length > 0 ? (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.75rem' }}>
+          <ul className="nx-doctor-list">
             {professionals.map((professional) => (
-              <li key={professional.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}>
+              <li key={professional.id} className="nx-doctor-card">
                 <p style={{ margin: 0 }}>
-                  <strong>{professional.displayName}</strong> · estado: <strong>{professional.status}</strong>
+                  <strong>{professional.displayName}</strong> · estado:{' '}
+                  <span className="nx-badge">{professional.status}</span>
                 </p>
-                <p style={{ margin: '0.35rem 0' }}>
+                <p className="nx-doctor-card__description">
                   Contacto: {professional.email ?? '-'} / {professional.phone ?? '-'}
                 </p>
-                <p style={{ margin: '0.35rem 0' }}>
+                <p className="nx-doctor-card__description">
                   Especialidades:{' '}
                   {professional.specialties.length > 0
                     ? professional.specialties.map((specialty) => specialty.name).join(', ')
                     : 'Sin especialidades asociadas'}
                 </p>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <Link to={`/app/professionals/${professional.id}/availability`}>Agenda</Link>
-                  {canManage ? <Link to={`/app/professionals/${professional.id}/edit`}>Editar</Link> : null}
+                <div className="nx-doctor-card__actions">
+                  <Link className="nx-btn-secondary" to={`/app/professionals/${professional.id}/availability`}>Agenda</Link>
+                  {canManage ? <Link className="nx-btn-secondary" to={`/app/professionals/${professional.id}/edit`}>Editar</Link> : null}
                   {canManage ? (
                     <ConfirmActionButton
                       confirmationMessage={`¿Seguro que querés ${professional.status === 'active' ? 'desactivar' : 'activar'} este profesional?`}
