@@ -28,15 +28,18 @@ export const ErrorState = ({
 export const EmptyState = ({
   title,
   description,
-  action
+  action,
+  icon = '📭'
 }: {
   title: string;
   description: string;
   action?: ReactElement;
+  icon?: string;
 }): ReactElement => (
-  <div className="nx-state">
-    <p style={{ margin: 0, fontWeight: 600 }}>{title}</p>
-    <p style={{ marginBottom: action ? '0.75rem' : 0, color: 'var(--text-soft)' }}>{description}</p>
+  <div className="nx-state nx-empty-state">
+    <span className="nx-empty-state__icon" aria-hidden="true">{icon}</span>
+    <p className="nx-empty-state__title">{title}</p>
+    <p className="nx-empty-state__subtitle">{description}</p>
     {action ?? null}
   </div>
 );

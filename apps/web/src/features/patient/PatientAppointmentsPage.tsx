@@ -10,6 +10,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncStat
 
 export const PatientAppointmentsPage = (): ReactElement => {
   const { accessToken } = useAuth();
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
   const [upcoming, setUpcoming] = useState<AppointmentDto[]>([]);
   const [history, setHistory] = useState<AppointmentDto[]>([]);
   const [error, setError] = useState('');
@@ -38,15 +39,39 @@ export const PatientAppointmentsPage = (): ReactElement => {
     <main style={{ maxWidth: 980, margin: '2rem auto', padding: '1rem' }}>
       <Card title="Mis turnos">
         <p><Link to="/feedback" state={{ fromPath: '/patient/appointments' }}>Enviar feedback</Link></p>
+        <div className="nx-tabs" role="tablist" aria-label="Filtrar turnos">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'upcoming'}
+            className={`nx-tab${activeTab === 'upcoming' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('upcoming')}
+          >
+            Próximos ({upcoming.length})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'history'}
+            className={`nx-tab${activeTab === 'history' ? ' is-active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            Historial ({history.length})
+          </button>
+        </div>
         {loading ? <LoadingState message="Cargando turnos..." /> : null}
         {!loading && error ? <ErrorState message={error} onRetry={() => void reload()} /> : null}
         {!loading && !error ? (
           <>
-            <h3>Próximos</h3>
-            {upcoming.length === 0 ? (
-              <EmptyState title="Sin turnos próximos" description="Cuando reserves un turno, lo verás acá." />
+            {activeTab === 'upcoming' ? <h3>Próximos</h3> : <h3>Historial</h3>}
+            {activeTab === 'upcoming' && upcoming.length === 0 ? (
+              <EmptyState
+                title="Sin turnos próximos"
+                description="Cuando reserves un turno, lo verás acá."
+                action={<Link className="nx-btn" to="/patient/book">Reservar un turno</Link>}
+              />
             ) : (
-              <ul>
+              activeTab === 'upcoming' ? <ul>
                 {upcoming.map((item) => (
                   <li key={item.id} style={{ marginBottom: '0.75rem' }}>
                     {new Date(item.startAt).toLocaleString('es-AR', { hour12: false })} · estado: {item.status} ·{' '}
@@ -67,19 +92,18 @@ export const PatientAppointmentsPage = (): ReactElement => {
                     · <Link to={`/patient/appointments/${item.id}/reschedule`}>Reprogramar</Link>
                   </li>
                 ))}
-              </ul>
+              </ul> : null
             )}
-            <h3>Historial</h3>
-            {history.length === 0 ? (
+            {activeTab === 'history' && history.length === 0 ? (
               <EmptyState title="Sin historial todavía" description="Acá vas a ver tus turnos ya atendidos o cerrados." />
             ) : (
-              <ul>
+              activeTab === 'history' ? <ul>
                 {history.map((item) => (
                   <li key={item.id}>
                     {new Date(item.startAt).toLocaleString('es-AR', { hour12: false })} · estado: {item.status}
                   </li>
                 ))}
-              </ul>
+              </ul> : null
             )}
           </>
         ) : null}
