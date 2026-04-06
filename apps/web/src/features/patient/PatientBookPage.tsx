@@ -4,13 +4,179 @@ import { useParams } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { patientApi } from './patient-api';
-const today = new Date().toISOString().slice(0, 10); const nextWeek = new Date(Date.now() + (6 * 86400000)).toISOString().slice(0, 10);
+
+const today = new Date().toISOString().slice(0, 10);
+const nextWeek = new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10);
+
 export const PatientBookPage = (): ReactElement => {
-  const { organizationId = '' } = useParams(); const { accessToken } = useAuth();
-  const [professionals, setProfessionals] = useState<Array<{ id: string; displayName: string }>>([]); const [specialties, setSpecialties] = useState<Array<{ id: string; name: string }>>([]);
-  const [professionalId, setProfessionalId] = useState(''); const [specialtyId, setSpecialtyId] = useState(''); const [startDate, setStartDate] = useState(today); const [endDate, setEndDate] = useState(nextWeek);
-  const [slots, setSlots] = useState<Array<{ startsAtIso: string; endsAtIso: string; startTime: string; endTime: string }>>([]); const [message, setMessage] = useState(''); const [error, setError] = useState('');
-  useEffect(() => { if (!accessToken) return; void patientApi.getOrganizationCatalog(accessToken, organizationId).then((catalog) => { setProfessionals(catalog.professionals); setSpecialties(catalog.specialties); if (catalog.professionals[0]) setProfessionalId(catalog.professionals[0].id); }).catch((cause) => setError((cause as Error).message)); }, [accessToken, organizationId]);
-  const selectedProfessionalName = useMemo(() => professionals.find((item) => item.id === professionalId)?.displayName ?? '-', [professionalId, professionals]);
-  return <main style={{ maxWidth: 900, margin: '2rem auto', padding: '1rem' }}><Card title="Reserva online"><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}><label>Profesional<select value={professionalId} onChange={(event) => setProfessionalId(event.target.value)}>{professionals.map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}</select></label><label>Especialidad (opcional)<select value={specialtyId} onChange={(event) => setSpecialtyId(event.target.value)}><option value="">Cualquiera</option>{specialties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Desde<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label><label>Hasta<input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label></div><button type="button" onClick={async () => { if (!accessToken || !professionalId) return; try { setError(''); const availability = await patientApi.getAvailability(accessToken, organizationId, { professionalId, startDate, endDate }); setSlots(availability.days.flatMap((day) => day.slots)); } catch (cause) { setError((cause as Error).message); } }}>Buscar disponibilidad</button><p><strong>Profesional:</strong> {selectedProfessionalName}</p>{error ? <p style={{ color: 'crimson' }}>{error}</p> : null}{message ? <p style={{ color: 'green' }}>{message}</p> : null}<ul>{slots.map((slot) => <li key={slot.startsAtIso} style={{ marginBottom: '0.5rem' }}>{slot.startsAtIso.slice(0, 16).replace('T', ' ')} ({slot.startTime}–{slot.endTime}) <button type="button" onClick={async () => { if (!accessToken) return; try { setError(''); await patientApi.createAppointment(accessToken, organizationId, { professionalId, ...(specialtyId ? { specialtyId } : {}), startAt: slot.startsAtIso, endAt: slot.endsAtIso }); setMessage('Turno reservado con éxito.'); setSlots((prev) => prev.filter((current) => current.startsAtIso !== slot.startsAtIso)); } catch (cause) { setError((cause as Error).message); } }}>Reservar</button></li>)}</ul></Card></main>;
+  const { organizationId = '' } = useParams();
+  const { accessToken } = useAuth();
+
+  const [professionals, setProfessionals] = useState<Array<{ id: string; displayName: string }>>([]);
+  const [specialties, setSpecialties] = useState<Array<{ id: string; name: string }>>([]);
+  const [professionalId, setProfessionalId] = useState('');
+  const [specialtyId, setSpecialtyId] = useState('');
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(nextWeek);
+  const [slots, setSlots] = useState<
+    Array<{ startsAtIso: string; endsAtIso: string; startTime: string; endTime: string }>
+  >([]);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    void patientApi
+      .getOrganizationCatalog(accessToken, organizationId)
+      .then((catalog) => {
+        setProfessionals(catalog.professionals);
+        setSpecialties(catalog.specialties);
+
+        if (catalog.professionals[0]) {
+          setProfessionalId(catalog.professionals[0].id);
+        }
+      })
+      .catch((cause) => setError((cause as Error).message));
+  }, [accessToken, organizationId]);
+
+  const selectedProfessionalName = useMemo(
+    () => professionals.find((item) => item.id === professionalId)?.displayName ?? '-',
+    [professionalId, professionals]
+  );
+
+  return (
+    <main className="nx-page nx-page--book">
+      <Card
+        title="Reserva online"
+        subtitle="Encontrá horarios disponibles y reservá tu turno en pocos pasos."
+        className="nx-book-shell"
+      >
+        <div className="nx-form-grid nx-book-grid">
+          <label className="nx-field">
+            <span>Profesional</span>
+            <select value={professionalId} onChange={(event) => setProfessionalId(event.target.value)}>
+              {professionals.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="nx-field">
+            <span>Especialidad (opcional)</span>
+            <select value={specialtyId} onChange={(event) => setSpecialtyId(event.target.value)}>
+              <option value="">Cualquiera</option>
+              {specialties.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="nx-field">
+            <span>Desde</span>
+            <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+          </label>
+
+          <label className="nx-field">
+            <span>Hasta</span>
+            <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+          </label>
+        </div>
+
+        <div className="nx-book-actions">
+          <button
+            type="button"
+            className="nx-btn"
+            onClick={async () => {
+              if (!accessToken || !professionalId) {
+                return;
+              }
+
+              try {
+                setError('');
+                const availability = await patientApi.getAvailability(accessToken, organizationId, {
+                  professionalId,
+                  startDate,
+                  endDate
+                });
+                setSlots(availability.days.flatMap((day) => day.slots));
+              } catch (cause) {
+                setError((cause as Error).message);
+              }
+            }}
+          >
+            Buscar disponibilidad
+          </button>
+
+          <p className="nx-book-selected">
+            <strong>Profesional:</strong> {selectedProfessionalName}
+          </p>
+        </div>
+
+        {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
+        {message ? <p style={{ color: 'var(--success)' }}>{message}</p> : null}
+
+        <ul className="nx-doctor-list">
+          {slots.map((slot) => (
+            <li key={slot.startsAtIso} className="nx-doctor-card">
+              <div className="nx-doctor-card__top">
+                <span className="nx-doctor-card__avatar" aria-hidden="true">
+                  🩺
+                </span>
+                <div>
+                  <p className="nx-doctor-card__name">{selectedProfessionalName}</p>
+                  <span className="nx-badge">
+                    {slot.startTime}–{slot.endTime}
+                  </span>
+                </div>
+              </div>
+
+              <p className="nx-doctor-card__description">
+                {slot.startsAtIso.slice(0, 16).replace('T', ' ')} · Duración estimada: {slot.startTime}–{slot.endTime}
+              </p>
+
+              <div className="nx-doctor-card__meta">
+                <span>Confirmación inmediata</span>
+                <span>Reserva online</span>
+              </div>
+
+              <div className="nx-doctor-card__actions">
+                <button
+                  type="button"
+                  className="nx-btn"
+                  onClick={async () => {
+                    if (!accessToken) {
+                      return;
+                    }
+
+                    try {
+                      setError('');
+                      await patientApi.createAppointment(accessToken, organizationId, {
+                        professionalId,
+                        ...(specialtyId ? { specialtyId } : {}),
+                        startAt: slot.startsAtIso,
+                        endAt: slot.endsAtIso
+                      });
+                      setMessage('Turno reservado con éxito.');
+                      setSlots((prev) => prev.filter((current) => current.startsAtIso !== slot.startsAtIso));
+                    } catch (cause) {
+                      setError((cause as Error).message);
+                    }
+                  }}
+                >
+                  Reserva Turno
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </main>
+  );
 };

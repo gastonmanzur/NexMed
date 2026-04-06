@@ -753,3 +753,357 @@ button, input, select, textarea { font: inherit; }
   .nx-user__meta { display: none; }
   .nx-notifications-dropdown { width: min(92vw, 380px); }
 }
+
+/* --- 2026 visual refresh: premium digital health SaaS --- */
+:root {
+  --bg: #f6f9fc;
+  --surface: #ffffff;
+  --surface-muted: #eaf3ff;
+  --border: #e6edf5;
+  --border-strong: #d6e3f0;
+  --text: #0f172a;
+  --text-muted: #1f3351;
+  --text-soft: #5b6b82;
+  --primary: #1677ff;
+  --primary-hover: #0f67e6;
+  --primary-soft: #eaf3ff;
+  --accent: #27c7b8;
+  --shadow-sm: 0 8px 20px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 18px 36px rgba(15, 23, 42, 0.09);
+  --shadow-lg: 0 30px 56px rgba(22, 119, 255, 0.13);
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+}
+
+body {
+  background:
+    radial-gradient(1000px circle at 0% -20%, rgba(22, 119, 255, 0.12), transparent 44%),
+    radial-gradient(920px circle at 100% -8%, rgba(39, 199, 184, 0.11), transparent 46%),
+    var(--bg);
+}
+
+.nx-shell { grid-template-columns: 300px 1fr; }
+
+.nx-sidebar {
+  padding: 1.5rem 1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 250, 255, 0.92));
+  box-shadow: inset -1px 0 0 rgba(230, 237, 245, 0.9);
+}
+
+.nx-nav { gap: 0.45rem; }
+
+.nx-nav-link {
+  min-height: 44px;
+  padding: 0.72rem 1rem;
+  font-weight: 600;
+}
+
+.nx-main {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0));
+}
+
+.nx-topbar {
+  min-height: 72px;
+  padding: 0.9rem 1.6rem;
+  border-bottom: 1px solid rgba(230, 237, 245, 0.9);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+}
+
+.nx-topbar__title {
+  font-size: 0.95rem;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.nx-page {
+  width: min(1120px, 100%);
+  padding: 1.8rem;
+  gap: 1.3rem;
+}
+
+.nx-card {
+  border-radius: 24px;
+  padding: 1.45rem 1.55rem;
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.nx-card__title {
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.nx-card__subtitle {
+  color: var(--text-soft);
+  font-size: 0.96rem;
+  margin-top: 0.4rem;
+}
+
+.nx-btn,
+.nx-btn-secondary,
+.nx-btn-danger {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0.65rem 1rem;
+  font-weight: 650;
+}
+
+.nx-btn {
+  background: linear-gradient(135deg, var(--primary), #338bff);
+  box-shadow: 0 12px 26px rgba(22, 119, 255, 0.24);
+}
+
+.nx-btn:hover {
+  background: linear-gradient(135deg, var(--primary-hover), #257ff7);
+}
+
+.nx-btn-secondary {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: #fff;
+}
+
+.nx-btn-secondary:hover {
+  border-color: #cbd8e8;
+  background: #f9fcff;
+}
+
+.nx-field {
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+
+.nx-field input,
+.nx-field select,
+.nx-field textarea {
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid #d5e1ef;
+}
+
+.nx-field input:focus,
+.nx-field select:focus,
+.nx-field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(22, 119, 255, 0.14);
+}
+
+.nx-tabs {
+  margin: 1rem 0 1.3rem;
+  padding: 0.3rem;
+  background: #eff5fd;
+  border-radius: 14px;
+  border-color: #deebf7;
+}
+
+.nx-tab {
+  min-height: 42px;
+  border-radius: 11px;
+}
+
+.nx-tab.is-active {
+  color: var(--primary-hover);
+  box-shadow: 0 7px 16px rgba(22, 119, 255, 0.18);
+}
+
+.nx-state {
+  border-radius: 22px;
+  padding: 1.25rem;
+  background: #f7fbff;
+}
+
+.nx-empty-state {
+  justify-items: center;
+  text-align: center;
+  gap: 0.55rem;
+  padding: 1.8rem 1.2rem;
+  border: 1px dashed #cfdeef;
+  background: #fbfdff;
+}
+
+.nx-empty-state__icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 18px;
+  font-size: 1.8rem;
+  background: linear-gradient(135deg, #eaf3ff, #f0f9ff);
+}
+
+.nx-empty-state__title {
+  font-size: 1.2rem;
+}
+
+.nx-empty-state__subtitle {
+  max-width: 420px;
+}
+
+.nx-hero-card {
+  border-radius: 28px;
+  padding: 1.9rem;
+  background: linear-gradient(130deg, #1677ff 0%, #1e8cf5 58%, #27c7b8 100%);
+  box-shadow: var(--shadow-lg);
+}
+
+.nx-patient-hero p { opacity: 0.98; }
+
+.nx-org-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.nx-org-list__item {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 16px;
+  padding: 0.95rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nx-org-list__name { margin: 0; font-size: 1rem; font-weight: 720; color: #fff; }
+.nx-org-list__status { margin: 0.2rem 0 0; color: rgba(255, 255, 255, 0.94); font-size: 0.84rem; }
+
+.nx-book-shell { border-radius: 24px; }
+
+.nx-book-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.nx-book-actions {
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.nx-book-selected { margin: 0; color: var(--text-soft); }
+
+.nx-doctor-card {
+  border-radius: 22px;
+  padding: 1.1rem;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  transition: transform 130ms ease, box-shadow 130ms ease, border-color 130ms ease;
+}
+
+.nx-doctor-card:hover {
+  transform: translateY(-2px);
+  border-color: #cfe0f2;
+  box-shadow: 0 16px 26px rgba(15, 23, 42, 0.09);
+}
+
+.nx-doctor-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.nx-doctor-card__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eaf3ff, #f1fdff);
+  border: 1px solid #d8e9f8;
+  font-size: 1.2rem;
+}
+
+.nx-doctor-card__name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 760;
+  color: var(--text);
+}
+
+.nx-doctor-card__description {
+  margin: 0.8rem 0 0.5rem;
+  line-height: 1.45;
+}
+
+.nx-doctor-card__meta {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.nx-doctor-card__meta span {
+  font-size: 0.76rem;
+  color: var(--text-soft);
+  border: 1px solid #dce8f4;
+  background: #f9fbff;
+  border-radius: 999px;
+  padding: 0.22rem 0.56rem;
+}
+
+.nx-appointment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.nx-appointment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+}
+
+.nx-appointment-item--history {
+  justify-content: flex-start;
+  gap: 1rem;
+}
+
+.nx-appointment-item__date {
+  margin: 0;
+  font-weight: 670;
+  color: var(--text);
+}
+
+.nx-appointment-item__status {
+  margin: 0.2rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+}
+
+.nx-appointment-item__actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.nx-section-title {
+  margin: 0.3rem 0 0.8rem;
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 980px) {
+  .nx-shell { grid-template-columns: 1fr; }
+  .nx-topbar { min-height: 64px; padding: 0.75rem 1rem; }
+  .nx-page { padding: 1.1rem; }
+  .nx-book-grid { grid-template-columns: 1fr; }
+  .nx-org-list__item,
+  .nx-appointment-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
