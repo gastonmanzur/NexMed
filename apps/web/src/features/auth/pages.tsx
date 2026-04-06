@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import type { FirebaseError } from 'firebase/app';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
@@ -12,6 +12,7 @@ import { clearJoinIntent, readJoinIntent } from '../patient/join-intent';
 import { patientApi } from '../patient/patient-api';
 
 const viewStyle = { maxWidth: 560, margin: '2rem auto', padding: '1rem' };
+const authSurfaceStyle = { maxWidth: 480 };
 
 const getGoogleLoginErrorMessage = (cause: unknown): string => {
   const error = cause as FirebaseError;
@@ -56,6 +57,27 @@ const useGoogleLogin = () => {
   };
 };
 
+const AuthLayout = ({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}): ReactElement => (
+  <main className="nx-auth-page" style={viewStyle}>
+    <section className="nx-auth-shell" style={authSurfaceStyle}>
+      <header className="nx-auth-header">
+        <p className="nx-auth-kicker">NexMed</p>
+        <h1>{title}</h1>
+        <p>{subtitle}</p>
+      </header>
+      {children}
+    </section>
+  </main>
+);
+
 export const RegisterPage = (): ReactElement => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -71,89 +93,93 @@ export const RegisterPage = (): ReactElement => {
   const [loading, setLoading] = useState(false);
 
   return (
-    <main style={viewStyle}>
-      <Card title={t('auth.register.title')}>
-        <input
-          placeholder="Nombre"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-        />
-        <input
-          placeholder="Apellido"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-        />
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <input
-          placeholder="Confirmar password"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
+    <AuthLayout
+      title={t('auth.register.title')}
+      subtitle="Creá tu cuenta para gestionar centros, pacientes y turnos desde un único lugar."
+    >
+      <Card title="Datos de acceso">
+        <div className="nx-form-grid">
+          <label className="nx-field">
+            <span>Nombre</span>
+            <input placeholder="Nombre" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          </label>
+          <label className="nx-field">
+            <span>Apellido</span>
+            <input placeholder="Apellido" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          </label>
+          <label className="nx-field">
+            <span>Email</span>
+            <input placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <label className="nx-field">
+            <span>Contraseña</span>
+            <input placeholder="Mínimo 8 caracteres" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          <label className="nx-field">
+            <span>Confirmar contraseña</span>
+            <input placeholder="Repetí tu contraseña" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          </label>
+        </div>
 
-        <button
-          type="button"
-          disabled={loading}
-          onClick={async () => {
-            try {
-              setError('');
-              setLoading(true);
+        <div className="nx-auth-actions">
+          <button
+            type="button"
+            className="nx-btn"
+            disabled={loading}
+            onClick={async () => {
+              try {
+                setError('');
+                setLoading(true);
 
-              if (password !== confirmPassword) {
-                throw new Error('Las contraseñas no coinciden');
+                if (password !== confirmPassword) {
+                  throw new Error('Las contraseñas no coinciden');
+                }
+
+                const session = await authApi.register({
+                  firstName,
+                  lastName,
+                  email,
+                  password,
+                });
+
+                setSession(session);
+                navigate('/post-login');
+              } catch (cause) {
+                setError((cause as Error).message);
+              } finally {
+                setLoading(false);
               }
+            }}
+          >
+            {loading ? 'Creando cuenta...' : t('auth.register.submit')}
+          </button>
 
-              const session = await authApi.register({
-                firstName,
-                lastName,
-                email,
-                password,
-              });
+          <button
+            type="button"
+            className="nx-btn-secondary nx-btn-google"
+            disabled={loading}
+            onClick={async () => {
+              try {
+                setLoading(true);
+                setError('');
+                await loginWithGoogle();
+              } catch (cause) {
+                setError(getGoogleLoginErrorMessage(cause));
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            {t('auth.login.google')}
+          </button>
+        </div>
 
-              setSession(session);
-              navigate('/post-login');
-            } catch (cause) {
-              setError((cause as Error).message);
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          {loading ? 'Creando cuenta...' : t('auth.register.submit')}
-        </button>
-
-        <button
-          type="button"
-          disabled={loading}
-          onClick={async () => {
-            try {
-              setLoading(true);
-              setError('');
-              await loginWithGoogle();
-            } catch (cause) {
-              setError(getGoogleLoginErrorMessage(cause));
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          {t('auth.login.google')}
-        </button>
-
-        <p style={{ color: 'crimson' }}>{error}</p>
-        <Link to="/login">{t('auth.common.goLogin')}</Link>
+        {error ? <p className="nx-auth-message nx-auth-message--error">{error}</p> : null}
+        <p className="nx-auth-footer-link">
+          <Link to="/login">{t('auth.common.goLogin')}</Link>
+        </p>
       </Card>
-    </main>
+    </AuthLayout>
   );
 };
 
@@ -169,64 +195,72 @@ export const LoginPage = (): ReactElement => {
   const [loading, setLoading] = useState(false);
 
   return (
-    <main style={viewStyle}>
-      <Card title={t('auth.login.title')}>
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+    <AuthLayout
+      title={t('auth.login.title')}
+      subtitle="Bienvenido de nuevo. Accedé a NexMed para gestionar tu operación diaria."
+    >
+      <Card title="Ingresá con tu cuenta">
+        <div className="nx-form-grid">
+          <label className="nx-field">
+            <span>Email</span>
+            <input placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          <label className="nx-field">
+            <span>Contraseña</span>
+            <input placeholder="••••••••" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+        </div>
 
-        <button
-          type="button"
-          disabled={loading}
-          onClick={async () => {
-            try {
-              setLoading(true);
-              setError('');
-              const session = await authApi.login(email, password);
-              setSession(session);
-              navigate('/post-login');
-            } catch (cause) {
-              setError((cause as Error).message);
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          {loading ? 'Ingresando...' : t('auth.login.submit')}
-        </button>
+        <div className="nx-auth-actions">
+          <button
+            type="button"
+            className="nx-btn"
+            disabled={loading}
+            onClick={async () => {
+              try {
+                setLoading(true);
+                setError('');
+                const session = await authApi.login(email, password);
+                setSession(session);
+                navigate('/post-login');
+              } catch (cause) {
+                setError((cause as Error).message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            {loading ? 'Ingresando...' : t('auth.login.submit')}
+          </button>
 
-        <button
-          type="button"
-          disabled={loading}
-          onClick={async () => {
-            try {
-              setLoading(true);
-              setError('');
-              await loginWithGoogle();
-            } catch (cause) {
-              setError(getGoogleLoginErrorMessage(cause));
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          {t('auth.login.google')}
-        </button>
+          <button
+            type="button"
+            className="nx-btn-secondary nx-btn-google"
+            disabled={loading}
+            onClick={async () => {
+              try {
+                setLoading(true);
+                setError('');
+                await loginWithGoogle();
+              } catch (cause) {
+                setError(getGoogleLoginErrorMessage(cause));
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            {t('auth.login.google')}
+          </button>
+        </div>
 
-        <p style={{ color: 'crimson' }}>{error}</p>
-        <Link to="/register">Crear cuenta</Link>
-        <br />
-        <Link to="/forgot-password">{t('auth.login.forgot')}</Link>
+        {error ? <p className="nx-auth-message nx-auth-message--error">{error}</p> : null}
+
+        <div className="nx-auth-links">
+          <Link to="/register">Crear cuenta</Link>
+          <Link to="/forgot-password">{t('auth.login.forgot')}</Link>
+        </div>
       </Card>
-    </main>
+    </AuthLayout>
   );
 };
 
@@ -369,9 +403,10 @@ export const VerifyEmailPage = (): ReactElement => {
   const [status, setStatus] = useState('idle');
 
   return (
-    <main style={viewStyle}>
-      <Card title={t('auth.verify.title')}>
+    <AuthLayout title={t('auth.verify.title')} subtitle="Confirmá tu email para activar tu cuenta y continuar.">
+      <Card title="Validación de email">
         <button
+          className="nx-btn"
           type="button"
           onClick={async () => {
             const token = params.get('token') ?? '';
@@ -381,9 +416,9 @@ export const VerifyEmailPage = (): ReactElement => {
         >
           {t('auth.verify.submit')}
         </button>
-        {status === 'ok' ? <p>{t('auth.verify.success')}</p> : null}
+        {status === 'ok' ? <p className="nx-auth-message nx-auth-message--success">{t('auth.verify.success')}</p> : null}
       </Card>
-    </main>
+    </AuthLayout>
   );
 };
 
@@ -393,14 +428,14 @@ export const ForgotPasswordPage = (): ReactElement => {
   const [message, setMessage] = useState('');
 
   return (
-    <main style={viewStyle}>
-      <Card title={t('auth.forgot.title')}>
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+    <AuthLayout title={t('auth.forgot.title')} subtitle="Te enviaremos un enlace para crear una nueva contraseña.">
+      <Card title="Recuperar acceso">
+        <label className="nx-field">
+          <span>Email</span>
+          <input placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </label>
         <button
+          className="nx-btn"
           type="button"
           onClick={async () => {
             await authApi.forgotPassword(email);
@@ -409,9 +444,9 @@ export const ForgotPasswordPage = (): ReactElement => {
         >
           {t('auth.forgot.submit')}
         </button>
-        <p>{message}</p>
+        {message ? <p className="nx-auth-message nx-auth-message--success">{message}</p> : null}
       </Card>
-    </main>
+    </AuthLayout>
   );
 };
 
@@ -422,14 +457,14 @@ export const ResetPasswordPage = (): ReactElement => {
   const [message, setMessage] = useState('');
 
   return (
-    <main style={viewStyle}>
-      <Card title={t('auth.reset.title')}>
-        <input
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-        />
+    <AuthLayout title={t('auth.reset.title')} subtitle="Elegí una nueva contraseña segura para tu cuenta.">
+      <Card title="Nueva contraseña">
+        <label className="nx-field">
+          <span>Nueva contraseña</span>
+          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        </label>
         <button
+          className="nx-btn"
           type="button"
           onClick={async () => {
             await authApi.resetPassword(params.get('token') ?? '', newPassword);
@@ -438,9 +473,9 @@ export const ResetPasswordPage = (): ReactElement => {
         >
           {t('auth.reset.submit')}
         </button>
-        <p>{message}</p>
+        {message ? <p className="nx-auth-message nx-auth-message--success">{message}</p> : null}
       </Card>
-    </main>
+    </AuthLayout>
   );
 };
 
@@ -452,21 +487,28 @@ export const ChangePasswordPage = (): ReactElement => {
   const [message, setMessage] = useState('');
 
   return (
-    <main style={viewStyle}>
-      <Card title={t('auth.change.title')}>
-        <input
-          type="password"
-          placeholder={t('auth.change.current')}
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder={t('auth.change.new')}
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-        />
+    <AuthLayout title={t('auth.change.title')} subtitle="Actualizá tu contraseña y mantené tu cuenta protegida.">
+      <Card title="Seguridad de cuenta">
+        <label className="nx-field">
+          <span>{t('auth.change.current')}</span>
+          <input
+            type="password"
+            placeholder={t('auth.change.current')}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+          />
+        </label>
+        <label className="nx-field">
+          <span>{t('auth.change.new')}</span>
+          <input
+            type="password"
+            placeholder={t('auth.change.new')}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+        </label>
         <button
+          className="nx-btn"
           type="button"
           onClick={async () => {
             if (!accessToken) return;
@@ -476,8 +518,8 @@ export const ChangePasswordPage = (): ReactElement => {
         >
           {t('auth.change.submit')}
         </button>
-        <p>{message}</p>
+        {message ? <p className="nx-auth-message nx-auth-message--success">{message}</p> : null}
       </Card>
-    </main>
+    </AuthLayout>
   );
 };
