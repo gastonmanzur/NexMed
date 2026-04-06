@@ -255,6 +255,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     <div className="nx-shell">
       <aside className="nx-sidebar">
         <div className="nx-brand">
+          <span className="nx-brand__pill">N</span>
           <h3>NexMed</h3>
           <p>{sectionTitle}</p>
         </div>
@@ -270,6 +271,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
                 to={item.to}
                 className={`nx-nav-link${active ? ' is-active' : ''}`}
               >
+                <span className="nx-nav-link__dot" aria-hidden="true" />
                 {item.label}
               </Link>
             );
@@ -412,7 +414,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
               <button
                 type="button"
-                className="nx-btn-danger"
+                className="nx-btn-secondary nx-signout-btn"
                 onClick={async () => {
                   await clearSession();
                   navigate('/login', { replace: true });
