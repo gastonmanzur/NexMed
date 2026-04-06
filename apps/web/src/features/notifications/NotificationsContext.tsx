@@ -9,6 +9,7 @@ interface NotificationsContextValue {
   loadingUnread: boolean;
   refreshUnreadCount: () => Promise<void>;
   markOneAsReadLocally: () => void;
+  markManyAsReadLocally: (amount: number) => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
@@ -41,6 +42,13 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }): Re
 
   const markOneAsReadLocally = useCallback((): void => {
     setUnreadCount((current) => (current > 0 ? current - 1 : 0));
+  }, []);
+
+  const markManyAsReadLocally = useCallback((amount: number): void => {
+    if (amount <= 0) {
+      return;
+    }
+    setUnreadCount((current) => Math.max(current - amount, 0));
   }, []);
 
   useEffect(() => {
@@ -105,8 +113,14 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }): Re
   }, [accessToken, refreshUnreadCount]);
 
   const value = useMemo<NotificationsContextValue>(
-    () => ({ unreadCount, loadingUnread, refreshUnreadCount, markOneAsReadLocally }),
-    [loadingUnread, markOneAsReadLocally, refreshUnreadCount, unreadCount]
+    () => ({
+      unreadCount,
+      loadingUnread,
+      refreshUnreadCount,
+      markOneAsReadLocally,
+      markManyAsReadLocally
+    }),
+    [loadingUnread, markManyAsReadLocally, markOneAsReadLocally, refreshUnreadCount, unreadCount]
   );
 
   return (
