@@ -57,9 +57,13 @@ export const ProfessionalsListPage = (): ReactElement => {
         <p>Gestioná el equipo operativo del centro.</p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
 
-          <Link className="nx-btn-secondary" to="/app">Volver al inicio</Link>
+          <Link className="nx-btn" to="/app">Volver al inicio</Link>
 
-          <Link to="/app">Volver al inicio</Link>
+
+<!--           <Link className="nx-btn-secondary" to="/app">Volver al inicio</Link>
+
+          <Link to="/app">Volver al inicio</Link> -->
+
 
           {canManage ? <Link className="nx-btn" to="/app/professionals/new">Nuevo profesional</Link> : null}
         </div>
