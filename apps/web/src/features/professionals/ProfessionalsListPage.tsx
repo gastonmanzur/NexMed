@@ -56,13 +56,13 @@ export const ProfessionalsListPage = (): ReactElement => {
       <Card title="Profesionales">
         <p>Gestioná el equipo operativo del centro.</p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link to="/app">Volver al dashboard</Link>
-          {canManage ? <Link to="/app/professionals/new">Nuevo profesional</Link> : null}
+          <Link className="nx-btn" to="/app">Volver al inicio</Link>
+          {canManage ? <Link className="nx-btn" to="/app/professionals/new">Nuevo profesional</Link> : null}
         </div>
         {!canManage ? <p style={{ color: '#555' }}>Tu rol es de solo lectura para este módulo.</p> : null}
       </Card>
 
-      <Card title="Listado">
+      <Card title="Lista de profecionales">
         {loading ? <LoadingState message="Cargando profesionales..." /> : null}
         {error ? <ErrorState message={error} /> : null}
         {!loading && !error && professionals.length === 0 ? (
