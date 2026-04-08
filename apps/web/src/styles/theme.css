@@ -234,7 +234,7 @@ button, input, select, textarea { font: inherit; }
   width: 380px;
   max-height: 520px;
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 24px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   z-index: 90;
@@ -358,9 +358,9 @@ button, input, select, textarea { font: inherit; }
 
 .nx-notifications-view-all {
   width: 100%;
-  border: 1px solid #dbe3ef;
-  border-radius: 10px;
-  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f8fbff;
   color: #0f172a;
   font-size: 0.8rem;
   font-weight: 620;
@@ -549,7 +549,7 @@ button, input, select, textarea { font: inherit; }
 
 .nx-state {
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 24px;
   padding: 1rem;
   background: #f8fbff;
 }
@@ -756,21 +756,21 @@ button, input, select, textarea { font: inherit; }
 
 /* --- 2026 visual refresh: premium digital health SaaS --- */
 :root {
-  --bg: #f6f9fc;
+  --bg: #f6f8fc;
   --surface: #ffffff;
   --surface-muted: #eaf3ff;
-  --border: #e6edf5;
-  --border-strong: #d6e3f0;
+  --border: #e2e8f3;
+  --border-strong: #d0dcee;
   --text: #0f172a;
-  --text-muted: #1f3351;
-  --text-soft: #5b6b82;
-  --primary: #1677ff;
-  --primary-hover: #0f67e6;
+  --text-muted: #233552;
+  --text-soft: #5f6f89;
+  --primary: #2f80ed;
+  --primary-hover: #1f6fda;
   --primary-soft: #eaf3ff;
-  --accent: #27c7b8;
-  --shadow-sm: 0 8px 20px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 18px 36px rgba(15, 23, 42, 0.09);
-  --shadow-lg: 0 30px 56px rgba(22, 119, 255, 0.13);
+  --accent: #22c7b8;
+  --shadow-sm: 0 8px 20px rgba(15, 23, 42, 0.07);
+  --shadow-md: 0 16px 34px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 24px 48px rgba(47, 128, 237, 0.16);
   --radius-sm: 14px;
   --radius-md: 18px;
   --radius-lg: 24px;
@@ -787,8 +787,8 @@ body {
 
 .nx-sidebar {
   padding: 1.5rem 1rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 250, 255, 0.92));
-  box-shadow: inset -1px 0 0 rgba(230, 237, 245, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 248, 252, 0.92));
+  box-shadow: inset -1px 0 0 rgba(226, 232, 243, 0.95);
 }
 
 .nx-nav { gap: 0.45rem; }
@@ -806,8 +806,9 @@ body {
 .nx-topbar {
   min-height: 72px;
   padding: 0.9rem 1.6rem;
-  border-bottom: 1px solid rgba(230, 237, 245, 0.9);
-  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid rgba(226, 232, 243, 0.95);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
 }
 
@@ -845,19 +846,19 @@ body {
 .nx-btn,
 .nx-btn-secondary,
 .nx-btn-danger {
-  min-height: 44px;
-  border-radius: 12px;
+  min-height: 48px;
+  border-radius: 14px;
   padding: 0.65rem 1rem;
   font-weight: 650;
 }
 
 .nx-btn {
-  background: linear-gradient(135deg, var(--primary), #338bff);
+  background: linear-gradient(135deg, var(--primary), #4e97f0);
   box-shadow: 0 12px 26px rgba(22, 119, 255, 0.24);
 }
 
 .nx-btn:hover {
-  background: linear-gradient(135deg, var(--primary-hover), #257ff7);
+  background: linear-gradient(135deg, var(--primary-hover), #317de0);
 }
 
 .nx-btn-secondary {
@@ -880,8 +881,8 @@ body {
 .nx-field input,
 .nx-field select,
 .nx-field textarea {
-  min-height: 46px;
-  border-radius: 12px;
+  min-height: 52px;
+  border-radius: 16px;
   border: 1px solid #d5e1ef;
 }
 
@@ -895,14 +896,14 @@ body {
 .nx-tabs {
   margin: 1rem 0 1.3rem;
   padding: 0.3rem;
-  background: #eff5fd;
-  border-radius: 14px;
-  border-color: #deebf7;
+  background: #eaf3ff;
+  border-radius: 16px;
+  border-color: #dbe7f6;
 }
 
 .nx-tab {
-  min-height: 42px;
-  border-radius: 11px;
+  min-height: 44px;
+  border-radius: 12px;
 }
 
 .nx-tab.is-active {
@@ -921,8 +922,8 @@ body {
   text-align: center;
   gap: 0.55rem;
   padding: 1.8rem 1.2rem;
-  border: 1px dashed #cfdeef;
-  background: #fbfdff;
+  border: 1px dashed #d3dfef;
+  background: #ffffff;
 }
 
 .nx-empty-state__icon {
@@ -944,7 +945,7 @@ body {
 .nx-hero-card {
   border-radius: 28px;
   padding: 1.9rem;
-  background: linear-gradient(130deg, #1677ff 0%, #1e8cf5 58%, #27c7b8 100%);
+  background: linear-gradient(130deg, #2f80ed 0%, #3f8ef4 55%, #22c7b8 100%);
   box-shadow: var(--shadow-lg);
 }
 
