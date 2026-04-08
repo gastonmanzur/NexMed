@@ -55,12 +55,12 @@ export const SpecialtiesListPage = (): ReactElement => {
       <Card title="Especialidades">
         <p>Gestioná el catálogo de especialidades y servicios del centro.</p>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link to="/app">Volver al dashboard</Link>
-          {canManage ? <Link to="/app/specialties/new">Nueva especialidad</Link> : null}
+          <Link className="nx-btn" to="/app">Volver al inicio</Link>
+          {canManage ? <Link className="nx-btn" to="/app/specialties/new">Nueva especialidad</Link> : null}
         </div>
       </Card>
 
-      <Card title="Listado">
+      <Card title="Lista de especialidades">
         {loading ? <p>Cargando especialidades...</p> : null}
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
         {!loading && !error && specialties.length === 0 ? (
@@ -82,8 +82,9 @@ export const SpecialtiesListPage = (): ReactElement => {
 
                 {canManage ? (
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <Link to={`/app/specialties/${specialty.id}/edit`}>Editar</Link>
+                    <Link className="nx-btn-secondary" to={`/app/specialties/${specialty.id}/edit`}>Editar</Link>
                     <button
+                      className={specialty.status === 'active' ? 'nx-btn-danger' : 'nx-btn-secondary'}
                       type="button"
                       onClick={async () => {
                         if (!accessToken) return;
