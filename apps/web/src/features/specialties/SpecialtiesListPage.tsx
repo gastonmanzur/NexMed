@@ -71,17 +71,17 @@ export const SpecialtiesListPage = (): ReactElement => {
         ) : null}
 
         {!loading && !error && specialties.length > 0 ? (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.75rem' }}>
+          <ul className="nx-doctor-list">
             {specialties.map((specialty) => (
-              <li key={specialty.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}>
+              <li key={specialty.id} className="nx-doctor-card">
                 <p style={{ margin: 0 }}>
-                  <strong>{specialty.name}</strong> · estado: <strong>{specialty.status}</strong>
+                  <strong>{specialty.name}</strong> · estado: <span className="nx-badge">{specialty.status}</span>
                 </p>
-                <p style={{ margin: '0.35rem 0' }}>Descripción: {specialty.description ?? '-'}</p>
-                <p style={{ margin: '0.35rem 0' }}>Profesionales asociados: {specialty.professionalCount}</p>
+                <p className="nx-doctor-card__description">Descripción: {specialty.description ?? '-'}</p>
+                <p className="nx-doctor-card__description">Profesionales asociados: {specialty.professionalCount}</p>
 
                 {canManage ? (
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <div className="nx-doctor-card__actions">
                     <Link className="nx-btn-secondary" to={`/app/specialties/${specialty.id}/edit`}>Editar</Link>
                     <button
                       className={specialty.status === 'active' ? 'nx-btn-danger' : 'nx-btn-secondary'}
