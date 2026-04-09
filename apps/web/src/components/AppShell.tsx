@@ -14,10 +14,10 @@ interface NavItem {
 }
 
 const centerItems: NavItem[] = [
-  { id: 'center-dashboard', label: 'Dashboard', to: '/app' },
+  { id: 'center-dashboard', label: 'Inicio', to: '/app' },
   { id: 'center-professionals', label: 'Profesionales', to: '/app/professionals' },
   { id: 'center-specialties', label: 'Especialidades', to: '/app/specialties' },
-  { id: 'center-appointments', label: 'Turnos', to: '/app/appointments' },
+  { id: 'center-appointments', label: 'Agenda', to: '/app/appointments' },
   { id: 'center-invite', label: 'Invitación', to: '/app/invite' },
   { id: 'center-subscription', label: 'Suscripción', to: '/app/subscription' },
   { id: 'center-settings', label: 'Configuración', to: '/organization/profile' }
