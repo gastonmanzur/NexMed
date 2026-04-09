@@ -73,7 +73,7 @@ export const AppointmentsListPage = (): ReactElement => {
     <main className="nx-page">
       <Card title="Turnos" subtitle="Listado completo con filtros por profesional, estado y rango de fechas.">
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link className="nx-btn-secondary" to="/app">Volver al dashboard</Link>
+          <Link className="nx-btn" to="/app">Volver al inicio</Link>
           {canManage ? <Link className="nx-btn" to="/app/appointments/new">Crear turno</Link> : null}
           <button type="button" className="nx-btn-secondary" onClick={() => void load()} disabled={loading}>Recargar</button>
         </div>
@@ -122,7 +122,7 @@ export const AppointmentsListPage = (): ReactElement => {
         {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
       </Card>
 
-      <Card title="Listado" subtitle="Turnos registrados para la organización activa.">
+      <Card title="Próximos turnos" subtitle="Turnos registrados para la organización activa.">
         {loading ? <LoadingState message="Cargando turnos..." /> : null}
         {!loading && !error && appointments.length === 0 ? (
           <EmptyState title="No hay turnos para estos filtros" description="Probá cambiar el rango de fechas o crear un nuevo turno." {...(canManage ? { action: <Link className="nx-btn" to="/app/appointments/new">Crear turno</Link> } : {})} />
