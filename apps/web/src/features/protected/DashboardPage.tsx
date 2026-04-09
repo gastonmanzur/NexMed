@@ -17,7 +17,6 @@ interface DashboardModule {
 const MODULES: DashboardModule[] = [
   { key: 'professionals', title: 'Profesionales', description: 'Gestioná altas, edición, estados y especialidades asociadas.', path: '/app/professionals' },
   { key: 'specialties', title: 'Especialidades', description: 'Administrá el catálogo de servicios y su estado operativo.', path: '/app/specialties' },
-  { key: 'schedule', title: 'Agenda', description: 'Configurá agenda base, bloqueos y disponibilidad por profesional.', path: '/app/professionals' },
   { key: 'appointments', title: 'Turnos', description: 'Gestión de turnos: creación, cancelación y reprogramación.', path: '/app/appointments' }
 ];
 
