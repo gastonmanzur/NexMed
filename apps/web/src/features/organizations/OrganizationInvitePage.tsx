@@ -78,31 +78,37 @@ export const OrganizationInvitePage = (): ReactElement => {
 
   return (
     <main style={{ maxWidth: 920, margin: '2rem auto', padding: '1rem' }}>
-      <Card title="Invitación de pacientes">
-        <p>Compartí este link o QR para que los pacientes se vinculen al centro y puedan reservar turnos.</p>
-        {loading ? <p>Cargando link de invitación...</p> : null}
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+      <Card title="Invitación para pacientes">
+        <section className="nx-invite">
+          <p className="nx-invite__lead">Compartí este link o QR para que los pacientes se vinculen al centro y puedan reservar turnos.</p>
+          {loading ? <p className="nx-invite__meta">Cargando link de invitación...</p> : null}
+          {error ? <p className="nx-invite__error">{error}</p> : null}
 
-        {data ? (
-          <>
-            <p><strong>Link de invitación:</strong></p>
-            <code style={{ display: 'block', overflowWrap: 'anywhere' }}>{absoluteLink}</code>
-            <p><strong>Token:</strong> {data.token}</p>
-            <p><strong>Actualizado:</strong> {new Date(data.updatedAt).toLocaleString('es-AR', { hour12: false })}</p>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-              <button type="button" onClick={() => void onCopy()}>Copiar link</button>
-              <button type="button" onClick={() => void onRegenerate()} disabled={regenerating}>{regenerating ? 'Regenerando...' : 'Regenerar link'}</button>
-            </div>
-            {qrUrl ? (
-              <div>
-                <img src={qrUrl} alt="QR invitación" width={220} height={220} />
-                <p>
-                  <a href={qrUrl} download="nexmed-invite-qr.png">Descargar QR</a>
-                </p>
+          {data ? (
+            <>
+              <div className="nx-invite__block">
+                <p className="nx-invite__label"><strong>Link de invitación</strong></p>
+                <code className="nx-invite__code">{absoluteLink}</code>
               </div>
-            ) : null}
-          </>
-        ) : null}
+              <div className="nx-invite__meta-group">
+                <p className="nx-invite__meta"><strong>Token:</strong> {data.token}</p>
+                <p className="nx-invite__meta"><strong>Actualizado:</strong> {new Date(data.updatedAt).toLocaleString('es-AR', { hour12: false })}</p>
+              </div>
+              <div className="nx-invite__actions">
+                <button type="button" className="nx-btn" onClick={() => void onCopy()}>Copiar link</button>
+                <button type="button" className="nx-btn-secondary" onClick={() => void onRegenerate()} disabled={regenerating}>{regenerating ? 'Regenerando...' : 'Regenerar link'}</button>
+              </div>
+              {qrUrl ? (
+                <div className="nx-invite__qr">
+                  <img src={qrUrl} alt="QR invitación" width={220} height={220} />
+                  <p className="nx-invite__meta">
+                    <a href={qrUrl} download="nexmed-invite-qr.png">Descargar QR</a>
+                  </p>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </section>
       </Card>
     </main>
   );
