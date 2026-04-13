@@ -18,11 +18,11 @@ export class PlanRepository {
       {
         code: 'starter',
         name: 'Starter',
-        price: 0,
+        price: 9900,
         currency: 'ARS',
         maxProfessionalsActive: 3,
         status: 'active',
-        description: 'Plan inicial para empezar la operación.'
+        description: 'Plan base para consultorios que completaron su prueba de 14 días.'
       },
       {
         code: 'growth',
@@ -45,7 +45,7 @@ export class PlanRepository {
     ] as const;
 
     for (const plan of defaults) {
-      await PlanModel.findOneAndUpdate({ code: plan.code }, { $setOnInsert: plan }, { upsert: true, new: true }).lean();
+      await PlanModel.findOneAndUpdate({ code: plan.code }, { $set: plan }, { upsert: true, new: true }).lean();
     }
   }
 }

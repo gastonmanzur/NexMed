@@ -1185,3 +1185,98 @@ body {
     align-items: flex-start;
   }
 }
+
+.nx-subscription-page {
+  max-width: 1080px;
+  gap: 1.1rem;
+}
+
+.nx-subscription-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #f8fbff;
+  padding: 1rem;
+}
+
+.nx-subscription-status--active {
+  border-color: #bfe6de;
+  background: #f1fffb;
+}
+
+.nx-subscription-status--warn {
+  border-color: #f3ddb1;
+  background: #fffbf2;
+}
+
+.nx-subscription-status--danger {
+  border-color: #fecdd3;
+  background: #fff6f7;
+}
+
+.nx-subscription-status__badge {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid #b7d2f8;
+  background: #eff6ff;
+  color: #1d5eb8;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.nx-subscription-status__message {
+  margin: 0 0 0.7rem;
+  color: var(--text-muted);
+}
+
+.nx-subscription-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.95rem;
+}
+
+.nx-subscription-plan-card {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+}
+
+.nx-subscription-plan-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.nx-subscription-price {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.nx-subscription-price span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  margin-left: 0.2rem;
+}
+
+.nx-subscription-benefits {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+  display: grid;
+  gap: 0.35rem;
+}
+
+@media (max-width: 768px) {
+  .nx-subscription-status {
+    flex-direction: column;
+  }
+}

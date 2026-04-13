@@ -463,12 +463,17 @@ export class OrganizationService {
       const starter = await this.plans.findByCode('starter');
       if (!starter) throw new AppError('PLAN_NOT_FOUND', 404, 'Default plan not found');
 
+      const trialStartedAt = new Date();
+      const trialExpiresAt = new Date(trialStartedAt);
+      trialExpiresAt.setDate(trialExpiresAt.getDate() + 14);
+
       subscription = await this.organizationSubscriptions.upsertByOrganizationId({
         organizationId: input.organizationId,
         planId: starter._id.toString(),
         provider: 'internal',
-                status: 'trial',
-        startedAt: new Date(),
+        status: 'trial',
+        startedAt: trialStartedAt,
+        expiresAt: trialExpiresAt,
         autoRenew: false
       });
     }
@@ -526,7 +531,7 @@ export class OrganizationService {
       planId: plan._id.toString(),
       provider: 'manual',
       providerReference: `placeholder_${randomBytes(6).toString('hex')}`,
-      status: plan.price === 0 ? 'trial' : 'active',
+      status: 'active',
       startedAt: now,
       expiresAt,
       autoRenew: true
