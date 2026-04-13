@@ -51,7 +51,8 @@ const shell = (page: ReactElement): ReactElement => <AppShell>{page}</AppShell>;
 export const App = (): ReactElement => {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      {/* <Route path="/" element={<HomePage />} /> */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
