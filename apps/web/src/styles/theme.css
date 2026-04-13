@@ -1375,6 +1375,10 @@ body {
   gap: 0.35rem;
 }
 
+.nx-subscription-plan-card > button {
+  margin-top: 2rem;
+}
+
 @media (max-width: 768px) {
   .nx-subscription-status {
     flex-direction: column;
