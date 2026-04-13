@@ -21,7 +21,7 @@ interface FormState {
   currency: string;
 }
 
-const containerStyle = { maxWidth: 760, margin: '2rem auto', padding: '1rem' };
+const containerStyle = { maxWidth: 860, margin: '2rem auto', padding: '1rem' };
 
 const emptyForm = (): FormState => ({
   name: '',
@@ -176,141 +176,203 @@ export const OrganizationProfilePage = (): ReactElement => {
 
   return (
     <main style={containerStyle}>
-      <Card title="Perfil del centro">
-        <p>Editá el perfil institucional y la configuración general básica.</p>
+      <Card title="Perfil del centro" subtitle="Editá el perfil institucional y la configuración general básica.">
+        <div className="nx-org-profile">
 
-        {loading ? <p>Cargando datos actuales...</p> : null}
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
-        {feedback ? <p style={{ color: 'green' }}>{feedback}</p> : null}
+          {loading ? <p className="nx-org-profile__status">Cargando datos actuales...</p> : null}
+          {error ? <p className="nx-org-profile__status nx-org-profile__status--error">{error}</p> : null}
+          {feedback ? <p className="nx-org-profile__status nx-org-profile__status--success">{feedback}</p> : null}
 
-        <h3 style={{ marginBottom: 0 }}>Logo institucional</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt="Logo del centro"
-              style={{ width: 56, height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }}
-              onError={() => setLogoLoadFailed(true)}
-            />
-          ) : (
-            <div style={{ width: 56, height: 56, borderRadius: 10, border: '1px dashed var(--border)', display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-              Sin logo
+          <section className="nx-org-profile__section nx-org-profile__section--logo">
+            <div className="nx-org-profile__section-header">
+              <h3>Logo institucional</h3>
+              <p>Este logo es independiente de la foto de perfil del usuario.</p>
             </div>
-          )}
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-            Este logo es independiente de la foto de perfil del usuario.
-          </p>
-        </div>
+            <div className="nx-org-profile__logo-row">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Logo del centro"
+                  className="nx-org-profile__logo-preview"
+                  onError={() => setLogoLoadFailed(true)}
+                />
+              ) : (
+                <div className="nx-org-profile__logo-empty">
+                  Sin logo
+                </div>
+              )}
+              <div className="nx-org-profile__logo-actions">
+                <label className="nx-btn-secondary" style={{ cursor: logoBusy ? 'not-allowed' : 'pointer' }}>
+                  {logoBusy ? 'Procesando...' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    style={{ display: 'none' }}
+                    disabled={logoBusy}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.currentTarget.value = '';
+                      if (!file || !accessToken || !activeOrganizationId) {
+                        return;
+                      }
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <label className="nx-btn-secondary" style={{ cursor: logoBusy ? 'not-allowed' : 'pointer' }}>
-            {logoBusy ? 'Procesando...' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              style={{ display: 'none' }}
-              disabled={logoBusy}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.currentTarget.value = '';
-                if (!file || !accessToken || !activeOrganizationId) {
-                  return;
-                }
+                      void (async () => {
+                        try {
+                          setError(null);
+                          setFeedback(null);
+                          setLogoBusy(true);
+                          const profile = await organizationApi.uploadLogo(accessToken, activeOrganizationId, file);
+                          setOrganizationsContext({
+                            organizations: organizations.map((organization) =>
+                              organization.id === profile.organization.id ? profile.organization : organization
+                            ),
+                            memberships,
+                            activeOrganizationId
+                          });
+                          setLogoLoadFailed(false);
+                          setFeedback('Logo institucional actualizado.');
+                        } catch (cause) {
+                          setError((cause as Error).message);
+                        } finally {
+                          setLogoBusy(false);
+                        }
+                      })();
+                    }}
+                  />
+                </label>
+                {logoUrl ? (
+                  <button
+                    type="button"
+                    className="nx-btn-danger"
+                    disabled={logoBusy}
+                    onClick={() => {
+                      if (!accessToken || !activeOrganizationId) {
+                        return;
+                      }
 
-                void (async () => {
-                  try {
-                    setError(null);
-                    setFeedback(null);
-                    setLogoBusy(true);
-                    const profile = await organizationApi.uploadLogo(accessToken, activeOrganizationId, file);
-                    setOrganizationsContext({
-                      organizations: organizations.map((organization) =>
-                        organization.id === profile.organization.id ? profile.organization : organization
-                      ),
-                      memberships,
-                      activeOrganizationId
-                    });
-                    setLogoLoadFailed(false);
-                    setFeedback('Logo institucional actualizado.');
-                  } catch (cause) {
-                    setError((cause as Error).message);
-                  } finally {
-                    setLogoBusy(false);
-                  }
-                })();
-              }}
-            />
-          </label>
-          {logoUrl ? (
-            <button
-              type="button"
-              className="nx-btn-danger"
-              disabled={logoBusy}
-              onClick={() => {
-                if (!accessToken || !activeOrganizationId) {
-                  return;
-                }
+                      void (async () => {
+                        try {
+                          setError(null);
+                          setFeedback(null);
+                          setLogoBusy(true);
+                          const profile = await organizationApi.deleteLogo(accessToken, activeOrganizationId);
+                          setOrganizationsContext({
+                            organizations: organizations.map((organization) =>
+                              organization.id === profile.organization.id ? profile.organization : organization
+                            ),
+                            memberships,
+                            activeOrganizationId
+                          });
+                          setLogoLoadFailed(false);
+                          setFeedback('Logo institucional eliminado.');
+                        } catch (cause) {
+                          setError((cause as Error).message);
+                        } finally {
+                          setLogoBusy(false);
+                        }
+                      })();
+                    }}
+                  >
+                    Quitar logo
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </section>
 
-                void (async () => {
-                  try {
-                    setError(null);
-                    setFeedback(null);
-                    setLogoBusy(true);
-                    const profile = await organizationApi.deleteLogo(accessToken, activeOrganizationId);
-                    setOrganizationsContext({
-                      organizations: organizations.map((organization) =>
-                        organization.id === profile.organization.id ? profile.organization : organization
-                      ),
-                      memberships,
-                      activeOrganizationId
-                    });
-                    setLogoLoadFailed(false);
-                    setFeedback('Logo institucional eliminado.');
-                  } catch (cause) {
-                    setError((cause as Error).message);
-                  } finally {
-                    setLogoBusy(false);
-                  }
-                })();
-              }}
-            >
-              Quitar logo
-            </button>
-          ) : null}
-        </div>
+          <section className="nx-org-profile__section">
+            <div className="nx-org-profile__section-header">
+              <h3>Identidad del centro</h3>
+              <p>Datos institucionales que verán tus pacientes y equipo.</p>
+            </div>
+            <div className="nx-form-grid nx-org-profile__grid nx-org-profile__grid--two">
+              <label className="nx-field">
+                Nombre del centro
+                <input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                Nombre comercial
+                <input
+                  value={form.displayName}
+                  onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
+                />
+              </label>
+              <label className="nx-field">
+                Tipo de organización
+                <select value={form.type} onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as FormState['type'] }))}>
+                  <option value="clinic">Clínica</option>
+                  <option value="office">Consultorio</option>
+                  <option value="esthetic_center">Centro de estética</option>
+                  <option value="professional_cabinet">Gabinete profesional</option>
+                  <option value="other">Otro</option>
+                </select>
+              </label>
+              <label className="nx-field nx-org-profile__field--full">
+                Descripción breve
+                <textarea
+                  value={form.description}
+                  onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                  rows={4}
+                />
+              </label>
+            </div>
+          </section>
 
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <input placeholder="Nombre del centro" value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
-          <input
-            placeholder="Nombre comercial"
-            value={form.displayName}
-            onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
-          />
-          <select value={form.type} onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as FormState['type'] }))}>
-            <option value="clinic">Clínica</option>
-            <option value="office">Consultorio</option>
-            <option value="esthetic_center">Centro de estética</option>
-            <option value="professional_cabinet">Gabinete profesional</option>
-            <option value="other">Otro</option>
-          </select>
-          <input placeholder="Email de contacto" value={form.contactEmail} onChange={(event) => setForm((prev) => ({ ...prev, contactEmail: event.target.value }))} />
-          <input placeholder="Teléfono" value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} />
-          <input placeholder="Dirección" value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} />
-          <input placeholder="Ciudad" value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
-          <input placeholder="País" value={form.country} onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))} />
-          <textarea
-            placeholder="Descripción breve"
-            value={form.description}
-            onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-          />
+          <section className="nx-org-profile__section">
+            <div className="nx-org-profile__section-header">
+              <h3>Contacto y ubicación</h3>
+              <p>Información útil para comunicación y presencia del centro.</p>
+            </div>
+            <div className="nx-form-grid nx-org-profile__grid nx-org-profile__grid--two">
+              <label className="nx-field">
+                Email de contacto
+                <input value={form.contactEmail} onChange={(event) => setForm((prev) => ({ ...prev, contactEmail: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                Teléfono
+                <input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                Dirección
+                <input value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                Ciudad
+                <input value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                País
+                <input value={form.country} onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))} />
+              </label>
+            </div>
+          </section>
 
-          <h3 style={{ marginBottom: 0 }}>Configuración general</h3>
-          <input placeholder="Timezone" value={form.timezone} onChange={(event) => setForm((prev) => ({ ...prev, timezone: event.target.value }))} />
-          <input placeholder="Locale" value={form.locale} onChange={(event) => setForm((prev) => ({ ...prev, locale: event.target.value }))} />
-          <input placeholder="Moneda" value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
+          <section className="nx-org-profile__section">
+            <div className="nx-org-profile__section-header">
+              <h3>Configuración general</h3>
+              <p>Parámetros regionales para la operación diaria.</p>
+            </div>
+            <div className="nx-form-grid nx-org-profile__grid nx-org-profile__grid--three">
+              <label className="nx-field">
+                Timezone
+                <input value={form.timezone} onChange={(event) => setForm((prev) => ({ ...prev, timezone: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                Locale
+                <input value={form.locale} onChange={(event) => setForm((prev) => ({ ...prev, locale: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                Moneda
+                <input value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
+              </label>
+            </div>
+          </section>
+
+          <div className="nx-org-profile__actions">
 
           <button
             type="button"
+            className="nx-btn"
             disabled={saving || loading}
             onClick={async () => {
               if (!accessToken || !activeOrganizationId) {
@@ -354,6 +416,7 @@ export const OrganizationProfilePage = (): ReactElement => {
           >
             {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
+          </div>
         </div>
       </Card>
     </main>
