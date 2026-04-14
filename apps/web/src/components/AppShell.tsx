@@ -34,10 +34,9 @@ const patientItems: NavItem[] = [
 ];
 
 const adminItems: NavItem[] = [
-  { id: 'admin-summary', label: 'Resumen global', to: '/admin' },
+  { id: 'admin-home', label: 'Inicio', to: '/admin' },
   { id: 'admin-organizations', label: 'Organizaciones', to: '/admin/organizations' },
-  { id: 'admin-feedback', label: 'Feedback', to: '/admin/feedback' },
-  { id: 'admin-control', label: 'Control global', to: '/admin/control' }
+  { id: 'admin-subscriptions', label: 'Suscripciones', to: '/admin/subscriptions' }
 ];
 
 const initialsFor = (firstName?: string, lastName?: string, email?: string): string => {

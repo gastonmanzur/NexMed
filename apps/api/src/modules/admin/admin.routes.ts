@@ -21,6 +21,7 @@ adminRouter.delete('/avatars/:userId', asyncHandler(controller.deleteAvatar));
 adminRouter.get('/feedback', asyncHandler(controller.listFeedback));
 adminRouter.patch('/feedback/:feedbackId', asyncHandler(controller.updateFeedback));
 adminRouter.get('/organizations', asyncHandler(controller.listOrganizations));
+adminRouter.get('/organizations/:organizationId', asyncHandler(controller.getOrganizationDetail));
 adminRouter.patch('/organizations/:organizationId/status', asyncHandler(controller.updateOrganizationStatus));
 adminRouter.patch('/organizations/:organizationId/beta', asyncHandler(controller.updateOrganizationBeta));
 adminRouter.get('/monetization-config', asyncHandler(controller.getMonetizationConfig));

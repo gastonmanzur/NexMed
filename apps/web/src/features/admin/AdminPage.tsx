@@ -1,240 +1,112 @@
-import type { CSSProperties, ChangeEvent, ReactElement } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import type { ReactElement } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '@starter/ui';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { adminApi, type AdminAvatarItem, type AdminDashboardSummary, type AdminFeedbackItem, type AdminPaymentItem, type AdminSubscriptionItem, type AdminUserItem, type MonetizationConfig } from './admin-api';
+import { adminApi, type AdminSummary } from './admin-api';
 
-type AdminSection = 'dashboard' | 'users' | 'payments' | 'subscriptions' | 'notifications' | 'avatars' | 'feedback' | 'monetization';
+const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
 
-const tableWrapper: CSSProperties = { overflowX: 'auto', width: '100%' };
-const tableStyle: CSSProperties = { width: '100%', borderCollapse: 'collapse', minWidth: 640 };
+const subscriptionBadgeClass = (status: string): string => {
+  if (status === 'active') return 'nx-badge';
+  if (status === 'trial') return 'nx-badge';
+  if (status === 'past_due' || status === 'suspended') return 'nx-badge nx-badge--danger';
+  return 'nx-badge';
+};
 
 export const AdminPage = (): ReactElement => {
-  const { t } = useTranslation();
   const { accessToken } = useAuth();
-  const [section, setSection] = useState<AdminSection>('dashboard');
+  const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  const [dashboard, setDashboard] = useState<AdminDashboardSummary | null>(null);
-  const [users, setUsers] = useState<AdminUserItem[]>([]);
-  const [payments, setPayments] = useState<AdminPaymentItem[]>([]);
-  const [subscriptions, setSubscriptions] = useState<AdminSubscriptionItem[]>([]);
-  const [avatars, setAvatars] = useState<AdminAvatarItem[]>([]);
-  const [feedbackItems, setFeedbackItems] = useState<AdminFeedbackItem[]>([]);
-  const [monetizationConfig, setMonetizationConfig] = useState<MonetizationConfig | null>(null);
-  const [notificationForm, setNotificationForm] = useState({ targetUserId: '', title: '', body: '' });
-
-  const sections = useMemo<Array<{ id: AdminSection; label: string }>>(
-    () => [
-      { id: 'dashboard', label: t('admin.navigation.dashboard') },
-      { id: 'users', label: t('admin.navigation.users') },
-      { id: 'payments', label: t('admin.navigation.payments') },
-      { id: 'subscriptions', label: t('admin.navigation.subscriptions') },
-      { id: 'notifications', label: t('admin.navigation.notifications') },
-      { id: 'avatars', label: t('admin.navigation.avatars') },
-      { id: 'feedback', label: t('admin.navigation.feedback') },
-      { id: 'monetization', label: t('admin.navigation.monetization') }
-    ],
-    [t]
-  );
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!accessToken) {
-      return;
-    }
-
-    const loadSection = async (): Promise<void> => {
+    if (!accessToken) return;
+    const load = async (): Promise<void> => {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
+      setError('');
       try {
-        if (section === 'dashboard') setDashboard(await adminApi.getDashboard(accessToken));
-        if (section === 'users') setUsers((await adminApi.listUsers(accessToken, new URLSearchParams({ page: '1', limit: '20' }))).items);
-        if (section === 'payments') setPayments((await adminApi.listPayments(accessToken, new URLSearchParams({ page: '1', limit: '20' }))).items);
-        if (section === 'subscriptions') {
-          setSubscriptions((await adminApi.listSubscriptions(accessToken, new URLSearchParams({ page: '1', limit: '20' }))).items);
-        }
-        if (section === 'avatars') setAvatars((await adminApi.listAvatars(accessToken, new URLSearchParams({ page: '1', limit: '20', hasAvatar: 'true' }))).items);
-        if (section === 'feedback') setFeedbackItems((await adminApi.listFeedback(accessToken, new URLSearchParams({ page: '1', limit: '50' }))).items);
-        if (section === 'monetization') setMonetizationConfig(await adminApi.getMonetizationConfig(accessToken));
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : t('admin.common.loadError'));
+        setSummary(await adminApi.getSummary(accessToken));
+      } catch (cause) {
+        setError((cause as Error).message);
       } finally {
         setLoading(false);
       }
     };
-
-    void loadSection();
-  }, [accessToken, section, t]);
-
-  const updateNotificationField =
-    (field: 'targetUserId' | 'title' | 'body') =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
-      setNotificationForm((current) => ({ ...current, [field]: event.target.value }));
-    };
-
-  const onSendNotification = async (): Promise<void> => {
-    if (!accessToken) return;
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      await adminApi.sendNotification(accessToken, notificationForm);
-      setSuccess(t('admin.notifications.success'));
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : t('admin.notifications.error'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRoleChange = async (userId: string, role: 'admin' | 'user'): Promise<void> => {
-    if (!accessToken) return;
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      await adminApi.updateUserRole(accessToken, userId, role);
-      setUsers((current) => current.map((user) => (user.id === userId ? { ...user, role } : user)));
-      setSuccess(t('admin.users.roleUpdated'));
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : t('admin.common.actionError'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onDeleteAvatar = async (userId: string): Promise<void> => {
-    if (!accessToken) return;
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      await adminApi.deleteAvatar(accessToken, userId);
-      setAvatars((current) => current.filter((item) => item.userId !== userId));
-      setSuccess(t('admin.avatars.deleted'));
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : t('admin.common.actionError'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const onFeedbackStatusChange = async (feedbackId: string, status: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix'): Promise<void> => {
-    if (!accessToken) return;
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      await adminApi.updateFeedback(accessToken, feedbackId, { status });
-      setFeedbackItems((current) => current.map((item) => (item.id === feedbackId ? { ...item, status } : item)));
-      setSuccess(t('admin.feedback.updated'));
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : t('admin.common.actionError'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onUpdateMonetization = async (next: MonetizationConfig): Promise<void> => {
-    if (!accessToken) return;
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const updated = await adminApi.updateMonetizationConfig(accessToken, next);
-      setMonetizationConfig(updated);
-      setSuccess(t('admin.monetization.updated'));
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : t('admin.common.actionError'));
-    } finally {
-      setLoading(false);
-    }
-  };
+    void load();
+  }, [accessToken]);
 
   return (
-    <main style={{ maxWidth: 1100, margin: '1.5rem auto', padding: '1rem' }}>
-      <Card title={t('admin.title')}>
-        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '220px 1fr' }}>
-          <nav style={{ display: 'grid', gap: '0.5rem' }}>
-            {sections.map((item) => (
-              <button key={item.id} type="button" onClick={() => setSection(item.id)} disabled={loading}>
-                {item.label}
-              </button>
-            ))}
-          </nav>
-          <section>
-            {loading ? <p>{t('admin.common.loading')}</p> : null}
-            {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
-            {success ? <p style={{ color: 'green' }}>{success}</p> : null}
+    <main className="nx-page">
+      <Card title="Inicio · Admin global" subtitle="Visión ejecutiva inicial de la operación SaaS de NexMed.">
+        {loading ? <p>Cargando KPIs globales...</p> : null}
+        {error ? <p className="nx-state nx-state--error">{error}</p> : null}
+        {summary ? (
+          <div className="nx-kpis">
+            <div className="nx-kpi"><span>Organizaciones totales</span><p>{summary.totalOrganizations}</p></div>
+            <div className="nx-kpi"><span>Organizaciones activas</span><p>{summary.activeOrganizations}</p></div>
+            <div className="nx-kpi"><span>En trial</span><p>{summary.trialOrganizations}</p></div>
+            <div className="nx-kpi"><span>Pagando</span><p>{summary.paidOrganizations}</p></div>
+            <div className="nx-kpi"><span>Vencidas / suspendidas</span><p>{summary.suspendedOrPastDueOrganizations}</p></div>
+            <div className="nx-kpi"><span>Ingreso mensual estimado</span><p>{money.format(summary.estimatedMonthlyRevenue)}</p></div>
+          </div>
+        ) : null}
+      </Card>
 
-            {section === 'dashboard' && dashboard ? (
-              <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
-                <Card title={t('admin.dashboard.totalUsers')}><p>{dashboard.users}</p></Card>
-                <Card title={t('admin.dashboard.adminUsers')}><p>{dashboard.adminUsers}</p></Card>
-                <Card title={t('admin.dashboard.payments')}><p>{dashboard.payments}</p></Card>
-                <Card title={t('admin.dashboard.subscriptions')}><p>{dashboard.subscriptions}</p></Card>
-                <Card title={t('admin.dashboard.pushDevices')}><p>{dashboard.pushDevices}</p></Card>
-                <Card title={t('admin.dashboard.usersWithAvatar')}><p>{dashboard.usersWithAvatar}</p></Card>
-              </div>
-            ) : null}
+      <Card title="Organizaciones recientes">
+        <div className="nx-table-wrap">
+          <table className="nx-table">
+            <thead>
+              <tr><th>Organización</th><th>Estado org</th><th>Estado comercial</th><th>Alta</th><th /></tr>
+            </thead>
+            <tbody>
+              {summary?.recentOrganizations.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.name}</td>
+                  <td><span className="nx-badge">{row.status}</span></td>
+                  <td><span className={subscriptionBadgeClass(row.subscriptionStatus)}>{row.subscriptionStatus}</span></td>
+                  <td>{new Date(row.createdAt).toLocaleDateString('es-AR')}</td>
+                  <td><Link className="nx-btn-secondary" to={`/admin/organizations/${row.id}`}>Ver detalle</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
-            {section === 'users' ? (
-              <div style={tableWrapper}><table style={tableStyle}><thead><tr><th>{t('admin.users.email')}</th><th>{t('admin.users.role')}</th><th>{t('admin.users.provider')}</th><th>{t('admin.users.verified')}</th><th>{t('admin.users.actions')}</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td>{user.email}</td><td>{user.role}</td><td>{user.provider}</td><td>{user.emailVerified ? t('admin.common.yes') : t('admin.common.no')}</td><td><button type="button" onClick={() => void onRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')}>{t('admin.users.toggleRole')}</button></td></tr>)}</tbody></table></div>
-            ) : null}
+      <Card title="Trials próximos a vencer">
+        <div className="nx-table-wrap">
+          <table className="nx-table">
+            <thead><tr><th>Organización</th><th>Vence</th><th>Días restantes</th><th /></tr></thead>
+            <tbody>
+              {summary?.expiringTrials.map((row) => (
+                <tr key={row.organizationId}>
+                  <td>{row.organizationName}</td>
+                  <td>{row.expiresAt ? new Date(row.expiresAt).toLocaleDateString('es-AR') : '-'}</td>
+                  <td>{row.daysRemaining ?? '-'}</td>
+                  <td><Link className="nx-btn-secondary" to={`/admin/organizations/${row.organizationId}`}>Ver detalle</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
-            {section === 'payments' ? (
-              <div style={tableWrapper}><table style={tableStyle}><thead><tr><th>ID</th><th>{t('admin.payments.user')}</th><th>{t('admin.payments.type')}</th><th>{t('admin.payments.status')}</th><th>{t('admin.payments.amount')}</th></tr></thead><tbody>{payments.map((payment) => <tr key={payment.id}><td>{payment.id}</td><td>{payment.userEmail ?? payment.userId}</td><td>{payment.type}</td><td>{payment.status}</td><td>{payment.amount} {payment.currency}</td></tr>)}</tbody></table></div>
-            ) : null}
-
-            {section === 'subscriptions' ? (
-              <div style={tableWrapper}><table style={tableStyle}><thead><tr><th>ID</th><th>{t('admin.subscriptions.user')}</th><th>{t('admin.subscriptions.period')}</th><th>{t('admin.subscriptions.status')}</th><th>{t('admin.subscriptions.externalReference')}</th></tr></thead><tbody>{subscriptions.map((item) => <tr key={item.id}><td>{item.id}</td><td>{item.userEmail ?? item.userId}</td><td>{item.period}</td><td>{item.status}</td><td>{item.externalReference}</td></tr>)}</tbody></table></div>
-            ) : null}
-
-            {section === 'notifications' ? (
-              <div style={{ display: 'grid', gap: '0.5rem', maxWidth: 520 }}>
-                <input placeholder={t('admin.notifications.targetUserPlaceholder')} value={notificationForm.targetUserId} onChange={updateNotificationField('targetUserId')} />
-                <input placeholder={t('admin.notifications.titlePlaceholder')} value={notificationForm.title} onChange={updateNotificationField('title')} />
-                <textarea placeholder={t('admin.notifications.bodyPlaceholder')} value={notificationForm.body} onChange={updateNotificationField('body')} />
-                <button type="button" onClick={() => void onSendNotification()} disabled={loading}>{t('admin.notifications.submit')}</button>
-              </div>
-            ) : null}
-
-            {section === 'avatars' ? (
-              <div style={tableWrapper}><table style={tableStyle}><thead><tr><th>{t('admin.avatars.user')}</th><th>{t('admin.avatars.avatar')}</th><th>{t('admin.avatars.actions')}</th></tr></thead><tbody>{avatars.map((item) => <tr key={item.userId}><td>{item.email}</td><td>{item.avatarUrl ? <img src={item.avatarUrl} alt={t('admin.avatars.imageAlt')} width={52} height={52} style={{ borderRadius: '50%' }} /> : t('admin.avatars.noAvatar')}</td><td><button type="button" onClick={() => void onDeleteAvatar(item.userId)}>{t('admin.avatars.delete')}</button></td></tr>)}</tbody></table></div>
-            ) : null}
-
-
-            {section === 'feedback' ? (
-              <div style={tableWrapper}><table style={tableStyle}><thead><tr><th>Fecha</th><th>User</th><th>Org</th><th>Categoría</th><th>Estado</th><th>Mensaje</th></tr></thead><tbody>{feedbackItems.map((item) => <tr key={item.id}><td>{new Date(item.createdAt).toLocaleString('es-AR', { hour12: false })}</td><td>{item.userId}</td><td>{item.organizationId ?? '-'}</td><td>{item.category}</td><td><select value={item.status} onChange={(event) => { void onFeedbackStatusChange(item.id, event.target.value as 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix'); }}><option value="new">new</option><option value="triaged">triaged</option><option value="planned">planned</option><option value="resolved">resolved</option><option value="wont_fix">wont_fix</option></select></td><td>{item.message.slice(0, 140)}</td></tr>)}</tbody></table></div>
-            ) : null}
-
-            {section === 'monetization' && monetizationConfig ? (
-              <div style={{ display: 'grid', gap: '0.5rem', maxWidth: 420 }}>
-                <label>
-                  {t('admin.monetization.mode')}
-                  <select value={monetizationConfig.monetizationMode} onChange={(event) => setMonetizationConfig((current) => current ? { ...current, monetizationMode: event.target.value as MonetizationConfig['monetizationMode'] } : current)}>
-                    <option value="one_time_only">one_time_only</option>
-                    <option value="subscriptions_only">subscriptions_only</option>
-                    <option value="both">both</option>
-                  </select>
-                </label>
-                <label>
-                  {t('admin.monetization.periodMode')}
-                  <select value={monetizationConfig.subscriptionPeriodMode} onChange={(event) => setMonetizationConfig((current) => current ? { ...current, subscriptionPeriodMode: event.target.value as MonetizationConfig['subscriptionPeriodMode'] } : current)}>
-                    <option value="monthly">monthly</option>
-                    <option value="yearly">yearly</option>
-                    <option value="both">both</option>
-                  </select>
-                </label>
-                <button type="button" onClick={() => void onUpdateMonetization(monetizationConfig)}>{t('admin.monetization.save')}</button>
-              </div>
-            ) : null}
-          </section>
+      <Card title="Suscripciones problemáticas">
+        <div className="nx-table-wrap">
+          <table className="nx-table">
+            <thead><tr><th>Organización</th><th>Estado</th><th>Vencimiento</th><th /></tr></thead>
+            <tbody>
+              {summary?.problematicSubscriptions.map((row) => (
+                <tr key={`${row.organizationId}-${row.status}`}>
+                  <td>{row.organizationName}</td>
+                  <td><span className={subscriptionBadgeClass(row.status)}>{row.status}</span></td>
+                  <td>{row.expiresAt ? new Date(row.expiresAt).toLocaleDateString('es-AR') : '-'}</td>
+                  <td><Link className="nx-btn-secondary" to={`/admin/organizations/${row.organizationId}`}>Ver detalle</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Card>
     </main>
