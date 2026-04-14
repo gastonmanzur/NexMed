@@ -65,12 +65,15 @@ export const FeedbackPage = (): ReactElement => {
   };
 
   return (
-    <main style={{ maxWidth: 720, margin: '2rem auto', padding: '1rem' }}>
-      <Card title="Enviar feedback beta">
-        <p>Ayudanos a priorizar mejoras. Este mensaje se guarda con contexto de uso.</p>
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <label>
-            Categoría
+    <main className="nx-feedback-page">
+      <Card
+        title="Enviar feedback beta"
+        subtitle="Ayudanos a priorizar mejoras. Este mensaje se guarda con contexto de uso."
+        className="nx-feedback-card"
+      >
+        <div className="nx-form-grid nx-feedback-form">
+          <label className="nx-field">
+            <span>Categoría</span>
             <select value={category} onChange={(event: ChangeEvent<HTMLSelectElement>) => setCategory(event.target.value as FeedbackCategory)}>
               {categories.map((item) => (
                 <option key={item.value} value={item.value}>
@@ -80,13 +83,13 @@ export const FeedbackPage = (): ReactElement => {
             </select>
           </label>
 
-          <label>
-            Título (opcional)
+          <label className="nx-field">
+            <span>Título (opcional)</span>
             <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
           </label>
 
-          <label>
-            Mensaje
+          <label className="nx-field">
+            <span>Mensaje</span>
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
@@ -96,12 +99,12 @@ export const FeedbackPage = (): ReactElement => {
             />
           </label>
 
-          <button type="button" onClick={() => void onSubmit()} disabled={sending || message.trim().length < 5}>
+          <button className="nx-btn nx-feedback-submit" type="button" onClick={() => void onSubmit()} disabled={sending || message.trim().length < 5}>
             {sending ? 'Enviando...' : 'Enviar feedback'}
           </button>
 
-          {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
-          {success ? <p style={{ color: 'green' }}>{success}</p> : null}
+          {error ? <p className="nx-feedback-state nx-feedback-state--error">{error}</p> : null}
+          {success ? <p className="nx-feedback-state nx-feedback-state--success">{success}</p> : null}
         </div>
       </Card>
     </main>

@@ -984,6 +984,55 @@ body {
 .nx-org-profile__status--error { color: var(--danger); }
 .nx-org-profile__status--success { color: #0f766e; }
 
+.nx-feedback-page {
+  width: min(760px, 100%);
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+.nx-feedback-card {
+  border-radius: 20px;
+}
+
+.nx-feedback-form {
+  gap: 1rem;
+}
+
+.nx-feedback-form .nx-field > span {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.nx-feedback-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.nx-feedback-submit {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.nx-feedback-state {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.nx-feedback-state--error {
+  border-color: #fecdd3;
+  background: var(--danger-bg);
+  color: #be123c;
+}
+
+.nx-feedback-state--success {
+  border-color: #99f6e4;
+  background: var(--success-bg);
+  color: #0f766e;
+}
+
 .nx-org-profile__section {
   border: 1px solid var(--border);
   border-radius: 18px;
