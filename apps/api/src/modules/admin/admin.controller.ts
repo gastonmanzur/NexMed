@@ -27,9 +27,9 @@ const paymentsQuerySchema = paginationSchema.extend({
 });
 
 const subscriptionsQuerySchema = paginationSchema.extend({
-  status: z.enum(['pending', 'authorized', 'paused', 'cancelled', 'ended']).optional(),
-  period: z.enum(['monthly', 'yearly']).optional(),
-  userId: z.string().min(8).optional()
+  status: z.enum(['trial', 'active', 'past_due', 'suspended', 'canceled']).optional(),
+  planId: z.string().min(8).optional(),
+  search: z.string().trim().min(1).max(120).optional()
 });
 
 const notificationSchema = z.object({
@@ -69,6 +69,8 @@ const updateOrganizationBetaSchema = z.object({
 const listOrganizationsQuerySchema = paginationSchema.extend({
   status: z.enum(['onboarding', 'active', 'inactive', 'suspended', 'blocked']).optional(),
   subscriptionStatus: z.enum(['trial', 'active', 'past_due', 'suspended', 'canceled']).optional(),
+  planId: z.string().min(8).optional(),
+  search: z.string().trim().min(1).max(120).optional(),
   betaEnabled: z.enum(['true', 'false']).optional()
 });
 
@@ -125,10 +127,16 @@ export class AdminController {
 
   listSubscriptions = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
     const parsed = subscriptionsQuerySchema.parse(req.query);
-    const filters: { status?: 'pending' | 'authorized' | 'paused' | 'cancelled' | 'ended'; period?: 'monthly' | 'yearly'; userId?: string; page: number; limit: number } = { page: parsed.page, limit: parsed.limit };
+    const filters: {
+      status?: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+      planId?: string;
+      search?: string;
+      page: number;
+      limit: number;
+    } = { page: parsed.page, limit: parsed.limit };
     if (parsed.status) filters.status = parsed.status;
-    if (parsed.period) filters.period = parsed.period;
-    if (parsed.userId) filters.userId = parsed.userId;
+    if (parsed.planId) filters.planId = parsed.planId;
+    if (parsed.search) filters.search = parsed.search;
     const data = await this.service.listSubscriptions(filters);
     res.status(200).json({ success: true, data });
   };
@@ -208,6 +216,8 @@ export class AdminController {
       limit: number;
       status?: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
       subscriptionStatus?: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+      planId?: string;
+      search?: string;
       betaEnabled?: boolean;
     } = {
       page: parsed.page,
@@ -216,9 +226,20 @@ export class AdminController {
 
     if (parsed.status) filters.status = parsed.status;
     if (parsed.subscriptionStatus) filters.subscriptionStatus = parsed.subscriptionStatus;
+    if (parsed.planId) filters.planId = parsed.planId;
+    if (parsed.search) filters.search = parsed.search;
     if (parsed.betaEnabled) filters.betaEnabled = parsed.betaEnabled === 'true';
 
     const data = await this.service.listOrganizations(filters);
+    res.status(200).json({ success: true, data });
+  };
+
+  getOrganizationDetail = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const organizationId = Array.isArray(req.params.organizationId) ? req.params.organizationId[0] : req.params.organizationId;
+    if (!organizationId) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'Missing organization id');
+    }
+    const data = await this.service.getOrganizationDetail(organizationId);
     res.status(200).json({ success: true, data });
   };
 

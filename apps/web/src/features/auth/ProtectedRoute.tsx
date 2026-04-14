@@ -1,16 +1,18 @@
 import type { ReactElement } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import type { OrganizationMemberRole } from '@starter/shared-types';
+import type { GlobalRole, OrganizationMemberRole } from '@starter/shared-types';
 
 export const ProtectedRoute = ({
   children,
   allowedRoles,
+  allowedGlobalRoles,
   allowedOrganizationRoles,
   requireActiveOrganization = false
 }: {
   children: ReactElement;
   allowedRoles?: Array<'admin' | 'user'>;
+  allowedGlobalRoles?: GlobalRole[];
   allowedOrganizationRoles?: OrganizationMemberRole[];
   requireActiveOrganization?: boolean;
 }): ReactElement => {
@@ -25,6 +27,10 @@ export const ProtectedRoute = ({
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  if (allowedGlobalRoles && !allowedGlobalRoles.includes(user.globalRole)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

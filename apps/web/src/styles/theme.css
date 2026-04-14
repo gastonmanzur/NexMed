@@ -542,6 +542,11 @@ button, input, select, textarea { font: inherit; }
   color: #1d5eb8;
   background: #eff6ff;
 }
+.nx-badge--danger {
+  border-color: #fecdd3;
+  color: #b42318;
+  background: #fff1f2;
+}
 
 .nx-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.7rem; }
 .nx-kpi { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 0.7rem; }
