@@ -5,6 +5,7 @@ import type {
   CalculatedAvailabilityDto,
   JoinOrganizationPreviewDto,
   OrganizationDto,
+  PatientFamilyMemberDto,
   PatientMeDto,
   PatientOrganizationSummaryDto,
   PatientProfileDto,
@@ -20,9 +21,11 @@ import { OrganizationAccessLinkRepository } from '../../organizations/repositori
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
 import { SpecialtyRepository } from '../../professionals/repositories/specialty.repository.js';
 import { PatientOrganizationLinkRepository } from '../repositories/patient-organization-link.repository.js';
+import { PatientFamilyMemberRepository } from '../repositories/patient-family-member.repository.js';
 import { PatientProfileRepository } from '../repositories/patient-profile.repository.js';
 import { UserEventRepository } from '../repositories/user-event.repository.js';
 import type { PatientProfileDocument } from '../models/patient-profile.model.js';
+import type { PatientFamilyMemberDocument } from '../models/patient-family-member.model.js';
 
 const normalizeOptionalText = (value?: string): string | undefined => {
   const normalized = value?.trim();
@@ -56,7 +59,8 @@ export class PatientService {
     private readonly availability = new AvailabilityService(),
     private readonly professionals = new ProfessionalRepository(),
     private readonly specialties = new SpecialtyRepository(),
-    private readonly userEvents = new UserEventRepository()
+    private readonly userEvents = new UserEventRepository(),
+    private readonly familyMembers = new PatientFamilyMemberRepository()
   ) {}
 
   async getJoinPreview(tokenOrSlug: string): Promise<JoinOrganizationPreviewDto> {
@@ -179,6 +183,97 @@ export class PatientService {
     return this.toPatientProfileDto(updated);
   }
 
+  async listFamilyMembers(userId: string): Promise<PatientFamilyMemberDto[]> {
+    const rows = await this.familyMembers.listByOwnerUser(userId);
+    return rows.map((row) => this.toFamilyMemberDto(row));
+  }
+
+  async createFamilyMember(
+    userId: string,
+    input: {
+      firstName: string;
+      lastName: string;
+      relationship: string;
+      dateOfBirth: string;
+      documentId: string;
+      phone?: string | undefined;
+      notes?: string | undefined;
+      isActive?: boolean | undefined;
+    }
+  ): Promise<PatientFamilyMemberDto> {
+    if (!isValidDateOnly(input.dateOfBirth)) {
+      throw new AppError('INVALID_DATE_OF_BIRTH', 400, 'dateOfBirth must be YYYY-MM-DD');
+    }
+
+    const created = await this.familyMembers.create({
+      ownerUserId: userId,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      relationship: input.relationship.trim(),
+      dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00.000Z`),
+      documentId: input.documentId.trim(),
+      ...(input.phone !== undefined ? { phone: normalizePhone(input.phone) ?? null } : {}),
+      ...(input.notes !== undefined ? { notes: normalizeOptionalText(input.notes) ?? null } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
+    });
+
+    return this.toFamilyMemberDto(created);
+  }
+
+  async updateFamilyMember(
+    userId: string,
+    familyMemberId: string,
+    input: {
+      firstName?: string | undefined;
+      lastName?: string | undefined;
+      relationship?: string | undefined;
+      dateOfBirth?: string | undefined;
+      documentId?: string | undefined;
+      phone?: string | undefined;
+      notes?: string | undefined;
+      isActive?: boolean | undefined;
+    }
+  ): Promise<PatientFamilyMemberDto> {
+    if (!isValidObjectId(familyMemberId)) {
+      throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
+    }
+
+    const update: Record<string, unknown> = {
+      ...(input.firstName !== undefined ? { firstName: input.firstName.trim() } : {}),
+      ...(input.lastName !== undefined ? { lastName: input.lastName.trim() } : {}),
+      ...(input.relationship !== undefined ? { relationship: input.relationship.trim() } : {}),
+      ...(input.documentId !== undefined ? { documentId: input.documentId.trim() } : {}),
+      ...(input.phone !== undefined ? { phone: normalizePhone(input.phone) ?? null } : {}),
+      ...(input.notes !== undefined ? { notes: normalizeOptionalText(input.notes) ?? null } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
+    };
+
+    if (input.dateOfBirth !== undefined) {
+      if (!isValidDateOnly(input.dateOfBirth)) {
+        throw new AppError('INVALID_DATE_OF_BIRTH', 400, 'dateOfBirth must be YYYY-MM-DD');
+      }
+      update.dateOfBirth = new Date(`${input.dateOfBirth}T00:00:00.000Z`);
+    }
+
+    const updated = await this.familyMembers.updateByIdForOwner(familyMemberId, userId, update);
+    if (!updated) {
+      throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
+    }
+
+    return this.toFamilyMemberDto(updated);
+  }
+
+  async deleteFamilyMember(userId: string, familyMemberId: string): Promise<void> {
+    if (!isValidObjectId(familyMemberId)) {
+      throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
+    }
+
+    const deleted = await this.familyMembers.deleteByIdForOwner(familyMemberId, userId);
+    if (!deleted) {
+      throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
+    }
+  }
+
   async listPatientOrganizations(userId: string): Promise<PatientOrganizationSummaryDto[]> {
     const profile = await this.ensurePatientProfile(userId);
     const links = await this.links.listByPatientProfile(profile._id.toString());
@@ -256,6 +351,8 @@ export class PatientService {
       startAt: string;
       endAt?: string;
       notes?: string;
+      beneficiaryType?: 'self' | 'family_member';
+      familyMemberId?: string;
     }
   ): Promise<AppointmentDto> {
     const { patientProfileId } = await this.assertActiveLink(userId, organizationId);
@@ -275,16 +372,39 @@ export class PatientService {
       throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
     }
 
+    let patientName = `${profile.firstName ?? user.firstName} ${profile.lastName ?? user.lastName}`.trim();
+    let beneficiaryType: 'self' | 'family_member' = 'self';
+    let familyMemberId: string | undefined;
+    let beneficiaryRelationship: string | undefined;
+
+    if (input.beneficiaryType === 'family_member') {
+      if (!input.familyMemberId || !isValidObjectId(input.familyMemberId)) {
+        throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
+      }
+      const familyMember = await this.familyMembers.findByIdForOwner(input.familyMemberId, userId);
+      if (!familyMember || !familyMember.isActive) {
+        throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
+      }
+      patientName = `${familyMember.firstName} ${familyMember.lastName}`.trim();
+      beneficiaryType = 'family_member';
+      familyMemberId = familyMember._id.toString();
+      beneficiaryRelationship = familyMember.relationship;
+    }
+
     const appointment = await this.appointmentsService.createAppointment(organizationId, userId, 'patient', {
       professionalId: input.professionalId,
       ...(input.specialtyId ? { specialtyId: input.specialtyId } : {}),
       patientProfileId,
-      patientName: `${profile.firstName ?? user.firstName} ${profile.lastName ?? user.lastName}`.trim(),
+      patientName,
       patientEmail: user.email,
       ...(profile.phone ? { patientPhone: profile.phone } : {}),
       startAt: input.startAt,
       ...(input.endAt ? { endAt: input.endAt } : {}),
-      ...(input.notes ? { notes: normalizeOptionalText(input.notes) } : {})
+      ...(input.notes ? { notes: normalizeOptionalText(input.notes) } : {}),
+      beneficiaryType,
+      ...(familyMemberId ? { familyMemberId } : {}),
+      beneficiaryDisplayName: patientName,
+      ...(beneficiaryRelationship ? { beneficiaryRelationship } : {})
     });
 
     await this.userEvents.create({
@@ -451,6 +571,23 @@ export class PatientService {
       documentId: profile.documentId ?? null,
       createdAt: profile.createdAt.toISOString(),
       updatedAt: profile.updatedAt.toISOString()
+    };
+  }
+
+  private toFamilyMemberDto(member: PatientFamilyMemberDocument): PatientFamilyMemberDto {
+    return {
+      id: member._id.toString(),
+      ownerUserId: member.ownerUserId.toString(),
+      firstName: member.firstName,
+      lastName: member.lastName,
+      relationship: member.relationship,
+      dateOfBirth: member.dateOfBirth.toISOString().slice(0, 10),
+      documentId: member.documentId,
+      phone: member.phone ?? null,
+      notes: member.notes ?? null,
+      isActive: member.isActive,
+      createdAt: member.createdAt.toISOString(),
+      updatedAt: member.updatedAt.toISOString()
     };
   }
 

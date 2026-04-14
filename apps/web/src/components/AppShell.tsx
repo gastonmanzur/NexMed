@@ -27,6 +27,7 @@ const patientItems: NavItem[] = [
   { id: 'patient-organizations', label: 'Mis centros', to: '/patient/organizations' },
   { id: 'patient-book', label: 'Reservar turno', to: '/patient/book' },
   { id: 'patient-appointments', label: 'Mis turnos', to: '/patient/appointments' },
+  { id: 'patient-family-members', label: 'Familiares', to: '/patient/family-members' },
   { id: 'patient-waitlist', label: 'Waitlist', to: '/patient/waitlist' },
   { id: 'patient-notifications', label: 'Notificaciones', to: '/patient/notifications' },
   { id: 'patient-profile', label: 'Perfil', to: '/patient/profile' }

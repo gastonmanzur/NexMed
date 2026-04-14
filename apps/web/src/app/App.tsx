@@ -40,6 +40,7 @@ import { PatientProfilePage } from '../features/patient/PatientProfilePage';
 import { PatientNotificationsPage } from '../features/patient/PatientNotificationsPage';
 import { PatientWaitlistPage } from '../features/patient/PatientWaitlistPage';
 import { PatientWaitlistCreatePage } from '../features/patient/PatientWaitlistCreatePage';
+import { PatientFamilyMembersPage } from '../features/patient/PatientFamilyMembersPage';
 import { OrganizationReminderRulesPage } from '../features/organizations/OrganizationReminderRulesPage';
 import { FeedbackPage } from '../features/feedback/FeedbackPage';
 import { AppShell } from '../components/AppShell';
@@ -316,6 +317,14 @@ export const App = (): ReactElement => {
         element={(
           <ProtectedRoute>
             {shell(<PatientReschedulePage />)}
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/family-members"
+        element={(
+          <ProtectedRoute>
+            {shell(<PatientFamilyMembersPage />)}
           </ProtectedRoute>
         )}
       />

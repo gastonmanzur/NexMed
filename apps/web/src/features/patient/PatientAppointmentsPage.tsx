@@ -91,6 +91,12 @@ export const PatientAppointmentsPage = (): ReactElement => {
                       <p className="nx-appointment-item__date">
                         {new Date(item.startAt).toLocaleString('es-AR', { hour12: false })}
                       </p>
+                      <p className="nx-appointment-item__status">
+                        Paciente: {item.beneficiaryDisplayName ?? item.patientName}
+                        {item.beneficiaryType === 'family_member' && item.beneficiaryRelationship
+                          ? ` (${item.beneficiaryRelationship})`
+                          : ''}
+                      </p>
                       <p className="nx-appointment-item__status">Estado: {item.status}</p>
                     </div>
                     <div className="nx-appointment-item__actions">
@@ -125,6 +131,12 @@ export const PatientAppointmentsPage = (): ReactElement => {
                   <li key={item.id} className="nx-appointment-item nx-appointment-item--history">
                     <p className="nx-appointment-item__date">
                       {new Date(item.startAt).toLocaleString('es-AR', { hour12: false })}
+                    </p>
+                    <p className="nx-appointment-item__status">
+                      Paciente: {item.beneficiaryDisplayName ?? item.patientName}
+                      {item.beneficiaryType === 'family_member' && item.beneficiaryRelationship
+                        ? ` (${item.beneficiaryRelationship})`
+                        : ''}
                     </p>
                     <p className="nx-appointment-item__status">Estado: {item.status}</p>
                   </li>

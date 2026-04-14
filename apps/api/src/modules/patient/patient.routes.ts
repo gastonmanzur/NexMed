@@ -18,6 +18,10 @@ patientRouter.get('/organizations', asyncHandler(patientController.organizations
 patientRouter.get('/organizations/:organizationId/catalog', asyncHandler(patientController.organizationCatalog));
 patientRouter.get('/organizations/:organizationId/availability', asyncHandler(patientController.availability));
 patientRouter.post('/organizations/:organizationId/appointments', asyncHandler(patientController.createAppointment));
+patientRouter.get('/family-members', asyncHandler(patientController.listFamilyMembers));
+patientRouter.post('/family-members', asyncHandler(patientController.createFamilyMember));
+patientRouter.patch('/family-members/:familyMemberId', asyncHandler(patientController.patchFamilyMember));
+patientRouter.delete('/family-members/:familyMemberId', asyncHandler(patientController.deleteFamilyMember));
 patientRouter.get('/appointments', asyncHandler(patientController.listAppointments));
 patientRouter.get('/appointments/:appointmentId', asyncHandler(patientController.getAppointment));
 patientRouter.patch('/appointments/:appointmentId/cancel', asyncHandler(patientController.cancelAppointment));
