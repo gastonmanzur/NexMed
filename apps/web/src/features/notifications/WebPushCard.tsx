@@ -42,7 +42,6 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sendingTest, setSendingTest] = useState(false);
 
   const resolveActiveWebToken = async (): Promise<string | null> => {
     const storedToken = readStoredToken();
@@ -125,39 +124,26 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
     }
   };
 
-  const onSendTest = async (): Promise<void> => {
-    setSendingTest(true);
-    setError(null);
-    setMessage(null);
 
-    try {
-      const report = await notificationsApi.sendTestToMe(accessToken, {
-        title: t('profile.push.testTitle'),
-        body: t('profile.push.testBody'),
-        data: { source: 'dashboard' }
-      });
-
-      setMessage(t('profile.push.testResult', { sent: report.sent, failed: report.failed }));
-    } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : t('profile.push.error'));
-    } finally {
-      setSendingTest(false);
-    }
-  };
 
   return (
     <Card title={t('profile.push.title')}>
-      <p>{t('profile.push.permission', { status: permission })}</p>
-      <p>{t('profile.push.status', { status: token ? t('profile.push.active') : t('profile.push.inactive') })}</p>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => void onEnable()} disabled={loading || permission === 'unsupported'}>
+        <button
+          type="button"
+          className="nx-btn"
+          onClick={() => void onEnable()}
+          disabled={loading || permission === 'unsupported'}
+        >
           {t('profile.push.enable')}
         </button>
-        <button type="button" onClick={() => void onDisable()} disabled={loading}>
+        <button
+          type="button"
+          className="nx-btn-secondary"
+          onClick={() => void onDisable()}
+          disabled={loading}
+        >
           {t('profile.push.disable')}
-        </button>
-        <button type="button" onClick={() => void onSendTest()} disabled={sendingTest || !token}>
-          {t('profile.push.sendTest')}
         </button>
       </div>
       {message ? <p style={{ color: 'green' }}>{message}</p> : null}
