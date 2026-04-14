@@ -45,7 +45,7 @@ export const PatientWaitlistPage = (): ReactElement => {
   return (
     <main style={{ maxWidth: 880, margin: '2rem auto', padding: '1rem' }}>
       <Card title="Mis alertas de disponibilidad">
-        {organizationId ? <Link to={`/patient/waitlist/new?organizationId=${organizationId}`}>Crear nueva alerta</Link> : <Link to="/patient/waitlist/new">Crear nueva alerta</Link>}
+        {organizationId ? <Link className="nx-btn" to={`/patient/waitlist/new?organizationId=${organizationId}`}>Crear nueva alerta</Link> : <Link className="nx-btn" to="/patient/waitlist/new">Crear nueva alerta</Link>}
         {loading ? <LoadingState message="Cargando tus alertas..." /> : null}
         {!loading && error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
         {!loading && !error && rows.length === 0 ? (
