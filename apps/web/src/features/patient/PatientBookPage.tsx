@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import type { PatientFamilyMemberDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { patientApi } from './patient-api';
@@ -16,6 +17,9 @@ export const PatientBookPage = (): ReactElement => {
   const [specialties, setSpecialties] = useState<Array<{ id: string; name: string }>>([]);
   const [professionalId, setProfessionalId] = useState('');
   const [specialtyId, setSpecialtyId] = useState('');
+  const [beneficiaryType, setBeneficiaryType] = useState<'self' | 'family_member'>('self');
+  const [familyMemberId, setFamilyMemberId] = useState('');
+  const [familyMembers, setFamilyMembers] = useState<PatientFamilyMemberDto[]>([]);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(nextWeek);
   const [slots, setSlots] = useState<
@@ -37,6 +41,17 @@ export const PatientBookPage = (): ReactElement => {
 
         if (catalog.professionals[0]) {
           setProfessionalId(catalog.professionals[0].id);
+        }
+      })
+      .catch((cause) => setError((cause as Error).message));
+
+    void patientApi
+      .listFamilyMembers(accessToken)
+      .then((data) => {
+        const active = data.filter((item) => item.isActive);
+        setFamilyMembers(active);
+        if (active[0]) {
+          setFamilyMemberId(active[0].id);
         }
       })
       .catch((cause) => setError((cause as Error).message));
@@ -77,6 +92,30 @@ export const PatientBookPage = (): ReactElement => {
               ))}
             </select>
           </label>
+
+          <label className="nx-field">
+            <span>¿Para quién es este turno?</span>
+            <select
+              value={beneficiaryType}
+              onChange={(event) => setBeneficiaryType(event.target.value as 'self' | 'family_member')}
+            >
+              <option value="self">Para mí</option>
+              <option value="family_member">Para un familiar</option>
+            </select>
+          </label>
+
+          {beneficiaryType === 'family_member' ? (
+            <label className="nx-field">
+              <span>Familiar</span>
+              <select value={familyMemberId} onChange={(event) => setFamilyMemberId(event.target.value)}>
+                {familyMembers.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.firstName} {item.lastName} ({item.relationship})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
           <label className="nx-field">
             <span>Desde</span>
@@ -157,11 +196,17 @@ export const PatientBookPage = (): ReactElement => {
 
                     try {
                       setError('');
+                      if (beneficiaryType === 'family_member' && !familyMemberId) {
+                        setError('Seleccioná un familiar activo antes de reservar.');
+                        return;
+                      }
                       await patientApi.createAppointment(accessToken, organizationId, {
                         professionalId,
                         ...(specialtyId ? { specialtyId } : {}),
                         startAt: slot.startsAtIso,
-                        endAt: slot.endsAtIso
+                        endAt: slot.endsAtIso,
+                        beneficiaryType,
+                        ...(beneficiaryType === 'family_member' ? { familyMemberId } : {})
                       });
                       setMessage('Turno reservado con éxito.');
                       setSlots((prev) => prev.filter((current) => current.startsAtIso !== slot.startsAtIso));

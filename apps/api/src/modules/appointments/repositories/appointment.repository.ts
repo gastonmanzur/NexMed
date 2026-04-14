@@ -16,6 +16,11 @@ interface CreateAppointmentInput {
   source: AppointmentDocument['source'];
   notes?: string | null;
   createdByUserId: string;
+  bookedByUserId: string;
+  beneficiaryType: AppointmentDocument['beneficiaryType'];
+  familyMemberId?: string | null;
+  beneficiaryDisplayName?: string | null;
+  beneficiaryRelationship?: string | null;
   rescheduledFromAppointmentId?: string | null;
 }
 

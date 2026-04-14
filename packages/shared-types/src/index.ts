@@ -224,6 +224,7 @@ export interface CalculatedAvailabilityDto {
 
 export type AppointmentStatus = 'booked' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
 export type AppointmentSource = 'staff_manual' | 'admin_manual' | 'patient_self_service';
+export type AppointmentBeneficiaryType = 'self' | 'family_member';
 
 export interface AppointmentDto {
   id: string;
@@ -240,11 +241,31 @@ export interface AppointmentDto {
   source: AppointmentSource;
   notes: string | null;
   createdByUserId: string;
+  bookedByUserId: string;
+  beneficiaryType: AppointmentBeneficiaryType;
+  familyMemberId: string | null;
+  beneficiaryDisplayName: string | null;
+  beneficiaryRelationship: string | null;
   canceledByUserId: string | null;
   canceledAt: string | null;
   cancelReason: string | null;
   rescheduledFromAppointmentId: string | null;
   rescheduledToAppointmentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientFamilyMemberDto {
+  id: string;
+  ownerUserId: string;
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  dateOfBirth: string;
+  documentId: string;
+  phone: string | null;
+  notes: string | null;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }

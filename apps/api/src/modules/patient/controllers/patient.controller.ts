@@ -25,7 +25,33 @@ const createAppointmentSchema = z.object({
   specialtyId: z.string().trim().min(1).optional(),
   startAt: z.string().trim().min(1),
   endAt: z.string().trim().min(1).optional(),
-  notes: z.string().trim().max(500).optional()
+  notes: z.string().trim().max(500).optional(),
+  beneficiaryType: z.enum(['self', 'family_member']).optional(),
+  familyMemberId: z.string().trim().min(1).optional()
+});
+
+const createFamilyMemberSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  relationship: z.string().trim().min(1).max(80),
+  dateOfBirth: z.string().trim().min(1),
+  documentId: z.string().trim().min(1).max(60),
+  phone: z.string().trim().max(40).optional(),
+  notes: z.string().trim().max(500).optional(),
+  isActive: z.boolean().optional()
+});
+
+const familyMemberParamsSchema = z.object({ familyMemberId: z.string().trim().min(1) });
+
+const updateFamilyMemberSchema = z.object({
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
+  relationship: z.string().trim().min(1).max(80).optional(),
+  dateOfBirth: z.string().trim().min(1).optional(),
+  documentId: z.string().trim().min(1).max(60).optional(),
+  phone: z.string().trim().max(40).optional(),
+  notes: z.string().trim().max(500).optional(),
+  isActive: z.boolean().optional()
 });
 
 const appointmentParamsSchema = z.object({ appointmentId: z.string().trim().min(1) });
@@ -99,9 +125,53 @@ export const patientController = {
       startAt: input.startAt,
       ...(input.specialtyId !== undefined ? { specialtyId: input.specialtyId } : {}),
       ...(input.endAt !== undefined ? { endAt: input.endAt } : {}),
-      ...(input.notes !== undefined ? { notes: input.notes } : {})
+      ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      ...(input.beneficiaryType !== undefined ? { beneficiaryType: input.beneficiaryType } : {}),
+      ...(input.familyMemberId !== undefined ? { familyMemberId: input.familyMemberId } : {})
     });
     res.status(201).json({ success: true, data });
+  },
+
+  listFamilyMembers: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const data = await service.listFamilyMembers(req.auth!.userId);
+    res.status(200).json({ success: true, data });
+  },
+
+  createFamilyMember: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const input = createFamilyMemberSchema.parse(req.body);
+    const data = await service.createFamilyMember(req.auth!.userId, {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      relationship: input.relationship,
+      dateOfBirth: input.dateOfBirth,
+      documentId: input.documentId,
+      ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
+    });
+    res.status(201).json({ success: true, data });
+  },
+
+  patchFamilyMember: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { familyMemberId } = familyMemberParamsSchema.parse(req.params);
+    const input = updateFamilyMemberSchema.parse(req.body);
+    const data = await service.updateFamilyMember(req.auth!.userId, familyMemberId, {
+      ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
+      ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
+      ...(input.relationship !== undefined ? { relationship: input.relationship } : {}),
+      ...(input.dateOfBirth !== undefined ? { dateOfBirth: input.dateOfBirth } : {}),
+      ...(input.documentId !== undefined ? { documentId: input.documentId } : {}),
+      ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
+    });
+    res.status(200).json({ success: true, data });
+  },
+
+  deleteFamilyMember: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { familyMemberId } = familyMemberParamsSchema.parse(req.params);
+    await service.deleteFamilyMember(req.auth!.userId, familyMemberId);
+    res.status(200).json({ success: true, data: { ok: true } });
   },
 
   listAppointments: async (req: AuthenticatedRequest, res: Response): Promise<void> => {

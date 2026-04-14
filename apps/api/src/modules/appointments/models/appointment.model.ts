@@ -10,6 +10,7 @@ export const appointmentStatuses = [
 ] as const;
 
 export const appointmentSources = ['staff_manual', 'admin_manual', 'patient_self_service'] as const;
+export const appointmentBeneficiaryTypes = ['self', 'family_member'] as const;
 
 const appointmentSchema = new mongoose.Schema(
   {
@@ -26,6 +27,11 @@ const appointmentSchema = new mongoose.Schema(
     source: { type: String, enum: appointmentSources, required: true, index: true },
     notes: { type: String, required: false, trim: true, default: null },
     createdByUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+    bookedByUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+    beneficiaryType: { type: String, enum: appointmentBeneficiaryTypes, required: true, default: 'self', index: true },
+    familyMemberId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'PatientFamilyMember', default: null, index: true },
+    beneficiaryDisplayName: { type: String, required: false, trim: true, default: null },
+    beneficiaryRelationship: { type: String, required: false, trim: true, default: null },
     canceledByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
     canceledAt: { type: Date, required: false, default: null },
     cancelReason: { type: String, required: false, trim: true, default: null },

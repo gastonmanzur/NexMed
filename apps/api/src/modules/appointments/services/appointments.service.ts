@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import type { AppointmentDto, AppointmentStatus, AppointmentSource } from '@starter/shared-types';
+import type { AppointmentBeneficiaryType, AppointmentDto, AppointmentStatus, AppointmentSource } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { AvailabilityService } from '../../availability/services/availability.service.js';
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
@@ -34,6 +34,10 @@ interface CreateAppointmentInput {
   endAt?: string | undefined;
   notes?: string | undefined;
   source: AppointmentSource;
+  beneficiaryType?: AppointmentBeneficiaryType | undefined;
+  familyMemberId?: string | undefined;
+  beneficiaryDisplayName?: string | undefined;
+  beneficiaryRelationship?: string | undefined;
 }
 
 interface CancelAppointmentInput {
@@ -163,7 +167,12 @@ export class AppointmentsService {
         status: 'booked',
         source,
         ...(normalized.notes ? { notes: normalized.notes } : {}),
-        createdByUserId: actorUserId
+        createdByUserId: actorUserId,
+        bookedByUserId: actorUserId,
+        beneficiaryType: normalized.beneficiaryType,
+        ...(normalized.familyMemberId ? { familyMemberId: normalized.familyMemberId } : {}),
+        beneficiaryDisplayName: normalized.beneficiaryDisplayName,
+        ...(normalized.beneficiaryRelationship ? { beneficiaryRelationship: normalized.beneficiaryRelationship } : {})
       });
 
       await this.auditLogs.create({
@@ -360,7 +369,11 @@ export class AppointmentsService {
       startAt: input.newStartAt,
       endAt: input.newEndAt,
       notes: original.notes ?? undefined,
-      source
+      source,
+      beneficiaryType: original.beneficiaryType,
+      familyMemberId: original.familyMemberId ?? undefined,
+      beneficiaryDisplayName: original.beneficiaryDisplayName ?? original.patientName,
+      beneficiaryRelationship: original.beneficiaryRelationship ?? undefined
     });
 
     await this.assertSlotAvailable(organizationId, normalized.professionalId, normalized.startAt, normalized.endAt);
@@ -381,6 +394,11 @@ export class AppointmentsService {
         source,
         ...(normalized.notes ? { notes: normalized.notes } : {}),
         createdByUserId: actorUserId,
+        bookedByUserId: original.bookedByUserId,
+        beneficiaryType: normalized.beneficiaryType,
+        ...(normalized.familyMemberId ? { familyMemberId: normalized.familyMemberId } : {}),
+        beneficiaryDisplayName: normalized.beneficiaryDisplayName,
+        ...(normalized.beneficiaryRelationship ? { beneficiaryRelationship: normalized.beneficiaryRelationship } : {}),
         rescheduledFromAppointmentId: original.id
       });
     } catch (error: unknown) {
@@ -476,6 +494,10 @@ export class AppointmentsService {
     endAt: Date;
     notes?: string | undefined;
     source: AppointmentSource;
+    beneficiaryType: AppointmentBeneficiaryType;
+    familyMemberId?: string | undefined;
+    beneficiaryDisplayName: string;
+    beneficiaryRelationship?: string | undefined;
   }> {
     if (!isValidObjectId(input.professionalId)) {
       throw new AppError('INVALID_PROFESSIONAL_ID', 400, 'professionalId is invalid');
@@ -526,6 +548,20 @@ export class AppointmentsService {
     const patientEmail = normalizeOptionalEmail(input.patientEmail);
     const patientPhone = normalizeOptionalPhone(input.patientPhone);
     const notes = normalizeOptionalString(input.notes);
+    const beneficiaryType = input.beneficiaryType ?? 'self';
+    const familyMemberId = normalizeOptionalString(input.familyMemberId);
+    const beneficiaryDisplayName = normalizeOptionalString(input.beneficiaryDisplayName) ?? patientName;
+    const beneficiaryRelationship = normalizeOptionalString(input.beneficiaryRelationship);
+
+    if (beneficiaryType !== 'self' && beneficiaryType !== 'family_member') {
+      throw new AppError('INVALID_BENEFICIARY_TYPE', 400, 'beneficiaryType is invalid');
+    }
+
+    if (beneficiaryType === 'family_member') {
+      if (!familyMemberId || !isValidObjectId(familyMemberId)) {
+        throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
+      }
+    }
 
     return {
       professionalId: input.professionalId,
@@ -537,7 +573,11 @@ export class AppointmentsService {
       startAt,
       endAt,
       ...(notes ? { notes } : {}),
-      source: input.source
+      source: input.source,
+      beneficiaryType,
+      ...(familyMemberId ? { familyMemberId } : {}),
+      beneficiaryDisplayName,
+      ...(beneficiaryRelationship ? { beneficiaryRelationship } : {})
     };
   }
 
@@ -604,6 +644,11 @@ export class AppointmentsService {
       source: document.source,
       notes: document.notes ?? null,
       createdByUserId: document.createdByUserId.toString(),
+      bookedByUserId: (document.bookedByUserId ?? document.createdByUserId).toString(),
+      beneficiaryType: document.beneficiaryType ?? 'self',
+      familyMemberId: document.familyMemberId ? document.familyMemberId.toString() : null,
+      beneficiaryDisplayName: document.beneficiaryDisplayName ?? document.patientName,
+      beneficiaryRelationship: document.beneficiaryRelationship ?? null,
       canceledByUserId: document.canceledByUserId ? document.canceledByUserId.toString() : null,
       canceledAt: document.canceledAt ? document.canceledAt.toISOString() : null,
       cancelReason: document.cancelReason ?? null,
