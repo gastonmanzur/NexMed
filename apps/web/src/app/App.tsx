@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomePage } from '../features/home/HomePage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { AdminOrganizationsPage } from '../features/admin/AdminOrganizationsPage';
+import { AdminOrganizationDetailPage } from '../features/admin/AdminOrganizationDetailPage';
+import { AdminSubscriptionsPage } from '../features/admin/AdminSubscriptionsPage';
 import {
   LoginPage,
   RegisterPage,
@@ -267,7 +269,7 @@ export const App = (): ReactElement => {
       <Route
         path="/admin"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
             {shell(<AdminPage />)}
           </ProtectedRoute>
         }
@@ -275,8 +277,24 @@ export const App = (): ReactElement => {
       <Route
         path="/admin/organizations"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
             {shell(<AdminOrganizationsPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/organizations/:organizationId"
+        element={
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
+            {shell(<AdminOrganizationDetailPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/subscriptions"
+        element={
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
+            {shell(<AdminSubscriptionsPage />)}
           </ProtectedRoute>
         }
       />

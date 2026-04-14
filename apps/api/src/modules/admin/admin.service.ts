@@ -5,7 +5,7 @@ import { PushService } from '../push/services/push.service.js';
 import { PushDeviceModel } from '../push/models/push-device.model.js';
 import { PaymentOrderModel, internalPaymentStatuses, orderTypes } from '../payments/models/payment-order.model.js';
 import { PaymentTransactionModel } from '../payments/models/payment-transaction.model.js';
-import { SubscriptionModel, subscriptionPeriods, subscriptionStatuses } from '../payments/models/subscription.model.js';
+import { SubscriptionModel } from '../payments/models/subscription.model.js';
 import { MonetizationConfigModel, monetizationModes, subscriptionPeriodModes } from '../payments/models/monetization-config.model.js';
 import { MonetizationConfigRepository } from '../payments/repositories/monetization-config.repository.js';
 import { FeedbackService } from '../feedback/services/feedback.service.js';
@@ -14,6 +14,11 @@ import { OrganizationRepository } from '../organizations/repositories/organizati
 import { OrganizationModel } from '../organizations/models/organization.model.js';
 import { OrganizationSettingsModel } from '../organizations/models/organization-settings.model.js';
 import { OrganizationSubscriptionModel } from '../payments/models/organization-subscription.model.js';
+import { PlanModel } from '../payments/models/plan.model.js';
+import { ProfessionalModel } from '../professionals/models/professional.model.js';
+import { PatientOrganizationLinkModel } from '../patient/models/patient-organization-link.model.js';
+import { AppointmentModel } from '../appointments/models/appointment.model.js';
+import { OrganizationMemberModel } from '../organizations/models/organization-member.model.js';
 
 export class AdminService {
   constructor(
@@ -47,25 +52,86 @@ export class AdminService {
 
 
   async getGlobalSummary() {
-    const [organizationsTotal, organizationsActive, onboardingPending, usersTotal, subscriptionsByStatus] = await Promise.all([
+    const [organizationsTotal, organizationsActive, onboardingPending, usersTotal, subscriptionsByStatus, recentOrganizations, expiringTrials] = await Promise.all([
       OrganizationModel.countDocuments(),
       OrganizationModel.countDocuments({ status: 'active' }),
       OrganizationModel.countDocuments({ onboardingCompleted: false }),
       UserModel.countDocuments(),
       OrganizationSubscriptionModel.aggregate<{ _id: string; count: number }>([
         { $group: { _id: '$status', count: { $sum: 1 } } }
-      ])
+      ]),
+      OrganizationModel.find().sort({ createdAt: -1 }).limit(5).lean(),
+      OrganizationSubscriptionModel.find({ status: 'trial', expiresAt: { $ne: null } }).sort({ expiresAt: 1 }).limit(5).lean()
     ]);
 
+    const subscriptionsByStatusMap = subscriptionsByStatus.reduce<Record<string, number>>((acc, row) => {
+      acc[row._id] = row.count;
+      return acc;
+    }, {});
+    const paidOrganizations = subscriptionsByStatusMap.active ?? 0;
+    const trialOrganizations = subscriptionsByStatusMap.trial ?? 0;
+    const suspendedOrPastDueOrganizations = (subscriptionsByStatusMap.suspended ?? 0) + (subscriptionsByStatusMap.past_due ?? 0);
+    const problematicSubscriptions = await OrganizationSubscriptionModel.find({ status: { $in: ['past_due', 'suspended'] } })
+      .sort({ updatedAt: -1 })
+      .limit(8)
+      .lean();
+    const activeSubscriptions = await OrganizationSubscriptionModel.find({ status: 'active' }).lean();
+    const planIds = Array.from(new Set(activeSubscriptions.map((item) => item.planId.toString())));
+    const plans = await PlanModel.find({ _id: { $in: planIds } }).lean();
+    const plansById = new Map(plans.map((item) => [item._id.toString(), item]));
+    const estimatedMonthlyRevenue = activeSubscriptions.reduce((acc, item) => acc + (plansById.get(item.planId.toString())?.price ?? 0), 0);
+
+    const recentOrganizationIds = recentOrganizations.map((item) => item._id);
+    const recentSubscriptions = await OrganizationSubscriptionModel.find({ organizationId: { $in: recentOrganizationIds } }).lean();
+    const subscriptionByOrg = new Map(recentSubscriptions.map((item) => [item.organizationId.toString(), item]));
+
+    const expiringTrialOrgIds = expiringTrials.map((item) => item.organizationId);
+    const expiringTrialOrgs = await OrganizationModel.find({ _id: { $in: expiringTrialOrgIds } }).lean();
+    const expiringTrialOrgById = new Map(expiringTrialOrgs.map((item) => [item._id.toString(), item]));
+
+    const problematicOrgIds = problematicSubscriptions.map((item) => item.organizationId);
+    const problematicOrgs = await OrganizationModel.find({ _id: { $in: problematicOrgIds } }).lean();
+    const problematicOrgById = new Map(problematicOrgs.map((item) => [item._id.toString(), item]));
+
     return {
-      organizationsTotal,
-      organizationsActive,
+      totalOrganizations: organizationsTotal,
+      activeOrganizations: organizationsActive,
+      trialOrganizations,
+      paidOrganizations,
+      suspendedOrPastDueOrganizations,
+      estimatedMonthlyRevenue,
       onboardingPending,
       usersTotal,
-      subscriptionsByStatus: subscriptionsByStatus.reduce<Record<string, number>>((acc, row) => {
-        acc[row._id] = row.count;
-        return acc;
-      }, {})
+      subscriptionsByStatus: subscriptionsByStatusMap,
+      recentOrganizations: recentOrganizations.map((organization) => {
+        const subscription = subscriptionByOrg.get(organization._id.toString());
+        return {
+          id: organization._id.toString(),
+          name: organization.displayName ?? organization.name,
+          status: organization.status,
+          subscriptionStatus: subscription?.status ?? 'trial',
+          createdAt: organization.createdAt.toISOString()
+        };
+      }),
+      expiringTrials: expiringTrials.map((subscription) => {
+        const organization = expiringTrialOrgById.get(subscription.organizationId.toString());
+        const expiresAt = subscription.expiresAt ?? null;
+        return {
+          organizationId: subscription.organizationId.toString(),
+          organizationName: organization ? (organization.displayName ?? organization.name) : 'Organización',
+          expiresAt: expiresAt ? expiresAt.toISOString() : null,
+          daysRemaining: expiresAt ? Math.max(Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000), 0) : null
+        };
+      }),
+      problematicSubscriptions: problematicSubscriptions.map((subscription) => {
+        const organization = problematicOrgById.get(subscription.organizationId.toString());
+        return {
+          organizationId: subscription.organizationId.toString(),
+          organizationName: organization ? (organization.displayName ?? organization.name) : 'Organización',
+          status: subscription.status,
+          expiresAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null
+        };
+      })
     };
   }
 
@@ -74,29 +140,52 @@ export class AdminService {
     limit: number;
     status?: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
     subscriptionStatus?: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+    planId?: string;
+    search?: string;
     betaEnabled?: boolean;
   }) {
     const query: Record<string, unknown> = {};
     if (filters.status) query.status = filters.status;
+    if (filters.search) {
+      query.$or = [{ name: { $regex: filters.search, $options: 'i' } }, { displayName: { $regex: filters.search, $options: 'i' } }];
+    }
 
     const skip = (filters.page - 1) * filters.limit;
-    const organizations = await OrganizationModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(filters.limit).lean();
+    const [organizations, orgTotal] = await Promise.all([
+      OrganizationModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(filters.limit).lean(),
+      OrganizationModel.countDocuments(query)
+    ]);
 
     const organizationIds = organizations.map((item) => item._id);
 
-    const [settings, subscriptions] = await Promise.all([
+    const [settings, subscriptions, professionalCounts, patientCounts] = await Promise.all([
       OrganizationSettingsModel.find({ organizationId: { $in: organizationIds } }).lean(),
-      OrganizationSubscriptionModel.find({ organizationId: { $in: organizationIds } }).lean()
+      OrganizationSubscriptionModel.find({ organizationId: { $in: organizationIds } }).lean(),
+      ProfessionalModel.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
+        { $match: { organizationId: { $in: organizationIds } } },
+        { $group: { _id: '$organizationId', count: { $sum: 1 } } }
+      ]),
+      PatientOrganizationLinkModel.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
+        { $match: { organizationId: { $in: organizationIds }, status: 'active' } },
+        { $group: { _id: '$organizationId', count: { $sum: 1 } } }
+      ])
     ]);
 
     const settingsByOrg = new Map(settings.map((item) => [item.organizationId.toString(), item]));
     const subscriptionsByOrg = new Map(subscriptions.map((item) => [item.organizationId.toString(), item]));
+    const professionalCountByOrg = new Map(professionalCounts.map((item) => [item._id.toString(), item.count]));
+    const patientCountByOrg = new Map(patientCounts.map((item) => [item._id.toString(), item.count]));
+    const planIds = Array.from(new Set(subscriptions.map((item) => item.planId.toString())));
+    const plans = await PlanModel.find({ _id: { $in: planIds } }).lean();
+    const planById = new Map(plans.map((item) => [item._id.toString(), item]));
 
     const rows = organizations
       .map((organization) => {
         const organizationId = organization._id.toString();
         const setting = settingsByOrg.get(organizationId);
         const subscription = subscriptionsByOrg.get(organizationId);
+        const plan = subscription ? planById.get(subscription.planId.toString()) : null;
+        const expiresAt = subscription?.expiresAt ?? null;
 
         return {
           id: organizationId,
@@ -106,18 +195,122 @@ export class AdminService {
           betaEnabled: setting?.betaEnabled ?? false,
           subscriptionStatus: subscription?.status ?? 'trial',
           subscriptionPlanId: subscription?.planId?.toString() ?? null,
+          subscriptionPlanName: plan?.name ?? null,
+          trialEndsAt: expiresAt ? expiresAt.toISOString() : null,
+          trialDaysRemaining:
+            subscription?.status === 'trial' && expiresAt
+              ? Math.max(Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000), 0)
+              : null,
+          professionalsCount: professionalCountByOrg.get(organizationId) ?? 0,
+          patientsCount: patientCountByOrg.get(organizationId) ?? 0,
           createdAt: organization.createdAt.toISOString(),
           updatedAt: organization.updatedAt.toISOString()
         };
       })
       .filter((row) => (filters.subscriptionStatus ? row.subscriptionStatus === filters.subscriptionStatus : true))
+      .filter((row) => (filters.planId ? row.subscriptionPlanId === filters.planId : true))
       .filter((row) => (typeof filters.betaEnabled === 'boolean' ? row.betaEnabled === filters.betaEnabled : true));
 
     return {
       items: rows,
       page: filters.page,
       limit: filters.limit,
-      total: rows.length
+      total: orgTotal
+    };
+  }
+
+  async getOrganizationDetail(organizationId: string) {
+    if (!mongoose.isValidObjectId(organizationId)) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'Invalid organization id');
+    }
+
+    const organization = await OrganizationModel.findById(organizationId).lean();
+    if (!organization) {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not found');
+    }
+
+    const [settings, subscription, members, professionalsCount, patientsCount, appointmentsCount] = await Promise.all([
+      OrganizationSettingsModel.findOne({ organizationId }).lean(),
+      OrganizationSubscriptionModel.findOne({ organizationId }).lean(),
+      OrganizationMemberModel.find({ organizationId, status: 'active', role: { $in: ['owner', 'admin'] } })
+        .sort({ role: 1, createdAt: 1 })
+        .lean(),
+      ProfessionalModel.countDocuments({ organizationId }),
+      PatientOrganizationLinkModel.countDocuments({ organizationId, status: 'active' }),
+      AppointmentModel.countDocuments({ organizationId })
+    ]);
+
+    const ownerOrAdmin = members[0] ?? null;
+    const ownerUser = ownerOrAdmin ? await UserModel.findById(ownerOrAdmin.userId, { firstName: 1, lastName: 1, email: 1 }).lean() : null;
+    const plan = subscription ? await PlanModel.findById(subscription.planId).lean() : null;
+    const trialEndsAt = subscription?.expiresAt ?? null;
+
+    return {
+      organization: {
+        id: organization._id.toString(),
+        name: organization.name,
+        displayName: organization.displayName ?? null,
+        type: organization.type,
+        status: organization.status,
+        logoUrl: organization.logoUrl ?? null,
+        createdAt: organization.createdAt.toISOString(),
+        onboardingCompleted: organization.onboardingCompleted ?? false
+      },
+      commercial: {
+        subscriptionStatus: subscription?.status ?? 'trial',
+        provider: subscription?.provider ?? null,
+        trialEndsAt: trialEndsAt ? trialEndsAt.toISOString() : null,
+        trialDaysRemaining:
+          subscription?.status === 'trial' && trialEndsAt
+            ? Math.max(Math.ceil((trialEndsAt.getTime() - Date.now()) / 86_400_000), 0)
+            : null,
+        autoRenew: subscription?.autoRenew ?? false
+      },
+      subscription: subscription
+        ? {
+            id: subscription._id.toString(),
+            status: subscription.status,
+            provider: subscription.provider,
+            providerReference: subscription.providerReference ?? null,
+            startedAt: subscription.startedAt ? subscription.startedAt.toISOString() : null,
+            expiresAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null,
+            plan: plan
+              ? {
+                  id: plan._id.toString(),
+                  code: plan.code,
+                  name: plan.name,
+                  price: plan.price,
+                  currency: plan.currency,
+                  maxProfessionalsActive: plan.maxProfessionalsActive
+                }
+              : null
+          }
+        : null,
+      usage: {
+        professionalsCount,
+        patientsCount,
+        appointmentsCount
+      },
+      owner: ownerUser
+        ? {
+            userId: ownerOrAdmin!.userId.toString(),
+            role: ownerOrAdmin!.role,
+            fullName: `${ownerUser.firstName} ${ownerUser.lastName}`.trim(),
+            email: ownerUser.email
+          }
+        : null,
+      settings: settings
+        ? {
+            betaEnabled: settings.betaEnabled ?? false,
+            betaNotes: settings.betaNotes ?? null
+          }
+        : null,
+      actions: {
+        canUpdateCommercialStatus: true,
+        canSuspendOrReactivate: true,
+        canExtendTrial: false,
+        pendingActionsNote: 'La extensión de trial requiere endpoint dedicado en una etapa posterior.'
+      }
     };
   }
 
@@ -189,7 +382,7 @@ export class AdminService {
       items: items.map((user) => ({
         id: user._id.toString(),
         email: user.email,
-        role: user.role,
+        role: (user.globalRole ?? 'user') === 'super_admin' ? 'admin' : 'user',
         provider: user.provider,
         emailVerified: user.emailVerified,
         avatar: user.avatar
@@ -217,7 +410,8 @@ export class AdminService {
       throw new AppError('ROLE_CHANGE_BLOCKED', 409, 'Admin cannot remove own admin role');
     }
 
-    const updated = await UserModel.findByIdAndUpdate(targetUserId, { $set: { role } }, { new: true }).lean();
+    const globalRole = role === 'admin' ? 'super_admin' : 'user';
+    const updated = await UserModel.findByIdAndUpdate(targetUserId, { $set: { role, globalRole } }, { new: true }).lean();
     if (!updated) {
       throw new AppError('USER_NOT_FOUND', 404, 'User not found');
     }
@@ -225,7 +419,7 @@ export class AdminService {
     return {
       id: updated._id.toString(),
       email: updated.email,
-      role: updated.role,
+      role: updated.globalRole === 'super_admin' ? 'admin' : 'user',
       provider: updated.provider,
       emailVerified: updated.emailVerified
     };
@@ -280,41 +474,59 @@ export class AdminService {
   }
 
   async listSubscriptions(filters: {
-    status?: (typeof subscriptionStatuses)[number];
-    period?: (typeof subscriptionPeriods)[number];
-    userId?: string;
+    status?: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+    planId?: string;
+    search?: string;
     limit: number;
     page: number;
   }) {
     const query: Record<string, unknown> = {};
     if (filters.status) query.status = filters.status;
-    if (filters.period) query.period = filters.period;
-    if (filters.userId) query.userId = filters.userId;
+    if (filters.planId) query.planId = filters.planId;
+    if (filters.search) {
+      const organizations = await OrganizationModel.find({
+        $or: [{ name: { $regex: filters.search, $options: 'i' } }, { displayName: { $regex: filters.search, $options: 'i' } }]
+      })
+        .select({ _id: 1 })
+        .lean();
+      const organizationIds = organizations.map((item) => item._id);
+      if (organizationIds.length === 0) {
+        return { items: [], total: 0, page: filters.page, limit: filters.limit };
+      }
+      query.organizationId = { $in: organizationIds };
+    }
 
     const skip = (filters.page - 1) * filters.limit;
     const [items, total] = await Promise.all([
-      SubscriptionModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(filters.limit).lean(),
-      SubscriptionModel.countDocuments(query)
+      OrganizationSubscriptionModel.find(query).sort({ updatedAt: -1 }).skip(skip).limit(filters.limit).lean(),
+      OrganizationSubscriptionModel.countDocuments(query)
     ]);
 
-    const userIds = Array.from(new Set(items.map((item) => item.userId.toString())));
-    const users = await UserModel.find({ _id: { $in: userIds } }, { email: 1 }).lean();
-    const usersMap = new Map(users.map((user) => [user._id.toString(), user.email]));
+    const organizationIds = Array.from(new Set(items.map((item) => item.organizationId.toString())));
+    const planIds = Array.from(new Set(items.map((item) => item.planId.toString())));
+    const [organizations, plans] = await Promise.all([
+      OrganizationModel.find({ _id: { $in: organizationIds } }).lean(),
+      PlanModel.find({ _id: { $in: planIds } }).lean()
+    ]);
+    const organizationsById = new Map(organizations.map((item) => [item._id.toString(), item]));
+    const plansById = new Map(plans.map((item) => [item._id.toString(), item]));
 
     return {
       items: items.map((subscription) => ({
         id: subscription._id.toString(),
-        userId: subscription.userId.toString(),
-        userEmail: usersMap.get(subscription.userId.toString()) ?? null,
+        organizationId: subscription.organizationId.toString(),
+        organizationName: organizationsById.get(subscription.organizationId.toString())?.displayName ??
+          organizationsById.get(subscription.organizationId.toString())?.name ??
+          'Organización',
         status: subscription.status,
-        period: subscription.period,
-        planCode: subscription.planCode,
-        title: subscription.title,
-        amount: subscription.amount,
-        currency: subscription.currency,
-        providerPreapprovalId: subscription.providerPreapprovalId ?? null,
-        externalReference: subscription.externalReference,
-        nextBillingDate: subscription.nextBillingDate ? subscription.nextBillingDate.toISOString() : null,
+        planId: subscription.planId.toString(),
+        planName: plansById.get(subscription.planId.toString())?.name ?? null,
+        monthlyAmount: plansById.get(subscription.planId.toString())?.price ?? null,
+        currency: plansById.get(subscription.planId.toString())?.currency ?? null,
+        provider: subscription.provider,
+        startedAt: subscription.startedAt ? subscription.startedAt.toISOString() : null,
+        renewalOrExpiryAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null,
+        isPaymentIssue: subscription.status === 'past_due' || subscription.status === 'suspended',
         createdAt: subscription.createdAt.toISOString(),
         updatedAt: subscription.updatedAt.toISOString()
       })),

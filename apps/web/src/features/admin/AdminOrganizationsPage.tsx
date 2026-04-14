@@ -1,110 +1,119 @@
-import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import type { ChangeEvent, ReactElement } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
-import { adminApi } from './admin-api';
+import { adminApi, type AdminOrganizationItem, type CommercialStatus } from './admin-api';
+
+const subscriptionStatuses: CommercialStatus[] = ['trial', 'active', 'past_due', 'suspended', 'canceled'];
+
+const statusBadge = (value: string): string => {
+  if (value === 'past_due' || value === 'suspended') return 'nx-badge nx-badge--danger';
+  return 'nx-badge';
+};
 
 export const AdminOrganizationsPage = (): ReactElement => {
   const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [summary, setSummary] = useState<{
-    organizationsTotal: number;
-    organizationsActive: number;
-    onboardingPending: number;
-    usersTotal: number;
-    subscriptionsByStatus: Record<string, number>;
-  } | null>(null);
-  const [organizations, setOrganizations] = useState<Array<{
-    id: string;
-    name: string;
-    status: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
-    onboardingCompleted: boolean;
-    betaEnabled: boolean;
-    subscriptionStatus: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
-    createdAt: string;
-  }>>([]);
-
-  const load = async (): Promise<void> => {
-    if (!accessToken) return;
-    setLoading(true);
-    setError('');
-    try {
-      const [summaryResult, orgsResult] = await Promise.all([
-        adminApi.getSummary(accessToken),
-        adminApi.listOrganizations(accessToken, new URLSearchParams({ page: '1', limit: '50' }))
-      ]);
-
-      setSummary(summaryResult);
-      setOrganizations(orgsResult.items);
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [search, setSearch] = useState('');
+  const [subscriptionStatus, setSubscriptionStatus] = useState('');
+  const [organizations, setOrganizations] = useState<AdminOrganizationItem[]>([]);
 
   useEffect(() => {
-    void load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken]);
-
-  const updateStatus = async (organizationId: string, status: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked'): Promise<void> => {
     if (!accessToken) return;
-    setError('');
-    try {
-      await adminApi.updateOrganizationStatus(accessToken, organizationId, { status });
-      setOrganizations((current) => current.map((item) => (item.id === organizationId ? { ...item, status } : item)));
-    } catch (cause) {
-      setError((cause as Error).message);
-    }
-  };
+    const load = async (): Promise<void> => {
+      setLoading(true);
+      setError('');
+      try {
+        const query = new URLSearchParams({ page: '1', limit: '100' });
+        if (search.trim()) query.set('search', search.trim());
+        if (subscriptionStatus) query.set('subscriptionStatus', subscriptionStatus);
+        const rows = await adminApi.listOrganizations(accessToken, query);
+        setOrganizations(rows.items);
+      } catch (cause) {
+        setError((cause as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, [accessToken, search, subscriptionStatus]);
+
+  const planOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    organizations.forEach((row) => {
+      if (row.subscriptionPlanId && row.subscriptionPlanName) {
+        map.set(row.subscriptionPlanId, row.subscriptionPlanName);
+      }
+    });
+    return Array.from(map.entries());
+  }, [organizations]);
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+
+  const filteredRows = useMemo(
+    () => organizations.filter((row) => (!selectedPlanId ? true : row.subscriptionPlanId === selectedPlanId)),
+    [organizations, selectedPlanId]
+  );
 
   return (
-    <main style={{ maxWidth: 1100, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' }}>
-      <Card title="Admin global · Organizaciones">
-        {loading ? <p>Cargando resumen global...</p> : null}
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
-        {summary ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: '0.75rem' }}>
-            <Card title="Org totales"><p>{summary.organizationsTotal}</p></Card>
-            <Card title="Org activas"><p>{summary.organizationsActive}</p></Card>
-            <Card title="Onboarding pendiente"><p>{summary.onboardingPending}</p></Card>
-            <Card title="Usuarios totales"><p>{summary.usersTotal}</p></Card>
-          </div>
-        ) : null}
+    <main className="nx-page">
+      <Card title="Organizaciones" subtitle="Listado comercial y operativo para seguimiento global.">
+        <div className="nx-form-grid" style={{ gridTemplateColumns: '2fr 1fr 1fr' }}>
+          <label className="nx-field">
+            Buscar por nombre
+            <input value={search} onChange={(event: ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)} placeholder="Ej: Centro Med Norte" />
+          </label>
+          <label className="nx-field">
+            Estado comercial
+            <select value={subscriptionStatus} onChange={(event) => setSubscriptionStatus(event.target.value)}>
+              <option value="">Todos</option>
+              {subscriptionStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </label>
+          <label className="nx-field">
+            Plan
+            <select value={selectedPlanId} onChange={(event) => setSelectedPlanId(event.target.value)}>
+              <option value="">Todos</option>
+              {planOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          </label>
+        </div>
       </Card>
 
-      <Card title="Listado de organizaciones">
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
+      <Card title="Resultados">
+        {loading ? <p>Cargando organizaciones...</p> : null}
+        {error ? <p className="nx-state nx-state--error">{error}</p> : null}
+        <div className="nx-table-wrap">
+          <table className="nx-table">
             <thead>
               <tr>
-                <th align="left">Organización</th>
-                <th align="left">Estado</th>
-                <th align="left">Suscripción</th>
-                <th align="left">Beta</th>
-                <th align="left">Onboarding</th>
-                <th align="left">Acción</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Plan actual</th>
+                <th>Trial / Suscripción</th>
+                <th>Profesionales</th>
+                <th>Pacientes</th>
+                <th>Alta</th>
+                <th />
               </tr>
             </thead>
             <tbody>
-              {organizations.map((organization) => (
+              {filteredRows.map((organization) => (
                 <tr key={organization.id}>
                   <td>{organization.name}</td>
-                  <td>{organization.status}</td>
-                  <td>{organization.subscriptionStatus}</td>
-                  <td>{organization.betaEnabled ? 'Sí' : 'No'}</td>
-                  <td>{organization.onboardingCompleted ? 'Completo' : 'Pendiente'}</td>
+                  <td><span className="nx-badge">{organization.status}</span></td>
+                  <td>{organization.subscriptionPlanName ?? '-'}</td>
                   <td>
-                    <select value={organization.status} onChange={(event) => { void updateStatus(organization.id, event.target.value as 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked'); }}>
-                      <option value="onboarding">onboarding</option>
-                      <option value="active">active</option>
-                      <option value="inactive">inactive</option>
-                      <option value="suspended">suspended</option>
-                      <option value="blocked">blocked</option>
-                    </select>
+                    <span className={statusBadge(organization.subscriptionStatus)}>{organization.subscriptionStatus}</span>
+                    {organization.subscriptionStatus === 'trial' && organization.trialDaysRemaining !== null ? (
+                      <small style={{ display: 'block', color: '#64748b' }}>Quedan {organization.trialDaysRemaining} días</small>
+                    ) : null}
                   </td>
+                  <td>{organization.professionalsCount}</td>
+                  <td>{organization.patientsCount}</td>
+                  <td>{new Date(organization.createdAt).toLocaleDateString('es-AR')}</td>
+                  <td><Link className="nx-btn-secondary" to={`/admin/organizations/${organization.id}`}>Ver detalle</Link></td>
                 </tr>
               ))}
             </tbody>

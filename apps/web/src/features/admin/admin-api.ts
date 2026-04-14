@@ -11,7 +11,6 @@ const request = async <T>(path: string, init: RequestInit): Promise<T> => {
   if (!response.ok) {
     throw new Error(payload.error?.message ?? 'Unexpected request error');
   }
-
   return payload;
 };
 
@@ -22,213 +21,126 @@ interface Paginated<T> {
   limit: number;
 }
 
-export interface AdminUserItem {
-  id: string;
-  email: string;
-  role: 'admin' | 'user';
-  provider: 'local' | 'google';
-  emailVerified: boolean;
-  avatar: { url: string; updatedAt: string } | null;
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt: string | null;
-}
+export type CommercialStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+export type OrganizationStatus = 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
 
-export interface AdminPaymentItem {
-  id: string;
-  type: 'one_time' | 'subscription';
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'in_process';
-  amount: number;
-  currency: string;
-  userId: string;
-  userEmail: string | null;
-  externalReference: string;
-  providerOrderId: string | null;
-  transactionId: string | null;
-  methodType: string | null;
-  createdAt: string;
-}
-
-export interface AdminSubscriptionItem {
-  id: string;
-  userId: string;
-  userEmail: string | null;
-  status: 'pending' | 'authorized' | 'paused' | 'cancelled' | 'ended';
-  period: 'monthly' | 'yearly';
-  planCode: string;
-  title: string;
-  amount: number;
-  currency: string;
-  providerPreapprovalId: string | null;
-  externalReference: string;
-  nextBillingDate: string | null;
-  createdAt: string;
-}
-
-export interface AdminAvatarItem {
-  userId: string;
-  email: string;
-  hasAvatar: boolean;
-  avatarUrl: string | null;
-  avatarUpdatedAt: string | null;
-  updatedAt: string;
-}
-
-export interface AdminDashboardSummary {
-  users: number;
-  adminUsers: number;
-  regularUsers: number;
-  payments: number;
-  subscriptions: number;
-  pushDevices: number;
-  usersWithAvatar: number;
-}
-
-
-export interface AdminGlobalSummary {
-  organizationsTotal: number;
-  organizationsActive: number;
-  onboardingPending: number;
-  usersTotal: number;
-  subscriptionsByStatus: Record<string, number>;
+export interface AdminSummary {
+  totalOrganizations: number;
+  activeOrganizations: number;
+  trialOrganizations: number;
+  paidOrganizations: number;
+  suspendedOrPastDueOrganizations: number;
+  estimatedMonthlyRevenue: number;
+  recentOrganizations: Array<{
+    id: string;
+    name: string;
+    status: OrganizationStatus;
+    subscriptionStatus: CommercialStatus;
+    createdAt: string;
+  }>;
+  expiringTrials: Array<{
+    organizationId: string;
+    organizationName: string;
+    expiresAt: string | null;
+    daysRemaining: number | null;
+  }>;
+  problematicSubscriptions: Array<{
+    organizationId: string;
+    organizationName: string;
+    status: CommercialStatus;
+    expiresAt: string | null;
+  }>;
 }
 
 export interface AdminOrganizationItem {
   id: string;
   name: string;
-  status: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
-  onboardingCompleted: boolean;
-  betaEnabled: boolean;
-  subscriptionStatus: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+  status: OrganizationStatus;
+  subscriptionStatus: CommercialStatus;
   subscriptionPlanId: string | null;
+  subscriptionPlanName: string | null;
+  trialEndsAt: string | null;
+  trialDaysRemaining: number | null;
+  professionalsCount: number;
+  patientsCount: number;
   createdAt: string;
-  updatedAt: string;
 }
 
-export interface MonetizationConfig {
-  monetizationMode: 'one_time_only' | 'subscriptions_only' | 'both';
-  subscriptionPeriodMode: 'monthly' | 'yearly' | 'both';
+export interface AdminOrganizationDetail {
+  organization: {
+    id: string;
+    name: string;
+    displayName: string | null;
+    type: string;
+    status: OrganizationStatus;
+    logoUrl: string | null;
+    createdAt: string;
+    onboardingCompleted: boolean;
+  };
+  commercial: {
+    subscriptionStatus: CommercialStatus;
+    provider: string | null;
+    trialEndsAt: string | null;
+    trialDaysRemaining: number | null;
+    autoRenew: boolean;
+  };
+  subscription: null | {
+    id: string;
+    status: CommercialStatus;
+    provider: string;
+    providerReference: string | null;
+    startedAt: string | null;
+    expiresAt: string | null;
+    plan: null | {
+      id: string;
+      code: string;
+      name: string;
+      price: number;
+      currency: string;
+      maxProfessionalsActive: number;
+    };
+  };
+  usage: {
+    professionalsCount: number;
+    patientsCount: number;
+    appointmentsCount: number;
+  };
+  owner: null | {
+    userId: string;
+    role: 'owner' | 'admin';
+    fullName: string;
+    email: string;
+  };
+  settings: null | {
+    betaEnabled: boolean;
+    betaNotes: string | null;
+  };
+  actions: {
+    canUpdateCommercialStatus: boolean;
+    canSuspendOrReactivate: boolean;
+    canExtendTrial: boolean;
+    pendingActionsNote: string;
+  };
 }
 
-
-export interface AdminFeedbackItem {
+export interface AdminSubscriptionItem {
   id: string;
-  userId: string;
-  organizationId: string | null;
-  roleSnapshot: string | null;
-  category: 'bug' | 'ux' | 'feature_request' | 'content' | 'support' | 'other';
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  title: string | null;
-  message: string;
-  source: 'center_admin' | 'patient' | 'beta_internal';
-  pagePath: string | null;
-  status: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix';
-  adminNotes: string | null;
-  createdAt: string;
-  updatedAt: string;
+  organizationId: string;
+  organizationName: string;
+  status: CommercialStatus;
+  planId: string;
+  planName: string | null;
+  monthlyAmount: number | null;
+  currency: string | null;
+  provider: string;
+  startedAt: string | null;
+  renewalOrExpiryAt: string | null;
+  isPaymentIssue: boolean;
 }
 
 export const adminApi = {
-  getDashboard: async (accessToken: string): Promise<AdminDashboardSummary> => {
-    const result = await request<{ success: true; data: AdminDashboardSummary }>('/admin/dashboard', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    return result.data;
-  },
-  listUsers: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminUserItem>> => {
-    const result = await request<{ success: true; data: Paginated<AdminUserItem> }>(`/admin/users?${query.toString()}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    return result.data;
-  },
-  updateUserRole: async (accessToken: string, userId: string, role: 'admin' | 'user'): Promise<void> => {
-    await request('/admin/users/' + userId + '/role', {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ role })
-    });
-  },
-  listPayments: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminPaymentItem>> => {
-    const result = await request<{ success: true; data: Paginated<AdminPaymentItem> }>(`/admin/payments?${query.toString()}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    return result.data;
-  },
-  listSubscriptions: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminSubscriptionItem>> => {
-    const result = await request<{ success: true; data: Paginated<AdminSubscriptionItem> }>(`/admin/subscriptions?${query.toString()}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    return result.data;
-  },
-  sendNotification: async (accessToken: string, input: { targetUserId: string; title: string; body: string }): Promise<void> => {
-    await request('/admin/notifications/send', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify(input)
-    });
-  },
-  listAvatars: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminAvatarItem>> => {
-    const result = await request<{ success: true; data: Paginated<AdminAvatarItem> }>(`/admin/avatars?${query.toString()}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    return result.data;
-  },
-  deleteAvatar: async (accessToken: string, userId: string): Promise<void> => {
-    await request('/admin/avatars/' + userId, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-  },
-  getMonetizationConfig: async (accessToken: string): Promise<MonetizationConfig> => {
-    const result = await request<{ success: true; data: MonetizationConfig }>('/admin/monetization-config', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    return result.data;
-  },
-  updateMonetizationConfig: async (accessToken: string, input: MonetizationConfig): Promise<MonetizationConfig> => {
-    const result = await request<{ success: true; data: MonetizationConfig }>('/admin/monetization-config', {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify(input)
-    });
-    return result.data;
-  },
-
-  listFeedback: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminFeedbackItem>> => {
-    const result = await request<{ success: true; data: Paginated<AdminFeedbackItem> }>(`/admin/feedback?${query.toString()}`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-
-    return result.data;
-  },
-  updateFeedback: async (
-    accessToken: string,
-    feedbackId: string,
-    input: { status: 'new' | 'triaged' | 'planned' | 'resolved' | 'wont_fix'; adminNotes?: string; severity?: 'critical' | 'high' | 'medium' | 'low' }
-  ): Promise<void> => {
-    await request(`/admin/feedback/${feedbackId}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify(input)
-    });
-  },
-  updateOrganizationBeta: async (accessToken: string, organizationId: string, input: { betaEnabled: boolean; betaNotes?: string }): Promise<void> => {
-    await request(`/admin/organizations/${organizationId}/beta`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify(input)
-    });
-  },
-
-  getSummary: async (accessToken: string): Promise<AdminGlobalSummary> => {
-    const result = await request<{ success: true; data: AdminGlobalSummary }>('/admin/summary', {
+  getSummary: async (accessToken: string): Promise<AdminSummary> => {
+    const result = await request<{ success: true; data: AdminSummary }>('/admin/summary', {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` }
     });
@@ -243,15 +155,31 @@ export const adminApi = {
     return result.data;
   },
 
+  getOrganization: async (accessToken: string, organizationId: string): Promise<AdminOrganizationDetail> => {
+    const result = await request<{ success: true; data: AdminOrganizationDetail }>(`/admin/organizations/${organizationId}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  listSubscriptions: async (accessToken: string, query: URLSearchParams): Promise<Paginated<AdminSubscriptionItem>> => {
+    const result = await request<{ success: true; data: Paginated<AdminSubscriptionItem> }>(`/admin/subscriptions?${query.toString()}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
   updateOrganizationStatus: async (
     accessToken: string,
     organizationId: string,
-    input: { status: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked'; betaEnabled?: boolean; onboardingCompleted?: boolean }
+    input: { status: OrganizationStatus; onboardingCompleted?: boolean }
   ): Promise<void> => {
     await request(`/admin/organizations/${organizationId}/status`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify(input)
     });
-  },
+  }
 };
