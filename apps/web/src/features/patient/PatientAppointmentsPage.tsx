@@ -39,7 +39,7 @@ export const PatientAppointmentsPage = (): ReactElement => {
     <main className="nx-page nx-page--appointments">
       <Card title="Mis turnos" subtitle="Consultá el estado de tus turnos y gestioná cambios cuando lo necesites.">
         <p>
-          <Link to="/feedback" state={{ fromPath: '/patient/appointments' }}>
+          <Link className="nx-btn-secondary" to="/feedback" state={{ fromPath: '/patient/appointments' }}>
             Enviar feedback
           </Link>
         </p>
