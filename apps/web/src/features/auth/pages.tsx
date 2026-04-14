@@ -350,6 +350,10 @@ export const PostLoginResolverPage = (): ReactElement => {
     return <Navigate to="/login" replace />;
   }
 
+  if (user.globalRole === 'super_admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
   if (joinResolutionFailed) {
     return (
       <p>

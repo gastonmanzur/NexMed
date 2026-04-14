@@ -382,7 +382,7 @@ export class AdminService {
       items: items.map((user) => ({
         id: user._id.toString(),
         email: user.email,
-        role: user.role,
+        role: (user.globalRole ?? 'user') === 'super_admin' ? 'admin' : 'user',
         provider: user.provider,
         emailVerified: user.emailVerified,
         avatar: user.avatar
@@ -410,7 +410,8 @@ export class AdminService {
       throw new AppError('ROLE_CHANGE_BLOCKED', 409, 'Admin cannot remove own admin role');
     }
 
-    const updated = await UserModel.findByIdAndUpdate(targetUserId, { $set: { role } }, { new: true }).lean();
+    const globalRole = role === 'admin' ? 'super_admin' : 'user';
+    const updated = await UserModel.findByIdAndUpdate(targetUserId, { $set: { role, globalRole } }, { new: true }).lean();
     if (!updated) {
       throw new AppError('USER_NOT_FOUND', 404, 'User not found');
     }
@@ -418,7 +419,7 @@ export class AdminService {
     return {
       id: updated._id.toString(),
       email: updated.email,
-      role: updated.role,
+      role: updated.globalRole === 'super_admin' ? 'admin' : 'user',
       provider: updated.provider,
       emailVerified: updated.emailVerified
     };
