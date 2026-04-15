@@ -22,6 +22,7 @@ export class PlanRepository {
         currency: 'ARS',
         maxProfessionalsActive: 3,
         status: 'active',
+        isRecommended: false,
         description: 'Plan base para consultorios que completaron su prueba de 14 días.'
       },
       {
@@ -31,6 +32,7 @@ export class PlanRepository {
         currency: 'ARS',
         maxProfessionalsActive: 10,
         status: 'active',
+        isRecommended: true,
         description: 'Más capacidad para centros en crecimiento.'
       },
       {
@@ -40,6 +42,7 @@ export class PlanRepository {
         currency: 'ARS',
         maxProfessionalsActive: 50,
         status: 'active',
+        isRecommended: false,
         description: 'Operación avanzada para equipos grandes.'
       }
     ] as const;

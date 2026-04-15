@@ -138,6 +138,39 @@ export interface AdminSubscriptionItem {
   isPaymentIssue: boolean;
 }
 
+export interface AdminPlanItem {
+  id: string;
+  name: string;
+  slug: string;
+  monthlyPrice: number;
+  currency: string;
+  maxProfessionals: number;
+  description: string | null;
+  isActive: boolean;
+  isRecommended: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminDiscountItem {
+  id: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  currency: string | null;
+  appliesToPlanIds: string[];
+  onlyForNewOrganizations: boolean;
+  onlyDuringTrial: boolean;
+  maxRedemptions: number | null;
+  maxRedemptionsPerOrganization: number | null;
+  redemptionCount: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const adminApi = {
   getSummary: async (accessToken: string): Promise<AdminSummary> => {
     const result = await request<{ success: true; data: AdminSummary }>('/admin/summary', {
@@ -167,6 +200,124 @@ export const adminApi = {
     const result = await request<{ success: true; data: Paginated<AdminSubscriptionItem> }>(`/admin/subscriptions?${query.toString()}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  listPlans: async (accessToken: string): Promise<AdminPlanItem[]> => {
+    const result = await request<{ success: true; data: AdminPlanItem[] }>('/admin/plans', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  createPlan: async (
+    accessToken: string,
+    input: {
+      name: string;
+      slug: string;
+      monthlyPrice: number;
+      currency: string;
+      maxProfessionals: number;
+      description?: string;
+      isActive?: boolean;
+      isRecommended?: boolean;
+    }
+  ): Promise<AdminPlanItem> => {
+    const result = await request<{ success: true; data: AdminPlanItem }>('/admin/plans', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+    return result.data;
+  },
+
+  updatePlan: async (
+    accessToken: string,
+    planId: string,
+    input: Partial<{
+      name: string;
+      slug: string;
+      monthlyPrice: number;
+      currency: string;
+      maxProfessionals: number;
+      description: string | null;
+      isActive: boolean;
+      isRecommended: boolean;
+    }>
+  ): Promise<AdminPlanItem> => {
+    const result = await request<{ success: true; data: AdminPlanItem }>(`/admin/plans/${planId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+    return result.data;
+  },
+
+  listDiscounts: async (accessToken: string): Promise<AdminDiscountItem[]> => {
+    const result = await request<{ success: true; data: AdminDiscountItem[] }>('/admin/discounts', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  createDiscount: async (
+    accessToken: string,
+    input: {
+      code: string;
+      discountType: 'percentage' | 'fixed';
+      discountValue: number;
+      currency?: string;
+      appliesToPlanIds?: string[];
+      onlyForNewOrganizations?: boolean;
+      onlyDuringTrial?: boolean;
+      maxRedemptions?: number;
+      maxRedemptionsPerOrganization?: number;
+      startsAt?: string;
+      endsAt?: string;
+      isActive?: boolean;
+    }
+  ): Promise<AdminDiscountItem> => {
+    const result = await request<{ success: true; data: AdminDiscountItem }>('/admin/discounts', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+    return result.data;
+  },
+
+  getDiscount: async (accessToken: string, discountId: string): Promise<AdminDiscountItem> => {
+    const result = await request<{ success: true; data: AdminDiscountItem }>(`/admin/discounts/${discountId}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  updateDiscount: async (
+    accessToken: string,
+    discountId: string,
+    input: Partial<{
+      code: string;
+      discountType: 'percentage' | 'fixed';
+      discountValue: number;
+      currency: string | null;
+      appliesToPlanIds: string[];
+      onlyForNewOrganizations: boolean;
+      onlyDuringTrial: boolean;
+      maxRedemptions: number | null;
+      maxRedemptionsPerOrganization: number | null;
+      startsAt: string | null;
+      endsAt: string | null;
+      isActive: boolean;
+    }>
+  ): Promise<AdminDiscountItem> => {
+    const result = await request<{ success: true; data: AdminDiscountItem }>(`/admin/discounts/${discountId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
     });
     return result.data;
   },

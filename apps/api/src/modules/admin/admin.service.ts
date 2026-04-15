@@ -19,6 +19,7 @@ import { ProfessionalModel } from '../professionals/models/professional.model.js
 import { PatientOrganizationLinkModel } from '../patient/models/patient-organization-link.model.js';
 import { AppointmentModel } from '../appointments/models/appointment.model.js';
 import { OrganizationMemberModel } from '../organizations/models/organization-member.model.js';
+import { DiscountRepository } from '../payments/repositories/discount.repository.js';
 
 export class AdminService {
   constructor(
@@ -26,8 +27,75 @@ export class AdminService {
     private readonly monetizationConfigRepository = new MonetizationConfigRepository(),
     private readonly feedbackService = new FeedbackService(),
     private readonly organizationSettingsRepository = new OrganizationSettingsRepository(),
-    private readonly organizationRepository = new OrganizationRepository()
+    private readonly organizationRepository = new OrganizationRepository(),
+    private readonly discounts = new DiscountRepository()
   ) {}
+
+  private toPlanAdminDto(plan: {
+    _id: mongoose.Types.ObjectId;
+    code: string;
+    name: string;
+    price: number;
+    currency: string;
+    maxProfessionalsActive: number;
+    description?: string | null;
+    status: 'active' | 'inactive';
+    isRecommended?: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      id: plan._id.toString(),
+      name: plan.name,
+      slug: plan.code,
+      monthlyPrice: plan.price,
+      currency: plan.currency,
+      maxProfessionals: plan.maxProfessionalsActive,
+      description: plan.description ?? null,
+      isActive: plan.status === 'active',
+      isRecommended: plan.isRecommended ?? false,
+      createdAt: plan.createdAt.toISOString(),
+      updatedAt: plan.updatedAt.toISOString()
+    };
+  }
+
+  private toDiscountAdminDto(discount: {
+    _id: mongoose.Types.ObjectId;
+    code: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    currency?: string | null;
+    appliesToPlanIds?: mongoose.Types.ObjectId[];
+    onlyForNewOrganizations: boolean;
+    onlyDuringTrial: boolean;
+    maxRedemptions?: number | null;
+    maxRedemptionsPerOrganization?: number | null;
+    redemptionCount: number;
+    startsAt?: Date | null;
+    endsAt?: Date | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      id: discount._id.toString(),
+      code: discount.code,
+      discountType: discount.discountType,
+      discountValue: discount.discountValue,
+      currency: discount.currency ?? null,
+      appliesToPlanIds: (discount.appliesToPlanIds ?? []).map((planId) => planId.toString()),
+      onlyForNewOrganizations: discount.onlyForNewOrganizations,
+      onlyDuringTrial: discount.onlyDuringTrial,
+      maxRedemptions: discount.maxRedemptions ?? null,
+      maxRedemptionsPerOrganization: discount.maxRedemptionsPerOrganization ?? null,
+      redemptionCount: discount.redemptionCount ?? 0,
+      startsAt: discount.startsAt ? discount.startsAt.toISOString() : null,
+      endsAt: discount.endsAt ? discount.endsAt.toISOString() : null,
+      isActive: discount.isActive,
+      createdAt: discount.createdAt.toISOString(),
+      updatedAt: discount.updatedAt.toISOString()
+    };
+  }
 
   async getDashboardSummary() {
     const [users, adminUsers, payments, subscriptions, pushDevices, usersWithAvatar] = await Promise.all([
@@ -538,6 +606,270 @@ export class AdminService {
 
   sendNotification(input: { actorUserId: string; actorRole: 'admin' | 'user'; targetUserId: string; title: string; body: string }) {
     return this.pushService.sendToUser(input);
+  }
+
+  async listPlans() {
+    const plans = await PlanModel.find().sort({ price: 1, createdAt: 1 }).lean();
+    return plans.map((plan) => this.toPlanAdminDto(plan));
+  }
+
+  async createPlan(input: {
+    name: string;
+    slug: string;
+    monthlyPrice: number;
+    currency: string;
+    maxProfessionals: number;
+    description?: string | undefined;
+    isActive?: boolean | undefined;
+    isRecommended?: boolean | undefined;
+  }) {
+    const normalizedSlug = input.slug.trim().toLowerCase();
+    const existing = await PlanModel.findOne({ code: normalizedSlug }).lean();
+    if (existing) {
+      throw new AppError('PLAN_CODE_ALREADY_EXISTS', 409, 'A plan with this slug already exists');
+    }
+
+    if (input.isRecommended) {
+      await PlanModel.updateMany({ isRecommended: true }, { $set: { isRecommended: false } });
+    }
+
+    const created = await PlanModel.create({
+      code: normalizedSlug,
+      name: input.name.trim(),
+      price: input.monthlyPrice,
+      currency: input.currency.trim().toUpperCase(),
+      maxProfessionalsActive: input.maxProfessionals,
+      description: input.description?.trim() || undefined,
+      status: input.isActive === false ? 'inactive' : 'active',
+      isRecommended: input.isRecommended ?? false
+    });
+
+    return this.toPlanAdminDto(created.toObject());
+  }
+
+  async updatePlan(
+    planId: string,
+    input: Partial<{
+      name: string;
+      slug: string;
+      monthlyPrice: number;
+      currency: string;
+      maxProfessionals: number;
+      description: string | null;
+      isActive: boolean;
+      isRecommended: boolean;
+    }>
+  ) {
+    if (!mongoose.isValidObjectId(planId)) {
+      throw new AppError('INVALID_PLAN_ID', 400, 'Invalid plan id');
+    }
+
+    const existing = await PlanModel.findById(planId).lean();
+    if (!existing) {
+      throw new AppError('PLAN_NOT_FOUND', 404, 'Plan not found');
+    }
+
+    const update: Record<string, unknown> = {};
+    if (input.name !== undefined) update.name = input.name.trim();
+    if (input.slug !== undefined) {
+      const normalizedSlug = input.slug.trim().toLowerCase();
+      if (normalizedSlug !== existing.code) {
+        const sameCode = await PlanModel.findOne({ code: normalizedSlug }).lean();
+        if (sameCode && sameCode._id.toString() !== planId) {
+          throw new AppError('PLAN_CODE_ALREADY_EXISTS', 409, 'A plan with this slug already exists');
+        }
+      }
+      update.code = normalizedSlug;
+    }
+    if (input.monthlyPrice !== undefined) update.price = input.monthlyPrice;
+    if (input.currency !== undefined) update.currency = input.currency.trim().toUpperCase();
+    if (input.maxProfessionals !== undefined) update.maxProfessionalsActive = input.maxProfessionals;
+    if (input.description !== undefined) update.description = input.description?.trim() || null;
+    if (input.isActive !== undefined) update.status = input.isActive ? 'active' : 'inactive';
+    if (input.isRecommended !== undefined) {
+      if (input.isRecommended) {
+        await PlanModel.updateMany({ _id: { $ne: planId }, isRecommended: true }, { $set: { isRecommended: false } });
+      }
+      update.isRecommended = input.isRecommended;
+    }
+
+    const updated = await PlanModel.findByIdAndUpdate(planId, { $set: update }, { new: true }).lean();
+    if (!updated) {
+      throw new AppError('PLAN_NOT_FOUND', 404, 'Plan not found');
+    }
+
+    return this.toPlanAdminDto(updated);
+  }
+
+  async listDiscounts() {
+    const discounts = await this.discounts.list();
+    return discounts.map((discount) => this.toDiscountAdminDto(discount));
+  }
+
+  private async validateDiscountPlans(appliesToPlanIds?: string[]): Promise<void> {
+    if (!appliesToPlanIds || appliesToPlanIds.length === 0) return;
+    const validIds = appliesToPlanIds.filter((id) => mongoose.isValidObjectId(id));
+    if (validIds.length !== appliesToPlanIds.length) {
+      throw new AppError('INVALID_PLAN_ID', 400, 'One or more plan ids are invalid');
+    }
+    const count = await PlanModel.countDocuments({ _id: { $in: validIds } });
+    if (count !== validIds.length) {
+      throw new AppError('PLAN_NOT_FOUND', 404, 'One or more plans were not found');
+    }
+  }
+
+  private validateDiscountRules(input: {
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    startsAt?: Date | null | undefined;
+    endsAt?: Date | null | undefined;
+  }) {
+    if (input.discountValue < 0) {
+      throw new AppError('INVALID_DISCOUNT_VALUE', 400, 'Discount value cannot be negative');
+    }
+    if (input.discountType === 'percentage' && input.discountValue > 100) {
+      throw new AppError('INVALID_DISCOUNT_VALUE', 400, 'Percentage discount cannot exceed 100');
+    }
+    if (input.startsAt && input.endsAt && input.endsAt.getTime() < input.startsAt.getTime()) {
+      throw new AppError('INVALID_DATE_RANGE', 400, 'Discount end date cannot be before start date');
+    }
+  }
+
+  async createDiscount(input: {
+    code: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    currency?: string | undefined;
+    appliesToPlanIds?: string[] | undefined;
+    onlyForNewOrganizations?: boolean | undefined;
+    onlyDuringTrial?: boolean | undefined;
+    maxRedemptions?: number | undefined;
+    maxRedemptionsPerOrganization?: number | undefined;
+    startsAt?: Date | undefined;
+    endsAt?: Date | undefined;
+    isActive?: boolean | undefined;
+  }) {
+    const code = input.code.trim().toUpperCase();
+    const existing = await this.discounts.findByCode(code);
+    if (existing) {
+      throw new AppError('DISCOUNT_CODE_ALREADY_EXISTS', 409, 'A discount code with this value already exists');
+    }
+
+    this.validateDiscountRules({
+      discountType: input.discountType,
+      discountValue: input.discountValue,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt
+    });
+    await this.validateDiscountPlans(input.appliesToPlanIds);
+
+    const created = await this.discounts.create({
+      code,
+      discountType: input.discountType,
+      discountValue: input.discountValue,
+      currency: input.discountType === 'fixed' ? input.currency?.trim().toUpperCase() : undefined,
+      appliesToPlanIds: input.appliesToPlanIds,
+      onlyForNewOrganizations: input.onlyForNewOrganizations ?? false,
+      onlyDuringTrial: input.onlyDuringTrial ?? false,
+      maxRedemptions: input.maxRedemptions,
+      maxRedemptionsPerOrganization: input.maxRedemptionsPerOrganization,
+      startsAt: input.startsAt,
+      endsAt: input.endsAt,
+      isActive: input.isActive ?? true
+    });
+
+    return this.toDiscountAdminDto(created);
+  }
+
+  async getDiscountById(discountId: string) {
+    if (!mongoose.isValidObjectId(discountId)) {
+      throw new AppError('INVALID_DISCOUNT_ID', 400, 'Invalid discount id');
+    }
+    const discount = await this.discounts.findById(discountId);
+    if (!discount) {
+      throw new AppError('DISCOUNT_NOT_FOUND', 404, 'Discount not found');
+    }
+    return this.toDiscountAdminDto(discount);
+  }
+
+  async updateDiscount(
+    discountId: string,
+    input: Partial<{
+      code: string;
+      discountType: 'percentage' | 'fixed';
+      discountValue: number;
+      currency: string | null;
+      appliesToPlanIds: string[];
+      onlyForNewOrganizations: boolean;
+      onlyDuringTrial: boolean;
+      maxRedemptions: number | null;
+      maxRedemptionsPerOrganization: number | null;
+      startsAt: Date | null;
+      endsAt: Date | null;
+      isActive: boolean;
+    }>
+  ) {
+    if (!mongoose.isValidObjectId(discountId)) {
+      throw new AppError('INVALID_DISCOUNT_ID', 400, 'Invalid discount id');
+    }
+    const existing = await this.discounts.findById(discountId);
+    if (!existing) {
+      throw new AppError('DISCOUNT_NOT_FOUND', 404, 'Discount not found');
+    }
+
+    const nextDiscountType = input.discountType ?? existing.discountType;
+    const nextDiscountValue = input.discountValue ?? existing.discountValue;
+    const nextStartsAt = input.startsAt === undefined ? (existing.startsAt ?? undefined) : (input.startsAt ?? undefined);
+    const nextEndsAt = input.endsAt === undefined ? (existing.endsAt ?? undefined) : (input.endsAt ?? undefined);
+
+    this.validateDiscountRules({
+      discountType: nextDiscountType,
+      discountValue: nextDiscountValue,
+      startsAt: nextStartsAt,
+      endsAt: nextEndsAt
+    });
+
+    if (input.appliesToPlanIds !== undefined) {
+      await this.validateDiscountPlans(input.appliesToPlanIds);
+    }
+
+    let nextCode: string | undefined;
+    if (input.code !== undefined) {
+      nextCode = input.code.trim().toUpperCase();
+      if (nextCode !== existing.code) {
+        const byCode = await this.discounts.findByCode(nextCode);
+        if (byCode && byCode._id.toString() !== discountId) {
+          throw new AppError('DISCOUNT_CODE_ALREADY_EXISTS', 409, 'A discount code with this value already exists');
+        }
+      }
+    }
+
+    const updated = await this.discounts.updateById(discountId, {
+      ...(nextCode !== undefined ? { code: nextCode } : {}),
+      ...(input.discountType !== undefined ? { discountType: input.discountType } : {}),
+      ...(input.discountValue !== undefined ? { discountValue: input.discountValue } : {}),
+      ...(input.currency !== undefined
+        ? { currency: nextDiscountType === 'fixed' ? input.currency?.trim().toUpperCase() ?? null : null }
+        : {}),
+      ...(input.appliesToPlanIds !== undefined ? { appliesToPlanIds: input.appliesToPlanIds } : {}),
+      ...(input.onlyForNewOrganizations !== undefined
+        ? { onlyForNewOrganizations: input.onlyForNewOrganizations }
+        : {}),
+      ...(input.onlyDuringTrial !== undefined ? { onlyDuringTrial: input.onlyDuringTrial } : {}),
+      ...(input.maxRedemptions !== undefined ? { maxRedemptions: input.maxRedemptions } : {}),
+      ...(input.maxRedemptionsPerOrganization !== undefined
+        ? { maxRedemptionsPerOrganization: input.maxRedemptionsPerOrganization }
+        : {}),
+      ...(input.startsAt !== undefined ? { startsAt: input.startsAt } : {}),
+      ...(input.endsAt !== undefined ? { endsAt: input.endsAt } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
+    });
+
+    if (!updated) {
+      throw new AppError('DISCOUNT_NOT_FOUND', 404, 'Discount not found');
+    }
+
+    return this.toDiscountAdminDto(updated);
   }
 
   async listAvatars(filters: { hasAvatar?: boolean; search?: string; limit: number; page: number }) {

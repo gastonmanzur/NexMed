@@ -5,6 +5,10 @@ import { AdminPage } from '../features/admin/AdminPage';
 import { AdminOrganizationsPage } from '../features/admin/AdminOrganizationsPage';
 import { AdminOrganizationDetailPage } from '../features/admin/AdminOrganizationDetailPage';
 import { AdminSubscriptionsPage } from '../features/admin/AdminSubscriptionsPage';
+import { AdminPlansPage } from '../features/admin/AdminPlansPage';
+import { AdminDiscountsPage } from '../features/admin/AdminDiscountsPage';
+import { AdminDiscountCreatePage } from '../features/admin/AdminDiscountCreatePage';
+import { AdminDiscountDetailPage } from '../features/admin/AdminDiscountDetailPage';
 import {
   LoginPage,
   RegisterPage,
@@ -295,6 +299,38 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute allowedGlobalRoles={['super_admin']}>
             {shell(<AdminSubscriptionsPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/plans"
+        element={
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
+            {shell(<AdminPlansPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/discounts"
+        element={
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
+            {shell(<AdminDiscountsPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/discounts/new"
+        element={
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
+            {shell(<AdminDiscountCreatePage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/discounts/:discountId"
+        element={
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
+            {shell(<AdminDiscountDetailPage />)}
           </ProtectedRoute>
         }
       />
