@@ -80,6 +80,49 @@ const updateOrganizationStatusSchema = z.object({
   onboardingCompleted: z.boolean().optional()
 });
 
+const planCreateSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  slug: z.string().trim().min(2).max(80).regex(/^[a-z0-9-]+$/),
+  monthlyPrice: z.number().min(0),
+  currency: z.string().trim().min(3).max(10),
+  maxProfessionals: z.number().int().min(1),
+  description: z.string().trim().max(500).optional(),
+  isActive: z.boolean().optional(),
+  isRecommended: z.boolean().optional()
+});
+
+const planUpdateSchema = planCreateSchema.partial();
+
+const discountCreateSchema = z.object({
+  code: z.string().trim().min(3).max(60).regex(/^[a-zA-Z0-9_-]+$/),
+  discountType: z.enum(['percentage', 'fixed']),
+  discountValue: z.number().min(0),
+  currency: z.string().trim().min(3).max(10).optional(),
+  appliesToPlanIds: z.array(z.string().trim().min(1)).optional(),
+  onlyForNewOrganizations: z.boolean().optional(),
+  onlyDuringTrial: z.boolean().optional(),
+  maxRedemptions: z.number().int().min(1).optional(),
+  maxRedemptionsPerOrganization: z.number().int().min(1).optional(),
+  startsAt: z.coerce.date().optional(),
+  endsAt: z.coerce.date().optional(),
+  isActive: z.boolean().optional()
+});
+
+const discountUpdateSchema = z.object({
+  code: z.string().trim().min(3).max(60).regex(/^[a-zA-Z0-9_-]+$/).optional(),
+  discountType: z.enum(['percentage', 'fixed']).optional(),
+  discountValue: z.number().min(0).optional(),
+  currency: z.string().trim().min(3).max(10).nullable().optional(),
+  appliesToPlanIds: z.array(z.string().trim().min(1)).optional(),
+  onlyForNewOrganizations: z.boolean().optional(),
+  onlyDuringTrial: z.boolean().optional(),
+  maxRedemptions: z.number().int().min(1).nullable().optional(),
+  maxRedemptionsPerOrganization: z.number().int().min(1).nullable().optional(),
+  startsAt: z.coerce.date().nullable().optional(),
+  endsAt: z.coerce.date().nullable().optional(),
+  isActive: z.boolean().optional()
+});
+
 export class AdminController {
   constructor(private readonly service = new AdminService()) {}
 
@@ -284,6 +327,83 @@ export class AdminController {
   updateMonetizationConfig = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
     const parsed = monetizationSchema.parse(req.body);
     const data = await this.service.updateMonetizationConfig(parsed);
+    res.status(200).json({ success: true, data });
+  };
+
+  listPlans = async (_req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const data = await this.service.listPlans();
+    res.status(200).json({ success: true, data });
+  };
+
+  createPlan = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const body = planCreateSchema.parse(req.body);
+    const data = await this.service.createPlan(body);
+    res.status(201).json({ success: true, data });
+  };
+
+  updatePlan = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const body = planUpdateSchema.parse(req.body);
+    const planId = Array.isArray(req.params.planId) ? req.params.planId[0] : req.params.planId;
+    if (!planId) {
+      throw new AppError('INVALID_PLAN_ID', 400, 'Missing plan id');
+    }
+    const data = await this.service.updatePlan(planId, {
+      ...(body.name !== undefined ? { name: body.name } : {}),
+      ...(body.slug !== undefined ? { slug: body.slug } : {}),
+      ...(body.monthlyPrice !== undefined ? { monthlyPrice: body.monthlyPrice } : {}),
+      ...(body.currency !== undefined ? { currency: body.currency } : {}),
+      ...(body.maxProfessionals !== undefined ? { maxProfessionals: body.maxProfessionals } : {}),
+      ...(body.description !== undefined ? { description: body.description ?? null } : {}),
+      ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+      ...(body.isRecommended !== undefined ? { isRecommended: body.isRecommended } : {})
+    });
+    res.status(200).json({ success: true, data });
+  };
+
+  listDiscounts = async (_req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const data = await this.service.listDiscounts();
+    res.status(200).json({ success: true, data });
+  };
+
+  createDiscount = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const body = discountCreateSchema.parse(req.body);
+    const data = await this.service.createDiscount(body);
+    res.status(201).json({ success: true, data });
+  };
+
+  getDiscount = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const discountId = Array.isArray(req.params.discountId) ? req.params.discountId[0] : req.params.discountId;
+    if (!discountId) {
+      throw new AppError('INVALID_DISCOUNT_ID', 400, 'Missing discount id');
+    }
+    const data = await this.service.getDiscountById(discountId);
+    res.status(200).json({ success: true, data });
+  };
+
+  updateDiscount = async (req: AuthenticatedRequest, res: Response<ApiResponse<unknown>>): Promise<void> => {
+    const body = discountUpdateSchema.parse(req.body);
+    const discountId = Array.isArray(req.params.discountId) ? req.params.discountId[0] : req.params.discountId;
+    if (!discountId) {
+      throw new AppError('INVALID_DISCOUNT_ID', 400, 'Missing discount id');
+    }
+    const data = await this.service.updateDiscount(discountId, {
+      ...(body.code !== undefined ? { code: body.code } : {}),
+      ...(body.discountType !== undefined ? { discountType: body.discountType } : {}),
+      ...(body.discountValue !== undefined ? { discountValue: body.discountValue } : {}),
+      ...(body.currency !== undefined ? { currency: body.currency } : {}),
+      ...(body.appliesToPlanIds !== undefined ? { appliesToPlanIds: body.appliesToPlanIds } : {}),
+      ...(body.onlyForNewOrganizations !== undefined
+        ? { onlyForNewOrganizations: body.onlyForNewOrganizations }
+        : {}),
+      ...(body.onlyDuringTrial !== undefined ? { onlyDuringTrial: body.onlyDuringTrial } : {}),
+      ...(body.maxRedemptions !== undefined ? { maxRedemptions: body.maxRedemptions } : {}),
+      ...(body.maxRedemptionsPerOrganization !== undefined
+        ? { maxRedemptionsPerOrganization: body.maxRedemptionsPerOrganization }
+        : {}),
+      ...(body.startsAt !== undefined ? { startsAt: body.startsAt } : {}),
+      ...(body.endsAt !== undefined ? { endsAt: body.endsAt } : {}),
+      ...(body.isActive !== undefined ? { isActive: body.isActive } : {})
+    });
     res.status(200).json({ success: true, data });
   };
 }

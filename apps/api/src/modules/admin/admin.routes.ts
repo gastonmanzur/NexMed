@@ -11,6 +11,13 @@ adminRouter.use(requireAuth, requireRoles('admin'));
 
 adminRouter.get('/dashboard', asyncHandler(controller.dashboard));
 adminRouter.get('/summary', asyncHandler(controller.summary));
+adminRouter.get('/plans', asyncHandler(controller.listPlans));
+adminRouter.post('/plans', asyncHandler(controller.createPlan));
+adminRouter.patch('/plans/:planId', asyncHandler(controller.updatePlan));
+adminRouter.get('/discounts', asyncHandler(controller.listDiscounts));
+adminRouter.post('/discounts', asyncHandler(controller.createDiscount));
+adminRouter.get('/discounts/:discountId', asyncHandler(controller.getDiscount));
+adminRouter.patch('/discounts/:discountId', asyncHandler(controller.updateDiscount));
 adminRouter.get('/users', asyncHandler(controller.listUsers));
 adminRouter.patch('/users/:userId/role', asyncHandler(controller.updateUserRole));
 adminRouter.get('/payments', asyncHandler(controller.listPayments));

@@ -36,7 +36,9 @@ const patientItems: NavItem[] = [
 const adminItems: NavItem[] = [
   { id: 'admin-home', label: 'Inicio', to: '/admin' },
   { id: 'admin-organizations', label: 'Organizaciones', to: '/admin/organizations' },
-  { id: 'admin-subscriptions', label: 'Suscripciones', to: '/admin/subscriptions' }
+  { id: 'admin-subscriptions', label: 'Suscripciones', to: '/admin/subscriptions' },
+  { id: 'admin-plans', label: 'Planes y promociones', to: '/admin/plans' },
+  { id: 'admin-discounts', label: 'Descuentos', to: '/admin/discounts' }
 ];
 
 const initialsFor = (firstName?: string, lastName?: string, email?: string): string => {

@@ -10,7 +10,8 @@ const planSchema = new mongoose.Schema(
     currency: { type: String, required: true, default: 'ARS', trim: true },
     maxProfessionalsActive: { type: Number, required: true, min: 1 },
     status: { type: String, enum: planStatuses, required: true, default: 'active' },
-    description: { type: String, required: false, trim: true }
+    description: { type: String, required: false, trim: true },
+    isRecommended: { type: Boolean, required: true, default: false }
   },
   { timestamps: true }
 );
