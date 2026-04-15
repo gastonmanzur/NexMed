@@ -69,10 +69,14 @@ export class ProfessionalsService {
     return professionals.map((professional) => this.toProfessionalDto(professional, mappingsByProfessionalId.get(professional._id.toString()) ?? []));
   }
 
-  async createProfessional(organizationId: string, input: UpsertProfessionalInput): Promise<ProfessionalDto> {
+  async createProfessional(
+    organizationId: string,
+    input: UpsertProfessionalInput,
+    actor?: { globalRole?: 'super_admin' | 'user' }
+  ): Promise<ProfessionalDto> {
     const normalized = this.normalizeProfessionalInput(input);
     if ((normalized.status ?? 'active') === 'active') {
-      await this.assertPlanProfessionalLimit(organizationId);
+      await this.assertPlanProfessionalLimit(organizationId, actor);
     }
     await this.validateSpecialtiesBelongToOrganization(organizationId, normalized.specialtyIds ?? []);
 
@@ -122,7 +126,7 @@ export class ProfessionalsService {
     notes?: string | undefined;
     status?: ProfessionalStatus | undefined;
     specialtyIds?: string[] | undefined;
-  }): Promise<ProfessionalDto> {
+  }, actor?: { globalRole?: 'super_admin' | 'user' }): Promise<ProfessionalDto> {
     const normalized = this.normalizeProfessionalPatchInput(input);
 
     if (normalized.specialtyIds) {
@@ -141,7 +145,7 @@ export class ProfessionalsService {
         throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
       }
       if (current.status !== 'active') {
-        await this.assertPlanProfessionalLimit(organizationId);
+        await this.assertPlanProfessionalLimit(organizationId, actor);
       }
     }
 
@@ -167,14 +171,19 @@ export class ProfessionalsService {
     return this.getProfessional(organizationId, professionalId);
   }
 
-  async updateProfessionalStatus(organizationId: string, professionalId: string, status: ProfessionalStatus): Promise<ProfessionalDto> {
+  async updateProfessionalStatus(
+    organizationId: string,
+    professionalId: string,
+    status: ProfessionalStatus,
+    actor?: { globalRole?: 'super_admin' | 'user' }
+  ): Promise<ProfessionalDto> {
     if (status === 'active') {
       const current = await this.professionals.findByIdInOrganization(organizationId, professionalId);
       if (!current) {
         throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
       }
       if (current.status !== 'active') {
-        await this.assertPlanProfessionalLimit(organizationId);
+        await this.assertPlanProfessionalLimit(organizationId, actor);
       }
     }
 
@@ -319,7 +328,14 @@ export class ProfessionalsService {
 
 
 
-  private async assertPlanProfessionalLimit(organizationId: string): Promise<void> {
+  private async assertPlanProfessionalLimit(
+    organizationId: string,
+    actor?: { globalRole?: 'super_admin' | 'user' }
+  ): Promise<void> {
+    if (actor?.globalRole === 'super_admin') {
+      return;
+    }
+
     await this.plans.ensureDefaults();
 
     const subscription = await this.organizationSubscriptions.findByOrganizationId(organizationId);

@@ -78,7 +78,7 @@ export const professionalsController = {
   createProfessional: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId } = pathParamsSchema.parse(req.params);
     const input = createProfessionalSchema.parse(req.body);
-    const data = await service.createProfessional(organizationId, input);
+    const data = await service.createProfessional(organizationId, input, req.auth ? { globalRole: req.auth.globalRole } : undefined);
     res.status(201).json({ success: true, data });
   },
 
@@ -91,14 +91,14 @@ export const professionalsController = {
   updateProfessional: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
     const input = updateProfessionalSchema.parse(req.body);
-    const data = await service.updateProfessional(organizationId, professionalId, input);
+    const data = await service.updateProfessional(organizationId, professionalId, input, req.auth ? { globalRole: req.auth.globalRole } : undefined);
     res.status(200).json({ success: true, data });
   },
 
   updateProfessionalStatus: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
     const { status } = updateProfessionalStatusSchema.parse(req.body);
-    const data = await service.updateProfessionalStatus(organizationId, professionalId, status);
+    const data = await service.updateProfessionalStatus(organizationId, professionalId, status, req.auth ? { globalRole: req.auth.globalRole } : undefined);
     res.status(200).json({ success: true, data });
   },
 

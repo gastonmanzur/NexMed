@@ -82,6 +82,33 @@ describe('PaymentsService', () => {
     ).rejects.toBeInstanceOf(AppError);
   });
 
+  it('excludes super admins from user-level subscription billing flows', async () => {
+    const service = new PaymentsService(
+      { getConfig: vi.fn().mockResolvedValue({ monetizationMode: 'both', subscriptionPeriodMode: 'both' }) } as never,
+      { findById: vi.fn().mockResolvedValue({ _id: 'u1', email: 'user@test.com' }) } as never,
+      {} as never,
+      {
+        findByUserPlanPeriodWithStatuses: vi.fn().mockResolvedValue(null),
+        create: vi.fn(),
+        updateProviderData: vi.fn()
+      } as never,
+      {} as never,
+      { createSubscription: vi.fn() } as never
+    );
+
+    await expect(
+      service.createSubscription({
+        userId: 'u1',
+        globalRole: 'super_admin',
+        planCode: 'pro_monthly',
+        title: 'Plan Pro mensual',
+        amount: 1990,
+        currency: 'ARS',
+        period: 'monthly'
+      })
+    ).rejects.toMatchObject({ code: 'BILLING_NOT_APPLICABLE' });
+  });
+
   it('rejects invalid webhook payload', async () => {
     const service = new PaymentsService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     await expect(service.processWebhook({ topic: 'payment' })).rejects.toBeInstanceOf(AppError);
