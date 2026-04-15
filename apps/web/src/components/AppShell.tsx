@@ -223,15 +223,10 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     };
   }, [isNotificationsOpen]);
 
-  const items =
-    isSuperAdmin && location.pathname.startsWith('/admin')
-      ? adminItems
-      : isPatient
-        ? patientItems
-        : centerItems;
+  const items = isSuperAdmin ? adminItems : isPatient ? patientItems : centerItems;
 
   const sectionTitle =
-    isSuperAdmin && location.pathname.startsWith('/admin')
+    isSuperAdmin
       ? 'Panel Super Admin'
       : isPatient
         ? 'Portal Paciente'

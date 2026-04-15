@@ -28,6 +28,7 @@ const normalizeSubscriptionStatus = (status: string) => {
 };
 
 const inProgressSubscriptionStatuses = new Set(['pending', 'authorized', 'paused'] as const);
+const isInternalGlobalAdmin = (globalRole?: 'super_admin' | 'user'): boolean => globalRole === 'super_admin';
 
 export class PaymentsService {
   constructor(
@@ -39,7 +40,11 @@ export class PaymentsService {
     private readonly provider: PaymentProvider = new MercadoPagoProvider()
   ) {}
 
-  async createOneTimePayment(input: { userId: string; title: string; amount: number; currency: string }) {
+  async createOneTimePayment(input: { userId: string; title: string; amount: number; currency: string; globalRole?: 'super_admin' | 'user' }) {
+    if (isInternalGlobalAdmin(input.globalRole)) {
+      throw new AppError('BILLING_NOT_APPLICABLE', 409, 'Internal global admins are excluded from billing flows');
+    }
+
     const config = await this.configRepository.getConfig();
     if (config.monetizationMode === 'subscriptions_only') {
       throw new AppError('PAYMENT_MODE_DISABLED', 409, 'One-time payments are disabled by configuration');
@@ -83,12 +88,17 @@ export class PaymentsService {
 
   async createSubscription(input: {
     userId: string;
+    globalRole?: 'super_admin' | 'user';
     planCode: string;
     title: string;
     amount: number;
     currency: string;
     period: 'monthly' | 'yearly';
   }) {
+    if (isInternalGlobalAdmin(input.globalRole)) {
+      throw new AppError('BILLING_NOT_APPLICABLE', 409, 'Internal global admins are excluded from billing flows');
+    }
+
     const config = await this.configRepository.getConfig();
     if (config.monetizationMode === 'one_time_only') {
       throw new AppError('PAYMENT_MODE_DISABLED', 409, 'Subscriptions are disabled by configuration');
@@ -171,11 +181,16 @@ Array.from(inProgressSubscriptionStatuses)
 
   async getUserSubscriptionStatus(input: {
     userId: string;
+    globalRole?: 'super_admin' | 'user';
     subscriptionId?: string;
     planCode?: string;
     period?: 'monthly' | 'yearly';
     syncWithProvider?: boolean;
   }) {
+    if (isInternalGlobalAdmin(input.globalRole)) {
+      throw new AppError('BILLING_NOT_APPLICABLE', 409, 'Internal global admins are excluded from billing flows');
+    }
+
     const subscription = input.subscriptionId
       ? await this.subscriptionRepository.getById(input.subscriptionId)
       : await this.subscriptionRepository.findLatestByUser(input.userId, {

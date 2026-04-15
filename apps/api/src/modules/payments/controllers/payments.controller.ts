@@ -42,6 +42,7 @@ export class PaymentsController {
     const body = oneTimeSchema.parse(req.body);
     const result = await this.service.createOneTimePayment({
       userId: req.auth!.userId,
+      globalRole: req.auth!.globalRole,
       title: body.title,
       amount: body.amount,
       currency: body.currency
@@ -53,6 +54,7 @@ export class PaymentsController {
     const body = subscriptionSchema.parse(req.body);
     const result = await this.service.createSubscription({
       userId: req.auth!.userId,
+      globalRole: req.auth!.globalRole,
       planCode: body.planCode,
       title: body.title,
       amount: body.amount,
@@ -79,6 +81,7 @@ export class PaymentsController {
     const parsedQuery = subscriptionStatusQuerySchema.parse(req.query);
     const result = await this.service.getUserSubscriptionStatus({
       userId: req.auth!.userId,
+      globalRole: req.auth!.globalRole,
       ...(parsedQuery.subscriptionId ? { subscriptionId: parsedQuery.subscriptionId } : {}),
       ...(parsedQuery.planCode ? { planCode: parsedQuery.planCode } : {}),
       ...(parsedQuery.period ? { period: parsedQuery.period } : {}),
