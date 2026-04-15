@@ -48,7 +48,11 @@ export class PlanRepository {
     ] as const;
 
     for (const plan of defaults) {
-      await PlanModel.findOneAndUpdate({ code: plan.code }, { $set: plan }, { upsert: true, new: true }).lean();
+      await PlanModel.findOneAndUpdate(
+        { code: plan.code },
+        { $setOnInsert: plan },
+        { upsert: true, new: true }
+      ).lean();
     }
   }
 }
