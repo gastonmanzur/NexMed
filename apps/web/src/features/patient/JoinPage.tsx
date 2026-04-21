@@ -34,5 +34,41 @@ export const JoinPage = (): ReactElement => {
     })();
   }, [accessToken, navigate, tokenOrSlug, user]);
 
-  return <main style={{ maxWidth: 640, margin: '2rem auto', padding: '1rem' }}><Card title="Vinculación de centro">{loading ? <p>Cargando...</p> : null}{!loading && !error ? <><p>Estás por vincularte a <strong>{centerName}</strong>.</p>{!user ? <p><Link to="/login">Iniciar sesión</Link> o <Link to="/register">crear cuenta</Link> para continuar.</p> : <p>Resolviendo vinculación...</p>}</> : null}{error ? <p style={{ color: 'crimson' }}>{error}</p> : null}</Card></main>;
+  return (
+    <main style={{ maxWidth: 640, margin: '2rem auto', padding: '1rem' }}>
+      <Card title="Vinculación de centro">
+        <section className="nx-join">
+          {loading ? <p className="nx-join__status">Cargando...</p> : null}
+
+          {!loading && !error ? (
+            <>
+              <p className="nx-join__lead">
+                Estás por vincularte a <strong>{centerName}</strong>.
+              </p>
+
+              {!user ? (
+                <div className="nx-join__actions" role="group" aria-label="Acciones de acceso para completar la vinculación">
+                  <Link className="nx-btn nx-join__action" to="/login">Iniciar sesión</Link>
+                  <Link className="nx-btn-secondary nx-join__action" to="/register">Crear cuenta</Link>
+                </div>
+              ) : (
+                <p className="nx-join__status">Resolviendo vinculación...</p>
+              )}
+            </>
+          ) : null}
+
+          {error ? (
+            <>
+              <p className="nx-join__error">{error}</p>
+              {user ? (
+                <div className="nx-join__actions">
+                  <Link className="nx-btn nx-join__action" to="/patient/organizations">Ir a Mis clínicas</Link>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </section>
+      </Card>
+    </main>
+  );
 };
