@@ -750,6 +750,44 @@ button, input, select, textarea { font: inherit; }
   color: var(--text-soft);
 }
 
+.nx-join {
+  display: grid;
+  gap: 1rem;
+}
+
+.nx-join__lead {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.nx-join__status {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.nx-join__error {
+  margin: 0;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  color: var(--danger);
+  background: var(--danger-bg);
+  font-size: 0.9rem;
+}
+
+.nx-join__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.15rem;
+}
+
+.nx-join__action {
+  min-width: 176px;
+  justify-content: center;
+}
+
 .nx-invite {
   display: grid;
   gap: 1rem;
@@ -834,6 +872,18 @@ button, input, select, textarea { font: inherit; }
   .nx-page { padding: 1rem; }
   .nx-user__meta { display: none; }
   .nx-notifications-dropdown { width: min(92vw, 380px); }
+}
+
+@media (max-width: 620px) {
+  .nx-join__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .nx-join__action {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 /* --- 2026 visual refresh: premium digital health SaaS --- */
