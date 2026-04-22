@@ -316,7 +316,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
             <div className="nx-mobile-nav" ref={mobileNavRef}>
               <button
                 type="button"
-                className={`nx-mobile-nav__trigger${isMobileNavOpen ? ' is-open' : ''}`}
+                className={`nx-mobile-nav-toggle${isMobileNavOpen ? ' is-open' : ''}`}
                 aria-label="Abrir menú de navegación"
                 aria-expanded={isMobileNavOpen}
                 aria-controls="nx-mobile-nav-panel"
@@ -331,7 +331,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
               {isMobileNavOpen ? (
                 <nav id="nx-mobile-nav-panel" className="nx-mobile-nav__panel" aria-label="Menú de navegación">
-                  {renderNavigationItems('nx-mobile-nav__link', () => {
+                  {renderNavigationItems('nx-mobile-nav__item', () => {
                     setIsMobileNavOpen(false);
                   })}
                 </nav>
