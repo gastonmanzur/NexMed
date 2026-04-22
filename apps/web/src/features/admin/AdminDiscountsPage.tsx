@@ -53,7 +53,7 @@ export const AdminDiscountsPage = (): ReactElement => {
   return (
     <main className="nx-page">
       <Card title="Descuentos" subtitle="Cupones y promociones básicas para nuevas suscripciones.">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="nx-actions-row">
           <p style={{ margin: 0, color: '#5f6c80' }}>Los admins globales internos no aplican descuentos para sí mismos.</p>
           <Link className="nx-btn" to="/admin/discounts/new">Nuevo descuento</Link>
         </div>
@@ -86,7 +86,7 @@ export const AdminDiscountsPage = (): ReactElement => {
                   <td>{item.redemptionCount} / {item.maxRedemptions ?? '∞'}</td>
                   <td><span className={item.isActive ? 'nx-badge' : 'nx-badge nx-badge--danger'}>{item.isActive ? 'Activo' : 'Inactivo'}</span></td>
                   <td>{item.appliesToPlanIds.length > 0 ? `${item.appliesToPlanIds.length} plan(es)` : 'Todos los planes'}</td>
-                  <td style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                  <td className="nx-table-cell-actions">
                     <Link className="nx-btn-secondary" to={`/admin/discounts/${item.id}`}>Editar</Link>
                     <button className="nx-btn-secondary" onClick={() => void toggleActive(item)}>{item.isActive ? 'Desactivar' : 'Activar'}</button>
                   </td>

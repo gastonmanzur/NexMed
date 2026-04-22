@@ -72,15 +72,15 @@ export const AppointmentsListPage = (): ReactElement => {
   return (
     <main className="nx-page">
       <Card title="Turnos" subtitle="Listado completo con filtros por profesional, estado y rango de fechas.">
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className="nx-actions-row nx-actions-row--start">
           <Link className="nx-btn" to="/app">Volver al inicio</Link>
           {canManage ? <Link className="nx-btn" to="/app/appointments/new">Crear turno</Link> : null}
           <button type="button" className="nx-btn-secondary" onClick={() => void load()} disabled={loading}>Recargar</button>
         </div>
 
         <form
-          className="nx-form-grid"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', marginTop: '0.95rem', alignItems: 'end' }}
+          className="nx-form-grid nx-form-grid--filters"
+          style={{ marginTop: '0.95rem' }}
           onSubmit={async (event) => {
             event.preventDefault();
             await load();
@@ -152,7 +152,7 @@ export const AppointmentsListPage = (): ReactElement => {
                     <td>{formatDateTime(appointment.endAt)}</td>
                     <td><span className="nx-badge">{appointment.status}</span></td>
                     <td>{appointment.source}</td>
-                    <td style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <td className="nx-table-cell-actions">
                       <Link className="nx-btn-secondary" to={`/app/appointments/${appointment.id}`}>Ver</Link>
                       {canManage && appointment.status === 'booked' ? (
                         <>

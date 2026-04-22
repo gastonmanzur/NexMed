@@ -126,7 +126,7 @@ export const AdminPlansPage = (): ReactElement => {
   return (
     <main className="nx-page">
       <Card title="Planes" subtitle="Gestioná precios, límites y recomendación comercial.">
-        <form className="nx-form-grid" onSubmit={(event) => void onSubmit(event)} style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <form className="nx-form-grid nx-form-grid--cols-3" onSubmit={(event) => void onSubmit(event)}>
           <label className="nx-field">
             Nombre
             <input value={name} onChange={(event) => setName(event.target.value)} required />
@@ -151,11 +151,11 @@ export const AdminPlansPage = (): ReactElement => {
             Descripción
             <input value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
-          <label className="nx-field" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', alignSelf: 'end' }}>
+          <label className="nx-field nx-checkbox-field">
             <input type="checkbox" checked={isRecommended} onChange={(event) => setIsRecommended(event.target.checked)} />
             Plan recomendado
           </label>
-          <div style={{ display: 'flex', alignItems: 'end', gap: '0.5rem' }}>
+          <div className="nx-form-actions">
             <button className="nx-btn" type="submit" disabled={saving}>{saving ? 'Guardando...' : title}</button>
             {editingId ? <button type="button" className="nx-btn-secondary" onClick={resetForm}>Cancelar</button> : null}
           </div>
@@ -187,7 +187,7 @@ export const AdminPlansPage = (): ReactElement => {
                   <td>{item.maxProfessionals}</td>
                   <td><span className={item.isActive ? 'nx-badge' : 'nx-badge nx-badge--danger'}>{item.isActive ? 'Activo' : 'Inactivo'}</span></td>
                   <td>{item.isRecommended ? <span className="nx-badge">Sí</span> : '-'}</td>
-                  <td style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                  <td className="nx-table-cell-actions">
                     <button className="nx-btn-secondary" onClick={() => startEdit(item)}>Editar</button>
                     <button className="nx-btn-secondary" onClick={() => void toggleActive(item)}>{item.isActive ? 'Desactivar' : 'Activar'}</button>
                     {!item.isRecommended ? <button className="nx-btn-secondary" onClick={() => void setRecommendedPlan(item)}>Recomendar</button> : null}

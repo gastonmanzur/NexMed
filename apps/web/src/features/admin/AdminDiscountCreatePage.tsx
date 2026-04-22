@@ -71,7 +71,7 @@ export const AdminDiscountCreatePage = (): ReactElement => {
   return (
     <main className="nx-page">
       <Card title="Nuevo descuento" subtitle="Creá un cupón con reglas básicas para trial y organizaciones nuevas.">
-        <form className="nx-form-grid" onSubmit={(event) => void onSubmit(event)} style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+        <form className="nx-form-grid nx-form-grid--cols-2" onSubmit={(event) => void onSubmit(event)}>
           <label className="nx-field">
             Código
             <input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} required />
@@ -109,9 +109,9 @@ export const AdminDiscountCreatePage = (): ReactElement => {
             Fin
             <input type="date" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} />
           </label>
-          <div className="nx-field" style={{ gridColumn: '1 / -1' }}>
+          <div className="nx-field nx-form-grid__full">
             Alcance por plan (vacío = todos)
-            <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+            <div className="nx-chip-group">
               {plans.map((plan) => (
                 <label key={plan.id} className="nx-badge" style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
                   <input type="checkbox" checked={appliesToPlanIds.includes(plan.id)} onChange={() => togglePlan(plan.id)} />
@@ -121,20 +121,20 @@ export const AdminDiscountCreatePage = (): ReactElement => {
             </div>
           </div>
 
-          <label className="nx-field" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label className="nx-field nx-checkbox-field">
             <input type="checkbox" checked={onlyForNewOrganizations} onChange={(event) => setOnlyForNewOrganizations(event.target.checked)} />
             Solo organizaciones nuevas
           </label>
-          <label className="nx-field" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label className="nx-field nx-checkbox-field">
             <input type="checkbox" checked={onlyDuringTrial} onChange={(event) => setOnlyDuringTrial(event.target.checked)} />
             Solo durante trial
           </label>
-          <label className="nx-field" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label className="nx-field nx-checkbox-field">
             <input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />
             Activo
           </label>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="nx-form-actions">
             <button className="nx-btn" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Crear descuento'}</button>
             <Link className="nx-btn-secondary" to="/admin/discounts">Cancelar</Link>
           </div>
