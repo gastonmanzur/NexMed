@@ -59,7 +59,7 @@ export const AdminOrganizationsPage = (): ReactElement => {
   return (
     <main className="nx-page">
       <Card title="Organizaciones" subtitle="Listado comercial y operativo para seguimiento global.">
-        <div className="nx-form-grid" style={{ gridTemplateColumns: '2fr 1fr 1fr' }}>
+        <div className="nx-form-grid nx-form-grid--admin-filters-3">
           <label className="nx-field">
             Buscar por nombre
             <input value={search} onChange={(event: ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)} placeholder="Ej: Centro Med Norte" />

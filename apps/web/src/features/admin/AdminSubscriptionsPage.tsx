@@ -42,7 +42,7 @@ export const AdminSubscriptionsPage = (): ReactElement => {
   return (
     <main className="nx-page">
       <Card title="Suscripciones" subtitle="Estado comercial por organización.">
-        <div className="nx-form-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+        <div className="nx-form-grid nx-form-grid--admin-filters-2">
           <label className="nx-field">
             Buscar organización
             <input value={search} onChange={(event: ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)} placeholder="Buscar por nombre" />

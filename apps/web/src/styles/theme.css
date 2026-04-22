@@ -1497,3 +1497,223 @@ body {
     flex-direction: column;
   }
 }
+
+/* --- 2026 responsive audit --- */
+.nx-auth-page {
+  padding: 1rem;
+}
+
+.nx-main {
+  min-width: 0;
+}
+
+.nx-page > * {
+  min-width: 0;
+}
+
+.nx-card__header {
+  flex-wrap: wrap;
+}
+
+.nx-form-grid--cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nx-form-grid--cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.nx-form-grid--admin-filters-2 {
+  grid-template-columns: 2fr 1fr;
+}
+
+.nx-form-grid--admin-filters-3 {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+
+.nx-form-grid--filters {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+}
+
+.nx-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.nx-actions-row--start {
+  justify-content: flex-start;
+}
+
+.nx-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.nx-form-grid__full {
+  grid-column: 1 / -1;
+}
+
+.nx-checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nx-chip-group {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.nx-table td.nx-table-cell-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nx-table td,
+.nx-table th {
+  vertical-align: top;
+}
+
+.nx-table td {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1024px) {
+  .nx-page {
+    padding: 1.2rem;
+    gap: 1rem;
+  }
+
+  .nx-card {
+    padding: 1.15rem 1.1rem;
+    border-radius: 20px;
+  }
+
+  .nx-topbar__actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 768px) {
+  .nx-page {
+    padding: 0.95rem;
+  }
+
+  .nx-auth-shell {
+    padding: 1rem;
+    border-radius: 20px;
+  }
+
+  .nx-auth-header h1 {
+    font-size: 1.45rem;
+  }
+
+  .nx-btn,
+  .nx-btn-secondary,
+  .nx-btn-danger {
+    width: 100%;
+  }
+
+  .nx-auth-actions {
+    gap: 0.55rem;
+  }
+
+  .nx-form-grid--cols-2,
+  .nx-form-grid--cols-3,
+  .nx-form-grid--admin-filters-2,
+  .nx-form-grid--admin-filters-3,
+  .nx-form-grid--filters {
+    grid-template-columns: 1fr !important;
+  }
+
+  .nx-form-actions {
+    width: 100%;
+  }
+
+  .nx-form-actions > * {
+    flex: 1 1 100%;
+  }
+
+  .nx-topbar {
+    align-items: flex-start;
+  }
+
+  .nx-topbar__title {
+    white-space: normal;
+    line-height: 1.2;
+    max-width: 100%;
+  }
+
+  .nx-notifications-dropdown {
+    width: min(94vw, 380px);
+    right: -4px;
+  }
+
+  .nx-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-table-wrap {
+    border-radius: 12px;
+  }
+
+  .nx-table th,
+  .nx-table td {
+    padding: 0.58rem;
+    font-size: 0.84rem;
+    min-width: 110px;
+  }
+
+  .nx-table td.nx-table-cell-actions {
+    min-width: 220px;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .nx-sidebar {
+    padding: 1rem 0.75rem;
+  }
+
+  .nx-topbar {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .nx-page {
+    padding: 0.75rem;
+    gap: 0.85rem;
+  }
+
+  .nx-card {
+    padding: 0.95rem 0.85rem;
+    border-radius: 16px;
+  }
+
+  .nx-field input,
+  .nx-field select,
+  .nx-field textarea {
+    min-height: 48px;
+    padding: 0.62rem 0.75rem;
+  }
+
+  .nx-auth-links {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nx-notifications-dropdown {
+    width: 95vw;
+    right: -8px;
+  }
+}
