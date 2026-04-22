@@ -169,7 +169,7 @@ button, input, select, textarea { font: inherit; }
 .nx-topbar__title { margin: 0; font-size: 0.92rem; color: var(--text-muted); font-weight: 560; }
 .nx-topbar__actions { display: flex; align-items: center; gap: 0.7rem; }
 .nx-mobile-nav { display: none; position: relative; }
-.nx-mobile-nav__trigger {
+.nx-mobile-nav-toggle {
   width: 40px;
   height: 40px;
   border-radius: 999px;
@@ -183,16 +183,16 @@ button, input, select, textarea { font: inherit; }
   cursor: pointer;
   box-shadow: var(--shadow-sm);
 }
-.nx-mobile-nav__trigger span {
+.nx-mobile-nav-toggle span {
   width: 16px;
   height: 1.8px;
   border-radius: 999px;
   background: #334155;
   transition: transform 140ms ease, opacity 140ms ease;
 }
-.nx-mobile-nav__trigger.is-open span:nth-child(1) { transform: translateY(5.8px) rotate(45deg); }
-.nx-mobile-nav__trigger.is-open span:nth-child(2) { opacity: 0; }
-.nx-mobile-nav__trigger.is-open span:nth-child(3) { transform: translateY(-5.8px) rotate(-45deg); }
+.nx-mobile-nav-toggle.is-open span:nth-child(1) { transform: translateY(5.8px) rotate(45deg); }
+.nx-mobile-nav-toggle.is-open span:nth-child(2) { opacity: 0; }
+.nx-mobile-nav-toggle.is-open span:nth-child(3) { transform: translateY(-5.8px) rotate(-45deg); }
 .nx-mobile-nav__panel {
   position: absolute;
   top: calc(100% + 10px);
@@ -207,7 +207,7 @@ button, input, select, textarea { font: inherit; }
   gap: 0.25rem;
   z-index: 95;
 }
-.nx-mobile-nav__link {
+.nx-mobile-nav__item {
   display: flex;
   align-items: center;
   gap: 0.48rem;
@@ -217,8 +217,8 @@ button, input, select, textarea { font: inherit; }
   text-decoration: none;
   font-weight: 560;
 }
-.nx-mobile-nav__link:hover { background: var(--primary-soft); text-decoration: none; color: var(--text); }
-.nx-mobile-nav__link.is-active {
+.nx-mobile-nav__item:hover { background: var(--primary-soft); text-decoration: none; color: var(--text); }
+.nx-mobile-nav__item.is-active {
   background: var(--primary-soft);
   color: var(--primary-hover);
   font-weight: 650;
@@ -1664,6 +1664,20 @@ body {
   }
 }
 
+@media (max-width: 900px) {
+  .nx-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-sidebar {
+    display: none;
+  }
+
+  .nx-mobile-nav {
+    display: block;
+  }
+}
+
 @media (max-width: 768px) {
   .nx-page {
     padding: 0.95rem;
@@ -1741,10 +1755,6 @@ body {
 }
 
 @media (max-width: 480px) {
-  .nx-sidebar {
-    padding: 1rem 0.75rem;
-  }
-
   .nx-topbar {
     padding: 0.65rem 0.75rem;
   }
