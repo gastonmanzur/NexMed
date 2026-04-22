@@ -108,7 +108,9 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
   const [loadingDropdown, setLoadingDropdown] = useState(false);
   const [loadingMarkAll, setLoadingMarkAll] = useState(false);
   const [dropdownError, setDropdownError] = useState('');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const mobileNavRef = useRef<HTMLDivElement | null>(null);
 
   const membership = memberships.find(
     (item) => item.organizationId === activeOrganizationId && item.status === 'active'
@@ -225,7 +227,52 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     };
   }, [isNotificationsOpen]);
 
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(event.target as Node)) {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [isMobileNavOpen]);
+
   const items = isSuperAdmin ? adminItems : isPatient ? patientItems : centerItems;
+  const renderNavigationItems = (className: string, onNavigate?: () => void) =>
+    items.map((item) => {
+      const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+
+      return (
+        <Link
+          key={item.id}
+          to={item.to}
+          className={`${className}${active ? ' is-active' : ''}`}
+          onClick={onNavigate}
+        >
+          <span className="nx-nav-link__dot" aria-hidden="true" />
+          {item.label}
+        </Link>
+      );
+    });
 
   const sectionTitle =
     isSuperAdmin
@@ -257,21 +304,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
         </div>
 
         <nav className="nx-nav">
-          {items.map((item) => {
-            const active =
-              location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
-
-            return (
-              <Link
-                key={item.id}
-                to={item.to}
-                className={`nx-nav-link${active ? ' is-active' : ''}`}
-              >
-                <span className="nx-nav-link__dot" aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
+          {renderNavigationItems('nx-nav-link')}
         </nav>
       </aside>
 
@@ -280,6 +313,31 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
           <p className="nx-topbar__title">{sectionTitle}</p>
 
           <div className="nx-topbar__actions">
+            <div className="nx-mobile-nav" ref={mobileNavRef}>
+              <button
+                type="button"
+                className={`nx-mobile-nav__trigger${isMobileNavOpen ? ' is-open' : ''}`}
+                aria-label="Abrir menú de navegación"
+                aria-expanded={isMobileNavOpen}
+                aria-controls="nx-mobile-nav-panel"
+                onClick={() => {
+                  setIsMobileNavOpen((current) => !current);
+                }}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+
+              {isMobileNavOpen ? (
+                <nav id="nx-mobile-nav-panel" className="nx-mobile-nav__panel" aria-label="Menú de navegación">
+                  {renderNavigationItems('nx-mobile-nav__link', () => {
+                    setIsMobileNavOpen(false);
+                  })}
+                </nav>
+              ) : null}
+            </div>
+
             {canUseNotifications ? (
               <div className="nx-notifications" ref={dropdownRef}>
                 <button
