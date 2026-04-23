@@ -6,6 +6,7 @@ import type {
   OrganizationProfileDto,
   OrganizationSettingsDto
 } from '@starter/shared-types';
+import { env } from '../../../config/env.js';
 import { AppError } from '../../../core/errors.js';
 import { AppointmentModel } from '../../appointments/models/appointment.model.js';
 import { ProfessionalModel } from '../../professionals/models/professional.model.js';
@@ -463,19 +464,30 @@ export class OrganizationService {
       const starter = await this.plans.findByCode('starter');
       if (!starter) throw new AppError('PLAN_NOT_FOUND', 404, 'Default plan not found');
 
-      const trialStartedAt = new Date();
-      const trialExpiresAt = new Date(trialStartedAt);
-      trialExpiresAt.setDate(trialExpiresAt.getDate() + 14);
+      const now = new Date();
+      if (env.DISABLE_FREE_TRIAL) {
+        subscription = await this.organizationSubscriptions.upsertByOrganizationId({
+          organizationId: input.organizationId,
+          planId: starter._id.toString(),
+          provider: 'internal',
+          status: 'past_due',
+          startedAt: now,
+          autoRenew: false
+        });
+      } else {
+        const trialExpiresAt = new Date(now);
+        trialExpiresAt.setDate(trialExpiresAt.getDate() + 14);
 
-      subscription = await this.organizationSubscriptions.upsertByOrganizationId({
-        organizationId: input.organizationId,
-        planId: starter._id.toString(),
-        provider: 'internal',
-        status: 'trial',
-        startedAt: trialStartedAt,
-        expiresAt: trialExpiresAt,
-        autoRenew: false
-      });
+        subscription = await this.organizationSubscriptions.upsertByOrganizationId({
+          organizationId: input.organizationId,
+          planId: starter._id.toString(),
+          provider: 'internal',
+          status: 'trial',
+          startedAt: now,
+          expiresAt: trialExpiresAt,
+          autoRenew: false
+        });
+      }
     }
 
     const plan = await this.plans.findById(subscription.planId.toString());
