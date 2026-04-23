@@ -23,7 +23,7 @@ export class PlanRepository {
         maxProfessionalsActive: 3,
         status: 'active',
         isRecommended: false,
-        description: 'Plan base para consultorios que completaron su prueba de 14 días.'
+        description: 'Plan base para consultorios que necesitan comenzar con una suscripción paga.'
       },
       {
         code: 'growth',

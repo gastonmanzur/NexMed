@@ -112,7 +112,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
       return {
         label: 'Prueba gratuita vencida',
         tone: 'danger',
-        message: 'Tu prueba gratuita de 14 días terminó. Elegí un plan pago para continuar sin restricciones.'
+        message: 'Tu prueba gratuita terminó. Elegí un plan pago para continuar sin restricciones.'
       };
     }
 
@@ -121,7 +121,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
         label: 'Prueba gratuita activa',
         tone: 'active',
         message: trialDaysRemaining === null
-          ? 'Tu organización está en prueba gratuita de 14 días.'
+          ? 'Tu organización está en prueba gratuita.'
           : `Te quedan ${trialDaysRemaining} día${trialDaysRemaining === 1 ? '' : 's'} de prueba gratuita.`
       };
     }
@@ -151,7 +151,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
 
   return (
     <main className="nx-page nx-subscription-page">
-      <Card title="Suscripción del centro" subtitle="Sin plan gratuito permanente: 14 días de prueba y luego suscripción paga.">
+      <Card title="Suscripción del centro" subtitle="Sin plan gratuito permanente: tu centro necesita una suscripción paga para operar sin restricciones.">
         {loading ? <p>Cargando estado de suscripción...</p> : null}
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
 
@@ -181,7 +181,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
         ) : null}
       </Card>
 
-      <Card title="Planes disponibles" subtitle="Todos los planes son pagos luego de la prueba gratuita inicial de 14 días.">
+      <Card title="Planes disponibles" subtitle="Todos los planes son pagos y se activan al iniciar la suscripción.">
         <div id="planes-disponibles" className="nx-subscription-grid">
           {plans.map((plan) => {
             const isCurrent = summary?.plan.id === plan.id;

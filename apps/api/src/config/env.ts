@@ -52,6 +52,9 @@ const envSchema = z
     MERCADOPAGO_CHECKOUT_FAILURE_URL: z.string().url().optional(),
     MERCADOPAGO_CHECKOUT_PENDING_URL: z.string().url().optional(),
     MERCADOPAGO_STATEMENT_DESCRIPTOR: z.string().max(16).optional(),
+    DISABLE_FREE_TRIAL: z
+      .union([z.boolean(), z.enum(['true', 'false']), z.string().length(0)])
+      .optional(),
     AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
     WEBHOOK_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -84,7 +87,13 @@ const envSchema = z
             ? true
             : data.AUTH_COOKIE_SECURE === 'false'
               ? false
-              : data.NODE_ENV === 'production'
+              : data.NODE_ENV === 'production',
+      DISABLE_FREE_TRIAL:
+        typeof data.DISABLE_FREE_TRIAL === 'boolean'
+          ? data.DISABLE_FREE_TRIAL
+          : data.DISABLE_FREE_TRIAL === 'true'
+            ? true
+            : false
     };
   })
   .superRefine((data, ctx) => {
