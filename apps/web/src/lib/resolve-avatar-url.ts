@@ -1,6 +1,6 @@
 const ABSOLUTE_URL_REGEX = /^https?:\/\//i;
 
-const getBackendBaseOrigin = (): string => {
+const getBackendBaseUrl = (): string => {
   const apiUrl = import.meta.env.VITE_API_URL;
 
   if (!apiUrl) {
@@ -19,5 +19,5 @@ export const resolveAvatarUrl = (avatarUrl: string): string => {
     return avatarUrl;
   }
 
-  return new URL(avatarUrl, getBackendBaseOrigin()).toString();
+  return new URL(avatarUrl, getBackendBaseUrl()).toString();
 };
