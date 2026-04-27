@@ -56,10 +56,6 @@ export class MercadoPagoProvider implements PaymentProvider {
       statement_descriptor: env.MERCADOPAGO_STATEMENT_DESCRIPTOR
     };
 
-    console.log('MP create preference request body =>', requestBody);
-    console.log('MP access token loaded =>', Boolean(env.MERCADOPAGO_ACCESS_TOKEN));
-    console.log('MP access token prefix =>', env.MERCADOPAGO_ACCESS_TOKEN?.slice(0, 12));
-
     let response: globalThis.Response;
 
     try {
@@ -69,13 +65,10 @@ export class MercadoPagoProvider implements PaymentProvider {
         body: JSON.stringify(requestBody)
       });
     } catch (error) {
-      console.error('MP fetch error =>', error);
       throw new AppError('PAYMENT_PROVIDER_ERROR', 502, `Mercado Pago request failed before response: ${String(error)}`);
     }
 
     const rawText = await response.text();
-    console.log('MP create preference status =>', response.status);
-    console.log('MP create preference raw response =>', rawText);
 
     let payload: { id?: string; init_point?: string; sandbox_init_point?: string } = {};
     try {
@@ -100,6 +93,10 @@ export class MercadoPagoProvider implements PaymentProvider {
   }
 
   async createSubscription(input: CreateSubscriptionInput): Promise<ProviderCheckoutResponse> {
+    if (!env.MERCADOPAGO_CHECKOUT_SUCCESS_URL) {
+      throw new AppError('PAYMENT_PROVIDER_NOT_CONFIGURED', 500, 'Mercado Pago checkout success URL is not configured');
+    }
+
     const response = await fetch(`${this.apiBaseUrl}/preapproval`, {
       method: 'POST',
       headers: this.headers,

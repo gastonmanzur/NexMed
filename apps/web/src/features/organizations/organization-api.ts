@@ -231,7 +231,7 @@ export const organizationApi = {
     return result.data;
   },
 
-  getSubscription: async (accessToken: string, organizationId: string): Promise<{
+  getSubscription: async (accessToken: string, organizationId: string, options?: { sync?: boolean }): Promise<{
     subscription: {
       id: string;
       status: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
@@ -252,6 +252,7 @@ export const organizationApi = {
     };
     limits: { maxProfessionalsActive: number };
   }> => {
+    const query = options?.sync ? '?sync=true' : '';
     const result = await request<{ success: true; data: {
       subscription: {
         id: string;
@@ -272,7 +273,7 @@ export const organizationApi = {
         description: string | null;
       };
       limits: { maxProfessionalsActive: number };
-    } }>(`/organizations/${organizationId}/subscription`, {
+    } }>(`/organizations/${organizationId}/subscription${query}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` }
     });

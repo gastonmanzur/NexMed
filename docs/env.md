@@ -45,6 +45,7 @@
 - `MONETIZATION_MODE=one_time_only|subscriptions_only|both`
 - `SUBSCRIPTION_PERIOD_MODE=monthly|yearly|both`
 - `DISABLE_FREE_TRIAL=true|false` (si es `true`, organizaciones nuevas inician con estado `past_due` en vez de `trial`)
+- `TRIAL_DAYS=14` (usar `0` para desactivar trial sin tocar código; `DISABLE_FREE_TRIAL=true` tiene prioridad)
 - `MERCADOPAGO_ACCESS_TOKEN=<private token>`
 - `MP_ACCESS_TOKEN=<alias opcional de MERCADOPAGO_ACCESS_TOKEN>`
 - `MP_PUBLIC_KEY=<clave pública para frontend, opcional en esta etapa>`

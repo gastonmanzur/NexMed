@@ -18,6 +18,8 @@ import { OrganizationSettingsRepository } from '../repositories/organization-set
 import { OrganizationAccessLinkRepository } from '../repositories/organization-access-link.repository.js';
 import { PlanRepository } from '../../payments/repositories/plan.repository.js';
 import { OrganizationSubscriptionRepository } from '../../payments/repositories/organization-subscription.repository.js';
+import { UserRepository } from '../../auth/repositories/user.repository.js';
+import { MercadoPagoProvider } from '../../payments/providers/mercadopago.provider.js';
 
 interface CreateOrganizationInput {
   name: string;
@@ -64,7 +66,9 @@ export class OrganizationService {
     private readonly settings = new OrganizationSettingsRepository(),
     private readonly accessLinks = new OrganizationAccessLinkRepository(),
     private readonly plans = new PlanRepository(),
-    private readonly organizationSubscriptions = new OrganizationSubscriptionRepository()
+    private readonly organizationSubscriptions = new OrganizationSubscriptionRepository(),
+    private readonly users = new UserRepository(),
+    private readonly paymentProvider = new MercadoPagoProvider()
   ) {}
 
   async createOrganization(actorUserId: string, input: CreateOrganizationInput): Promise<{ organization: OrganizationDto; membership: OrganizationMembershipDto }> {
@@ -465,7 +469,8 @@ export class OrganizationService {
       if (!starter) throw new AppError('PLAN_NOT_FOUND', 404, 'Default plan not found');
 
       const now = new Date();
-      if (env.DISABLE_FREE_TRIAL) {
+      const trialDays = env.DISABLE_FREE_TRIAL ? 0 : env.TRIAL_DAYS;
+      if (trialDays <= 0) {
         subscription = await this.organizationSubscriptions.upsertByOrganizationId({
           organizationId: input.organizationId,
           planId: starter._id.toString(),
@@ -476,7 +481,7 @@ export class OrganizationService {
         });
       } else {
         const trialExpiresAt = new Date(now);
-        trialExpiresAt.setDate(trialExpiresAt.getDate() + 14);
+        trialExpiresAt.setDate(trialExpiresAt.getDate() + trialDays);
 
         subscription = await this.organizationSubscriptions.upsertByOrganizationId({
           organizationId: input.organizationId,
@@ -534,26 +539,75 @@ export class OrganizationService {
       throw new AppError('PLAN_NOT_FOUND', 404, 'Plan not found');
     }
 
-    const now = new Date();
-    const expiresAt = new Date(now);
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    const actorUser = await this.users.findById(input.actorUserId);
+    if (!actorUser) {
+      throw new AppError('USER_NOT_FOUND', 404, 'User not found');
+    }
+
+    const checkout = await this.paymentProvider.createSubscription({
+      externalReference: `org_${input.organizationId}_${randomBytes(8).toString('hex')}`,
+      reason: `Suscripción ${plan.name} - NexMed`,
+      amount: plan.price,
+      currency: plan.currency,
+      payerEmail: actorUser.email,
+      frequency: 1,
+      frequencyType: 'months'
+    });
 
     const subscription = await this.organizationSubscriptions.upsertByOrganizationId({
       organizationId: input.organizationId,
       planId: plan._id.toString(),
-      provider: 'manual',
-      providerReference: `placeholder_${randomBytes(6).toString('hex')}`,
-      status: 'active',
-      startedAt: now,
-      expiresAt,
+      provider: 'mercadopago',
+      providerReference: checkout.providerOrderId,
+      status: 'past_due',
+      startedAt: new Date(),
       autoRenew: true
     });
 
     return {
-      checkoutUrl: `/app/subscription?organizationId=${encodeURIComponent(input.organizationId)}&status=started`,
+      checkoutUrl: checkout.initPoint,
       subscriptionId: subscription._id.toString(),
       status: subscription.status
     };
+  }
+
+  async syncOrganizationSubscriptionForUser(input: { organizationId: string; actorUserId: string }) {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active') {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
+
+    const current = await this.organizationSubscriptions.findByOrganizationId(input.organizationId);
+    if (!current) {
+      throw new AppError('SUBSCRIPTION_NOT_FOUND', 404, 'Subscription not found');
+    }
+
+    if (current.provider !== 'mercadopago' || !current.providerReference) {
+      return this.getOrganizationSubscriptionForUser(input);
+    }
+
+    const providerStatus = await this.paymentProvider.getSubscriptionStatus(current.providerReference);
+    const mappedStatus: 'active' | 'past_due' | 'suspended' | 'canceled' =
+      providerStatus.status === 'authorized'
+        ? 'active'
+        : providerStatus.status === 'paused'
+          ? 'suspended'
+          : providerStatus.status === 'cancelled' || providerStatus.status === 'expired'
+            ? 'canceled'
+            : 'past_due';
+
+    await this.organizationSubscriptions.upsertByOrganizationId({
+      organizationId: input.organizationId,
+      planId: current.planId.toString(),
+      provider: current.provider,
+      providerReference: current.providerReference,
+      status: mappedStatus,
+      startedAt: current.startedAt ?? new Date(),
+      ...(current.expiresAt ? { expiresAt: current.expiresAt } : {}),
+      ...(typeof current.autoRenew === 'boolean' ? { autoRenew: current.autoRenew } : {})
+    });
+
+    return this.getOrganizationSubscriptionForUser(input);
   }
 
   async getPlanLimitSnapshot(organizationId: string): Promise<{ maxProfessionalsActive: number; subscriptionStatus: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled' } | null> {
