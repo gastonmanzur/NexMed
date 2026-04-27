@@ -6,8 +6,6 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { specialtiesApi } from './specialties-api';
 
-const containerStyle = { maxWidth: 780, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' };
-
 const canManageByRole = (role: OrganizationMemberRole | undefined): boolean => role === 'owner' || role === 'admin';
 
 export const SpecialtyFormPage = (): ReactElement => {
@@ -62,39 +60,56 @@ export const SpecialtyFormPage = (): ReactElement => {
 
   if (!canManage) {
     return (
-      <main style={containerStyle}>
-        <Card title="Sin permisos">
+      <main className="nx-page nx-entity-form-page">
+        <Card title="Sin permisos" className="nx-entity-form-page__card">
           <p>No tenés permisos para crear o editar especialidades.</p>
-          <Link to="/app/specialties">Volver al listado</Link>
+          <Link to="/app/specialties" className="nx-btn-secondary nx-entity-form-page__inline-link">
+            Volver al listado
+          </Link>
         </Card>
       </main>
     );
   }
 
   return (
-    <main style={containerStyle}>
-      <Card title={isEdit ? 'Editar especialidad' : 'Nueva especialidad'}>
-        {loadingInitial ? <p>Cargando...</p> : null}
+    <main className="nx-page nx-entity-form-page">
+      <Card
+        title={isEdit ? 'Editar especialidad' : 'Nueva especialidad'}
+        subtitle="Definí una especialidad para organizar profesionales y facilitar la gestión de turnos."
+        className="nx-entity-form-page__card"
+      >
+        {loadingInitial ? <p className="nx-entity-form-page__loading">Cargando...</p> : null}
         {!loadingInitial ? (
           <>
-            <input placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} />
-            <textarea
-              placeholder="Descripción (opcional)"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={4}
-            />
+            <div className="nx-form-grid nx-entity-form-page__grid">
+              <label className="nx-field">
+                <span>Nombre</span>
+                <input value={name} onChange={(event) => setName(event.target.value)} />
+              </label>
 
-            <label htmlFor="specialty-status">Estado</label>
-            <select id="specialty-status" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-              <option value="active">Activo</option>
-              <option value="inactive">Inactivo</option>
-              <option value="archived">Archivado</option>
-            </select>
+              <label className="nx-field">
+                <span>Descripción (opcional)</span>
+                <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} />
+              </label>
 
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              {isEdit ? (
+                <label className="nx-field">
+                  <span>Estado</span>
+                  <select id="specialty-status" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo</option>
+                    <option value="archived">Archivado</option>
+                  </select>
+                </label>
+              ) : null}
+            </div>
+
+            {error ? <p className="nx-entity-form-page__error">{error}</p> : null}
+
+            <div className="nx-form-actions nx-entity-form-page__actions">
               <button
                 type="button"
+                className="nx-btn"
                 disabled={loading}
                 onClick={async () => {
                   if (!accessToken) return;
@@ -125,14 +140,14 @@ export const SpecialtyFormPage = (): ReactElement => {
                   }
                 }}
               >
-                {loading ? 'Guardando...' : 'Guardar'}
+                {loading ? 'Guardando...' : isEdit ? 'Actualizar especialidad' : 'Crear especialidad'}
               </button>
-              <Link to="/app/specialties">Cancelar</Link>
+              <Link to="/app/specialties" className="nx-btn-secondary">
+                Cancelar
+              </Link>
             </div>
           </>
         ) : null}
-
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
       </Card>
     </main>
   );

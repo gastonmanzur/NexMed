@@ -7,8 +7,6 @@ import { useAuth } from '../auth/AuthContext';
 import { specialtiesApi } from '../specialties/specialties-api';
 import { professionalsApi } from './professionals-api';
 
-const containerStyle = { maxWidth: 780, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' };
-
 const canManageByRole = (role: OrganizationMemberRole | undefined): boolean => role === 'owner' || role === 'admin';
 
 export const ProfessionalFormPage = (): ReactElement => {
@@ -82,61 +80,94 @@ export const ProfessionalFormPage = (): ReactElement => {
 
   if (!canManage) {
     return (
-      <main style={containerStyle}>
-        <Card title="Sin permisos">
+      <main className="nx-page nx-entity-form-page">
+        <Card title="Sin permisos" className="nx-entity-form-page__card">
           <p>No tenés permisos para crear o editar profesionales.</p>
-          <Link to="/app/professionals">Volver al listado</Link>
+          <Link to="/app/professionals" className="nx-btn-secondary nx-entity-form-page__inline-link">
+            Volver al listado
+          </Link>
         </Card>
       </main>
     );
   }
 
   return (
-    <main style={containerStyle}>
-      <Card title={isEdit ? 'Editar profesional' : 'Nuevo profesional'}>
-        {loadingInitial ? <p>Cargando...</p> : null}
+    <main className="nx-page nx-entity-form-page">
+      <Card
+        title={isEdit ? 'Editar profesional' : 'Nuevo profesional'}
+        subtitle="Completá los datos para crear o actualizar el perfil profesional dentro de tu organización."
+        className="nx-entity-form-page__card"
+      >
+        {loadingInitial ? <p className="nx-entity-form-page__loading">Cargando...</p> : null}
         {!loadingInitial ? (
           <>
-            <input placeholder="Nombre" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
-            <input placeholder="Apellido" value={lastName} onChange={(event) => setLastName(event.target.value)} />
-            <input placeholder="Email (opcional)" value={email} onChange={(event) => setEmail(event.target.value)} />
-            <input placeholder="Teléfono (opcional)" value={phone} onChange={(event) => setPhone(event.target.value)} />
-            <input
-              placeholder="Matrícula/licencia (opcional)"
-              value={licenseNumber}
-              onChange={(event) => setLicenseNumber(event.target.value)}
-            />
-            <textarea placeholder="Notas (opcional)" value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} />
+            <div className="nx-form-grid nx-form-grid--cols-2 nx-entity-form-page__grid">
+              <label className="nx-field">
+                <span>Nombre</span>
+                <input value={firstName} onChange={(event) => setFirstName(event.target.value)} />
+              </label>
+              <label className="nx-field">
+                <span>Apellido</span>
+                <input value={lastName} onChange={(event) => setLastName(event.target.value)} />
+              </label>
+              <label className="nx-field">
+                <span>Email (opcional)</span>
+                <input value={email} onChange={(event) => setEmail(event.target.value)} />
+              </label>
+              <label className="nx-field">
+                <span>Teléfono (opcional)</span>
+                <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+              </label>
+              <label className="nx-field nx-form-grid__full">
+                <span>Matrícula/licencia (opcional)</span>
+                <input value={licenseNumber} onChange={(event) => setLicenseNumber(event.target.value)} />
+              </label>
+              <label className="nx-field nx-form-grid__full">
+                <span>Notas (opcional)</span>
+                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} />
+              </label>
 
-            <label htmlFor="professional-status">Estado</label>
-            <select id="professional-status" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-              <option value="active">Activo</option>
-              <option value="inactive">Inactivo</option>
-              <option value="archived">Archivado</option>
-            </select>
-
-            <fieldset style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}>
-              <legend>Especialidades</legend>
-              {specialties.length === 0 ? <p>No hay especialidades cargadas todavía.</p> : null}
-              {specialties.map((specialty) => (
-                <label key={specialty.id} style={{ display: 'block' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedSpecialtyIds.includes(specialty.id)}
-                    onChange={(event) => {
-                      setSelectedSpecialtyIds((current) =>
-                        event.target.checked ? [...current, specialty.id] : current.filter((item) => item !== specialty.id)
-                      );
-                    }}
-                  />{' '}
-                  {specialty.name} ({specialty.status})
+              {isEdit ? (
+                <label className="nx-field nx-form-grid__full">
+                  <span>Estado</span>
+                  <select id="professional-status" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo</option>
+                    <option value="archived">Archivado</option>
+                  </select>
                 </label>
-              ))}
+              ) : null}
+            </div>
+
+            <fieldset className="nx-entity-form-page__fieldset">
+              <legend>Especialidades</legend>
+              {specialties.length === 0 ? <p className="nx-entity-form-page__hint">No hay especialidades cargadas todavía.</p> : null}
+              <div className="nx-entity-form-page__checkboxes">
+                {specialties.map((specialty) => (
+                  <label key={specialty.id} className="nx-checkbox-field nx-entity-form-page__checkbox-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedSpecialtyIds.includes(specialty.id)}
+                      onChange={(event) => {
+                        setSelectedSpecialtyIds((current) =>
+                          event.target.checked ? [...current, specialty.id] : current.filter((item) => item !== specialty.id)
+                        );
+                      }}
+                    />
+                    <span>
+                      {specialty.name} <small>({specialty.status})</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
             </fieldset>
 
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            {error ? <p className="nx-entity-form-page__error">{error}</p> : null}
+
+            <div className="nx-form-actions nx-entity-form-page__actions">
               <button
                 type="button"
+                className="nx-btn"
                 disabled={loading}
                 onClick={async () => {
                   if (!accessToken) return;
@@ -173,14 +204,14 @@ export const ProfessionalFormPage = (): ReactElement => {
                   }
                 }}
               >
-                {loading ? 'Guardando...' : 'Guardar'}
+                {loading ? 'Guardando...' : isEdit ? 'Actualizar profesional' : 'Crear profesional'}
               </button>
-              <Link to="/app/professionals">Cancelar</Link>
+              <Link to="/app/professionals" className="nx-btn-secondary">
+                Cancelar
+              </Link>
             </div>
           </>
         ) : null}
-
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
       </Card>
     </main>
   );
