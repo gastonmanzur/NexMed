@@ -47,6 +47,12 @@ const organizationIdSchema = z.object({
 const checkoutSchema = z.object({
   planId: z.string().trim().min(1)
 });
+const subscriptionQuerySchema = z.object({
+  sync: z
+    .union([z.boolean(), z.string()])
+    .transform((value) => (typeof value === 'string' ? value.toLowerCase() === 'true' : value))
+    .optional()
+});
 
 const service = new OrganizationService();
 const logoService = new OrganizationLogoService();
@@ -171,10 +177,9 @@ export const organizationController = {
 
   getSubscription: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId } = organizationIdSchema.parse(req.params);
-    const data = await service.getOrganizationSubscriptionForUser({
-      organizationId,
-      actorUserId: req.auth!.userId
-    });
+    const query = subscriptionQuerySchema.parse(req.query);
+    const context = { organizationId, actorUserId: req.auth!.userId };
+    const data = query.sync ? await service.syncOrganizationSubscriptionForUser(context) : await service.getOrganizationSubscriptionForUser(context);
 
     res.status(200).json({ success: true, data });
   },

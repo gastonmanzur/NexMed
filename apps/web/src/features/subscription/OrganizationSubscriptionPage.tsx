@@ -30,7 +30,9 @@ const getTrialDaysRemaining = (expiresAt: string | null): number | null => {
 export const OrganizationSubscriptionPage = (): ReactElement => {
   const { accessToken, activeOrganizationId } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [checkoutLoadingPlanId, setCheckoutLoadingPlanId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [summary, setSummary] = useState<{
     subscription: {
@@ -52,7 +54,9 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
     try {
       const [plansResult, subscriptionResult] = await Promise.all([
         organizationApi.listPlans(accessToken),
-        organizationApi.getSubscription(accessToken, activeOrganizationId)
+        organizationApi.getSubscription(accessToken, activeOrganizationId, {
+          sync: new URLSearchParams(window.location.search).get('status') === 'success'
+        })
       ]);
       setPlans(plansResult);
       setSummary(subscriptionResult);
@@ -71,11 +75,20 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
   const startCheckout = async (planId: string): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
     setError('');
+    setMessage('');
+    setCheckoutLoadingPlanId(planId);
     try {
-      await organizationApi.checkoutSubscription(accessToken, activeOrganizationId, planId);
-      await loadData();
+      const result = await organizationApi.checkoutSubscription(accessToken, activeOrganizationId, planId);
+      if (!result.checkoutUrl || !/^https?:\/\//i.test(result.checkoutUrl)) {
+        throw new Error('No se pudo generar una URL de checkout válida. Verificá la configuración de Mercado Pago.');
+      }
+
+      setMessage('Redirigiendo a Mercado Pago...');
+      window.location.assign(result.checkoutUrl);
     } catch (cause) {
       setError((cause as Error).message);
+    } finally {
+      setCheckoutLoadingPlanId(null);
     }
   };
 
@@ -154,6 +167,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
       <Card title="Suscripción del centro" subtitle="Sin plan gratuito permanente: tu centro necesita una suscripción paga para operar sin restricciones.">
         {loading ? <p>Cargando estado de suscripción...</p> : null}
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+        {message ? <p style={{ color: '#1f6f43' }}>{message}</p> : null}
 
         {summary ? (
           <section className={`nx-subscription-status nx-subscription-status--${statusMeta.tone}`}>
@@ -205,9 +219,14 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
                 <button
                   type="button"
                   className={isCurrent ? 'nx-btn-secondary' : 'nx-btn'}
+                  disabled={checkoutLoadingPlanId !== null}
                   onClick={() => void startCheckout(plan.id)}
                 >
-                  {isCurrent ? 'Gestionar plan actual' : 'Elegir este plan'}
+                  {checkoutLoadingPlanId === plan.id
+                    ? 'Iniciando checkout...'
+                    : isCurrent
+                      ? 'Renovar / actualizar plan'
+                      : 'Elegir este plan'}
                 </button>
               </Card>
             );

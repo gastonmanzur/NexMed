@@ -52,6 +52,7 @@ const envSchema = z
     MERCADOPAGO_CHECKOUT_FAILURE_URL: z.string().url().optional(),
     MERCADOPAGO_CHECKOUT_PENDING_URL: z.string().url().optional(),
     MERCADOPAGO_STATEMENT_DESCRIPTOR: z.string().max(16).optional(),
+    TRIAL_DAYS: z.coerce.number().int().min(0).default(14),
     DISABLE_FREE_TRIAL: z
       .union([z.boolean(), z.enum(['true', 'false']), z.string().length(0)])
       .optional(),
