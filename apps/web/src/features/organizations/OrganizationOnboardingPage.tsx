@@ -20,8 +20,6 @@ interface FormState {
   currency: string;
 }
 
-const containerStyle = { maxWidth: 760, margin: '2rem auto', padding: '1rem' };
-
 export const OrganizationOnboardingPage = (): ReactElement => {
   const navigate = useNavigate();
   const { accessToken, activeOrganizationId, organizations, memberships, setOrganizationsContext } = useAuth();
@@ -128,52 +126,118 @@ export const OrganizationOnboardingPage = (): ReactElement => {
   }
 
   return (
-    <main style={containerStyle}>
-      <Card title="Onboarding del centro">
-        <p>Completá los datos institucionales mínimos para activar tu organización.</p>
+    <main className="nx-page nx-org-onboarding-flow">
+      <Card
+        title="Revisión final del centro"
+        subtitle="Verificá y completá la información institucional antes de continuar."
+        className="nx-org-onboarding-flow__card nx-org-onboarding-review"
+      >
+        {loading ? <p className="nx-org-profile__status">Cargando datos actuales...</p> : null}
+        {error ? <p className="nx-entity-form-page__error">{error}</p> : null}
 
-        {loading ? <p>Cargando datos actuales...</p> : null}
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+        <div className="nx-org-onboarding-flow__section">
+          <h3 className="nx-org-onboarding-flow__section-title">Identidad del centro</h3>
+          <div className="nx-form-grid nx-org-onboarding-flow__grid">
+            <label className="nx-field">
+              <span>Nombre del centro</span>
+              <input placeholder="Nombre del centro" value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
+            </label>
+            <label className="nx-field">
+              <span>Nombre comercial</span>
+              <input
+                placeholder="(opcional)"
+                value={form.displayName}
+                onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
+              />
+            </label>
+            <label className="nx-field">
+              <span>Tipo de organización</span>
+              <select value={form.type} onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as FormState['type'] }))}>
+                <option value="clinic">Clínica</option>
+                <option value="office">Consultorio</option>
+                <option value="esthetic_center">Centro de estética</option>
+                <option value="professional_cabinet">Gabinete profesional</option>
+                <option value="other">Otro</option>
+              </select>
+            </label>
+          </div>
+        </div>
 
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <input placeholder="Nombre del centro" value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
-          <input
-            placeholder="Nombre comercial (opcional)"
-            value={form.displayName}
-            onChange={(event) => setForm((prev) => ({ ...prev, displayName: event.target.value }))}
-          />
-          <select value={form.type} onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value as FormState['type'] }))}>
-            <option value="clinic">Clínica</option>
-            <option value="office">Consultorio</option>
-            <option value="esthetic_center">Centro de estética</option>
-            <option value="professional_cabinet">Gabinete profesional</option>
-            <option value="other">Otro</option>
-          </select>
-          <input
-            placeholder="Email de contacto (opcional si hay teléfono)"
-            value={form.contactEmail}
-            onChange={(event) => setForm((prev) => ({ ...prev, contactEmail: event.target.value }))}
-          />
-          <input
-            placeholder="Teléfono (opcional si hay email)"
-            value={form.phone}
-            onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-          />
-          <input placeholder="Dirección" value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} />
-          <input placeholder="Ciudad" value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
-          <input placeholder="País" value={form.country} onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))} />
-          <textarea
-            placeholder="Descripción breve"
-            value={form.description}
-            onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-          />
+        <div className="nx-org-onboarding-flow__section">
+          <h3 className="nx-org-onboarding-flow__section-title">Contacto y ubicación</h3>
+          <div className="nx-form-grid nx-org-onboarding-flow__grid">
+            <label className="nx-field">
+              <span>Email de contacto</span>
+              <input
+                placeholder="Opcional si hay teléfono"
+                value={form.contactEmail}
+                onChange={(event) => setForm((prev) => ({ ...prev, contactEmail: event.target.value }))}
+              />
+            </label>
+            <label className="nx-field">
+              <span>Teléfono</span>
+              <input
+                placeholder="Opcional si hay email"
+                value={form.phone}
+                onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+              />
+            </label>
+            <label className="nx-field">
+              <span>Dirección</span>
+              <input placeholder="Dirección" value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} />
+            </label>
+            <label className="nx-field">
+              <span>Ciudad</span>
+              <input placeholder="Ciudad" value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
+            </label>
+            <label className="nx-field">
+              <span>País</span>
+              <input placeholder="País" value={form.country} onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))} />
+            </label>
+            <label className="nx-field nx-form-grid__full">
+              <span>Descripción breve</span>
+              <textarea
+                placeholder="Contá brevemente servicios, especialidades o enfoque del centro"
+                value={form.description}
+                onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+              />
+            </label>
+          </div>
+        </div>
 
-          <h3 style={{ marginBottom: 0 }}>Configuración general</h3>
-          <input placeholder="Timezone" value={form.timezone} onChange={(event) => setForm((prev) => ({ ...prev, timezone: event.target.value }))} />
-          <input placeholder="Locale" value={form.locale} onChange={(event) => setForm((prev) => ({ ...prev, locale: event.target.value }))} />
-          <input placeholder="Moneda" value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
+        <div className="nx-org-onboarding-flow__section">
+          <h3 className="nx-org-onboarding-flow__section-title">Configuración general</h3>
+          <div className="nx-form-grid nx-org-onboarding-flow__grid">
+            <label className="nx-field">
+              <span>Timezone</span>
+              <input placeholder="Timezone" value={form.timezone} onChange={(event) => setForm((prev) => ({ ...prev, timezone: event.target.value }))} />
+            </label>
+            <label className="nx-field">
+              <span>Locale</span>
+              <input placeholder="Locale" value={form.locale} onChange={(event) => setForm((prev) => ({ ...prev, locale: event.target.value }))} />
+            </label>
+            <label className="nx-field">
+              <span>Moneda</span>
+              <input placeholder="Moneda" value={form.currency} onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))} />
+            </label>
+          </div>
+        </div>
 
+        <section className="nx-org-onboarding-review__summary">
+          <h3 className="nx-org-onboarding-flow__section-title">Resumen para confirmar</h3>
+          <dl className="nx-org-onboarding-review__summary-grid">
+            <div><dt>Nombre</dt><dd>{form.name || '—'}</dd></div>
+            <div><dt>Tipo</dt><dd>{form.type}</dd></div>
+            <div><dt>Email</dt><dd>{form.contactEmail || '—'}</dd></div>
+            <div><dt>Teléfono</dt><dd>{form.phone || '—'}</dd></div>
+            <div><dt>Ubicación</dt><dd>{[form.city, form.country].filter(Boolean).join(', ') || '—'}</dd></div>
+            <div><dt>Moneda / locale</dt><dd>{`${form.currency || '—'} · ${form.locale || '—'}`}</dd></div>
+          </dl>
+        </section>
+
+        <div className="nx-form-actions nx-org-onboarding-flow__actions nx-org-onboarding-flow__actions--end">
           <button
+            className="nx-btn"
             type="button"
             disabled={saving || loading}
             onClick={async () => {
@@ -218,7 +282,7 @@ export const OrganizationOnboardingPage = (): ReactElement => {
               }
             }}
           >
-            {saving ? 'Guardando...' : 'Finalizar onboarding'}
+            {saving ? 'Guardando...' : 'Confirmar y continuar'}
           </button>
         </div>
       </Card>
