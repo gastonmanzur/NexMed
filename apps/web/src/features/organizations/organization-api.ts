@@ -281,8 +281,20 @@ export const organizationApi = {
     return result.data;
   },
 
-  checkoutSubscription: async (accessToken: string, organizationId: string, planId: string): Promise<{ checkoutUrl: string; subscriptionId: string; status: string }> => {
-    const result = await request<{ success: true; data: { checkoutUrl: string; subscriptionId: string; status: string } }>(`/organizations/${organizationId}/subscription/checkout`, {
+  checkoutSubscription: async (accessToken: string, organizationId: string, planId: string): Promise<{
+    subscriptionId: string;
+    status: string;
+    checkoutUrl?: string;
+    url?: string;
+    initPoint?: string;
+  }> => {
+    const result = await request<{ success: true; data: {
+      subscriptionId: string;
+      status: string;
+      checkoutUrl?: string;
+      url?: string;
+      initPoint?: string;
+    } }>(`/organizations/${organizationId}/subscription/checkout`, {
       method: 'POST',
       body: JSON.stringify({ planId }),
       headers: { Authorization: `Bearer ${accessToken}` }

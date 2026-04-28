@@ -45,16 +45,16 @@
 - `MONETIZATION_MODE=one_time_only|subscriptions_only|both`
 - `SUBSCRIPTION_PERIOD_MODE=monthly|yearly|both`
 - `DISABLE_FREE_TRIAL=true|false` (si es `true`, organizaciones nuevas inician con estado `past_due` en vez de `trial`)
-- `TRIAL_DAYS=14` (usar `0` para desactivar trial sin tocar código; `DISABLE_FREE_TRIAL=true` tiene prioridad)
+- `TRIAL_DAYS=14` (en `NODE_ENV=production`, si no se define `DISABLE_FREE_TRIAL`, el backend fuerza `true` para desactivar trial por defecto)
 - `MERCADOPAGO_ACCESS_TOKEN=<private token>`
 - `MP_ACCESS_TOKEN=<alias opcional de MERCADOPAGO_ACCESS_TOKEN>`
 - `MP_PUBLIC_KEY=<clave pública para frontend, opcional en esta etapa>`
 - `MERCADOPAGO_WEBHOOK_SECRET=<required in production>`
 - `MP_WEBHOOK_SECRET=<alias opcional de MERCADOPAGO_WEBHOOK_SECRET>`
 - `MERCADOPAGO_API_BASE_URL=https://api.mercadopago.com`
-- `MERCADOPAGO_CHECKOUT_SUCCESS_URL=<optional>`
-- `MERCADOPAGO_CHECKOUT_FAILURE_URL=<optional>`
-- `MERCADOPAGO_CHECKOUT_PENDING_URL=<optional>`
+- `MERCADOPAGO_CHECKOUT_SUCCESS_URL=https://www.nexmedturnos.pro/app/subscription?status=success`
+- `MERCADOPAGO_CHECKOUT_FAILURE_URL=https://www.nexmedturnos.pro/app/subscription?status=failure`
+- `MERCADOPAGO_CHECKOUT_PENDING_URL=https://www.nexmedturnos.pro/app/subscription?status=pending`
 - `MERCADOPAGO_STATEMENT_DESCRIPTOR=<max 16 chars>`
 
 ### Rate limiting

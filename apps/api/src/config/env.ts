@@ -94,7 +94,9 @@ const envSchema = z
           ? data.DISABLE_FREE_TRIAL
           : data.DISABLE_FREE_TRIAL === 'true'
             ? true
-            : false
+            : data.DISABLE_FREE_TRIAL === 'false'
+              ? false
+              : data.NODE_ENV === 'production'
     };
   })
   .superRefine((data, ctx) => {

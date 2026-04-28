@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { organizationApi } from '../organizations/organization-api';
@@ -16,16 +16,6 @@ interface PlanItem {
 }
 
 type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
-
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
-
-const getTrialDaysRemaining = (expiresAt: string | null): number | null => {
-  if (!expiresAt) return null;
-  const expiresMs = new Date(expiresAt).getTime();
-  if (Number.isNaN(expiresMs)) return null;
-
-  return Math.ceil((expiresMs - Date.now()) / DAY_IN_MS);
-};
 
 export const OrganizationSubscriptionPage = (): ReactElement => {
   const { accessToken, activeOrganizationId } = useAuth();
@@ -79,12 +69,15 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
     setCheckoutLoadingPlanId(planId);
     try {
       const result = await organizationApi.checkoutSubscription(accessToken, activeOrganizationId, planId);
-      if (!result.checkoutUrl || !/^https?:\/\//i.test(result.checkoutUrl)) {
-        throw new Error('No se pudo generar una URL de checkout válida. Verificá la configuración de Mercado Pago.');
+      const checkoutUrl = [result.checkoutUrl, result.url, result.initPoint]
+        .find((value): value is string => typeof value === 'string' && /^https?:\/\//i.test(value.trim()));
+
+      if (!checkoutUrl) {
+        throw new Error('No se pudo obtener una URL de checkout válida desde el backend. Contactá soporte para revisar Mercado Pago.');
       }
 
       setMessage('Redirigiendo a Mercado Pago...');
-      window.location.assign(result.checkoutUrl);
+      window.location.href = checkoutUrl;
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -92,17 +85,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
     }
   };
 
-  const trialDaysRemaining = useMemo(
-    () => getTrialDaysRemaining(summary?.subscription.expiresAt ?? null),
-    [summary?.subscription.expiresAt]
-  );
-
-  const hasExpiredTrial = summary?.subscription.status === 'trial' && trialDaysRemaining !== null && trialDaysRemaining <= 0;
-
-  const requiresSubscription = !!summary && (
-    hasExpiredTrial
-    || ['past_due', 'suspended', 'canceled'].includes(summary.subscription.status)
-  );
+  const requiresSubscription = !!summary && ['trial', 'past_due', 'suspended', 'canceled'].includes(summary.subscription.status);
 
   const statusMeta: { label: string; tone: 'active' | 'warn' | 'danger'; message: string } = (() => {
     if (!summary) {
@@ -121,21 +104,11 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
       };
     }
 
-    if (hasExpiredTrial) {
-      return {
-        label: 'Prueba gratuita vencida',
-        tone: 'danger',
-        message: 'Tu prueba gratuita terminó. Elegí un plan pago para continuar sin restricciones.'
-      };
-    }
-
     if (summary.subscription.status === 'trial') {
       return {
-        label: 'Prueba gratuita activa',
-        tone: 'active',
-        message: trialDaysRemaining === null
-          ? 'Tu organización está en prueba gratuita.'
-          : `Te quedan ${trialDaysRemaining} día${trialDaysRemaining === 1 ? '' : 's'} de prueba gratuita.`
+        label: 'Suscripción pendiente de activación',
+        tone: 'warn',
+        message: 'Esta organización requiere un plan pago para operar sin restricciones.'
       };
     }
 
