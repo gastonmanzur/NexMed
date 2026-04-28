@@ -1232,6 +1232,98 @@ body {
   justify-content: flex-end;
 }
 
+.nx-org-onboarding-flow {
+  width: min(920px, 100%);
+  margin: 0 auto;
+}
+
+.nx-org-onboarding-flow__card {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.nx-org-onboarding-flow__lead {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.nx-org-onboarding-flow__primary-link {
+  width: fit-content;
+}
+
+.nx-org-onboarding-flow__section {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.nx-org-onboarding-flow__section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #16365f;
+}
+
+.nx-org-onboarding-flow__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.nx-org-onboarding-flow__actions {
+  justify-content: flex-start;
+}
+
+.nx-org-onboarding-flow__actions--end {
+  justify-content: flex-end;
+}
+
+.nx-org-onboarding-review textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.nx-org-onboarding-review__summary {
+  border: 1px solid #d8e6f5;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f5f9ff);
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.nx-org-onboarding-review__summary-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+}
+
+.nx-org-onboarding-review__summary-grid div {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.7rem 0.8rem;
+  background: #fff;
+}
+
+.nx-org-onboarding-review__summary-grid dt {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.nx-org-onboarding-review__summary-grid dd {
+  margin: 0.25rem 0 0;
+  font-size: 0.92rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 840px) {
   .nx-org-profile__grid--two,
   .nx-org-profile__grid--three {
@@ -1761,6 +1853,26 @@ body {
 @media (max-width: 768px) {
   .nx-page {
     padding: 0.95rem;
+  }
+
+  .nx-org-onboarding-flow__section {
+    padding: 0.85rem;
+    border-radius: 16px;
+  }
+
+  .nx-org-onboarding-flow__grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .nx-org-onboarding-flow__actions,
+  .nx-org-onboarding-flow__actions--end {
+    justify-content: stretch;
+  }
+
+  .nx-org-onboarding-flow__actions .nx-btn,
+  .nx-org-onboarding-flow__actions .nx-btn-secondary {
+    width: 100%;
   }
 
   .nx-auth-shell {

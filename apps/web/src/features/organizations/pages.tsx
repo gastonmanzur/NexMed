@@ -5,8 +5,6 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { organizationApi } from './organization-api';
 
-const containerStyle = { maxWidth: 640, margin: '2rem auto', padding: '1rem' };
-
 export const OnboardingPage = (): ReactElement => {
   const { user, organizations } = useAuth();
 
@@ -19,11 +17,11 @@ export const OnboardingPage = (): ReactElement => {
   }
 
   return (
-    <main style={containerStyle}>
-      <Card title="Bienvenido a NexMed">
-        <p>Tu cuenta está activa, pero todavía no tenés una organización.</p>
-        <p>Creá tu primera organización para comenzar.</p>
-        <a href="/organizations/new">Crear mi organización</a>
+    <main className="nx-page nx-org-onboarding-flow">
+      <Card title="Bienvenido a NexMed" className="nx-org-onboarding-flow__card">
+        <p className="nx-org-onboarding-flow__lead">Tu cuenta está activa, pero todavía no tenés una organización.</p>
+        <p className="nx-org-onboarding-flow__lead">Creá tu primera organización para comenzar.</p>
+        <a className="nx-btn nx-org-onboarding-flow__primary-link" href="/organizations/new">Crear mi organización</a>
       </Card>
     </main>
   );
@@ -48,58 +46,93 @@ export const CreateOrganizationPage = (): ReactElement => {
   }
 
   return (
-    <main style={containerStyle}>
-      <Card title="Crear organización">
-        <input placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} />
-        <select value={type} onChange={(event) => setType(event.target.value as typeof type)}>
-          <option value="clinic">Clínica</option>
-          <option value="office">Consultorio</option>
-          <option value="esthetic_center">Centro de estética</option>
-          <option value="professional_cabinet">Gabinete profesional</option>
-          <option value="other">Otro</option>
-        </select>
-        <input placeholder="Email de contacto (opcional)" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} />
-        <input placeholder="Teléfono (opcional)" value={phone} onChange={(event) => setPhone(event.target.value)} />
-        <input placeholder="Dirección (opcional)" value={address} onChange={(event) => setAddress(event.target.value)} />
-        <input placeholder="Ciudad (opcional)" value={city} onChange={(event) => setCity(event.target.value)} />
-        <input placeholder="País (opcional)" value={country} onChange={(event) => setCountry(event.target.value)} />
+    <main className="nx-page nx-org-onboarding-flow">
+      <Card title="Crear organización" subtitle="Completá los datos iniciales de tu centro para comenzar el alta." className="nx-org-onboarding-flow__card">
+        <div className="nx-org-onboarding-flow__section">
+          <h3 className="nx-org-onboarding-flow__section-title">Datos del centro</h3>
+          <div className="nx-form-grid nx-org-onboarding-flow__grid">
+            <label className="nx-field">
+              <span>Nombre</span>
+              <input placeholder="Ej: Centro Médico Norte" value={name} onChange={(event) => setName(event.target.value)} />
+            </label>
+            <label className="nx-field">
+              <span>Tipo de organización</span>
+              <select value={type} onChange={(event) => setType(event.target.value as typeof type)}>
+                <option value="clinic">Clínica</option>
+                <option value="office">Consultorio</option>
+                <option value="esthetic_center">Centro de estética</option>
+                <option value="professional_cabinet">Gabinete profesional</option>
+                <option value="other">Otro</option>
+              </select>
+            </label>
+          </div>
+        </div>
 
-        <button
-          type="button"
-          disabled={loading}
-          onClick={async () => {
-            try {
-              setError('');
-              setLoading(true);
+        <div className="nx-org-onboarding-flow__section">
+          <h3 className="nx-org-onboarding-flow__section-title">Contacto y ubicación</h3>
+          <div className="nx-form-grid nx-org-onboarding-flow__grid">
+            <label className="nx-field">
+              <span>Email de contacto</span>
+              <input placeholder="opcional@centro.com" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} />
+            </label>
+            <label className="nx-field">
+              <span>Teléfono</span>
+              <input placeholder="(opcional)" value={phone} onChange={(event) => setPhone(event.target.value)} />
+            </label>
+            <label className="nx-field">
+              <span>Dirección</span>
+              <input placeholder="(opcional)" value={address} onChange={(event) => setAddress(event.target.value)} />
+            </label>
+            <label className="nx-field">
+              <span>Ciudad</span>
+              <input placeholder="(opcional)" value={city} onChange={(event) => setCity(event.target.value)} />
+            </label>
+            <label className="nx-field">
+              <span>País</span>
+              <input placeholder="(opcional)" value={country} onChange={(event) => setCountry(event.target.value)} />
+            </label>
+          </div>
+        </div>
 
-              const result = await organizationApi.create(accessToken, {
-                name,
-                type,
-                ...(contactEmail.trim() ? { contactEmail } : {}),
-                ...(phone.trim() ? { phone } : {}),
-                ...(address.trim() ? { address } : {}),
-                ...(city.trim() ? { city } : {}),
-                ...(country.trim() ? { country } : {})
-              });
+        <div className="nx-form-actions nx-org-onboarding-flow__actions">
+          <button
+            className="nx-btn"
+            type="button"
+            disabled={loading}
+            onClick={async () => {
+              try {
+                setError('');
+                setLoading(true);
 
-              setOrganizationsContext({
-                organizations: [...organizations, result.organization],
-                memberships: [...memberships, result.membership],
-                activeOrganizationId: result.organization.id
-              });
+                const result = await organizationApi.create(accessToken, {
+                  name,
+                  type,
+                  ...(contactEmail.trim() ? { contactEmail } : {}),
+                  ...(phone.trim() ? { phone } : {}),
+                  ...(address.trim() ? { address } : {}),
+                  ...(city.trim() ? { city } : {}),
+                  ...(country.trim() ? { country } : {})
+                });
 
-              navigate('/onboarding/organization');
-            } catch (cause) {
-              setError((cause as Error).message);
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          {loading ? 'Creando...' : 'Crear organización'}
-        </button>
+                setOrganizationsContext({
+                  organizations: [...organizations, result.organization],
+                  memberships: [...memberships, result.membership],
+                  activeOrganizationId: result.organization.id
+                });
 
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+                navigate('/onboarding/organization');
+              } catch (cause) {
+                setError((cause as Error).message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            {loading ? 'Creando...' : 'Continuar'}
+          </button>
+        </div>
+
+        {error ? <p className="nx-entity-form-page__error">{error}</p> : null}
       </Card>
     </main>
   );
@@ -120,7 +153,7 @@ export const SelectOrganizationPage = (): ReactElement => {
   const selectedOrganizationId = activeOrganizationId ?? organizations[0]?.id ?? null;
 
   return (
-    <main style={containerStyle}>
+    <main className="nx-page nx-org-onboarding-flow">
       <Card title="Seleccionar organización">
         <p>Tu cuenta pertenece a múltiples organizaciones.</p>
         <select
