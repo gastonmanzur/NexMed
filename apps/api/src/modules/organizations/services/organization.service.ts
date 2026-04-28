@@ -566,6 +566,8 @@ export class OrganizationService {
 
     return {
       checkoutUrl: checkout.initPoint,
+      url: checkout.initPoint,
+      initPoint: checkout.initPoint,
       subscriptionId: subscription._id.toString(),
       status: subscription.status
     };
