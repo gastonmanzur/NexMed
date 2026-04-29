@@ -7,6 +7,7 @@ import { MonetizationConfigRepository } from '../repositories/monetization-confi
 import { PaymentRepository } from '../repositories/payment.repository.js';
 import { SubscriptionRepository } from '../repositories/subscription.repository.js';
 import { WebhookEventRepository } from '../repositories/webhook-event.repository.js';
+import { OrganizationSubscriptionRepository } from '../repositories/organization-subscription.repository.js';
 import { MercadoPagoProvider } from '../providers/mercadopago.provider.js';
 import type { PaymentProvider } from '../providers/payment-provider.js';
 
@@ -36,6 +37,7 @@ export class PaymentsService {
     private readonly userRepository = new UserRepository(),
     private readonly paymentRepository = new PaymentRepository(),
     private readonly subscriptionRepository = new SubscriptionRepository(),
+    private readonly organizationSubscriptionRepository = new OrganizationSubscriptionRepository(),
     private readonly webhookEventRepository = new WebhookEventRepository(),
     private readonly provider: PaymentProvider = new MercadoPagoProvider()
   ) {}
@@ -306,6 +308,20 @@ Array.from(inProgressSubscriptionStatuses)
         throw new AppError('SUBSCRIPTION_NOT_FOUND', 404, 'Subscription not found');
       }
     }
+
+    const mappedOrganizationStatus: 'active' | 'past_due' | 'suspended' | 'canceled' =
+      status.status === 'authorized'
+        ? 'active'
+        : status.status === 'paused'
+          ? 'suspended'
+          : status.status === 'cancelled' || status.status === 'expired'
+            ? 'canceled'
+            : 'past_due';
+
+    await this.organizationSubscriptionRepository.updateByProviderReference({
+      providerReference: status.providerPreapprovalId,
+      status: mappedOrganizationStatus
+    });
   }
 
   private validateWebhookSignature(signatureHeader?: string): boolean {
