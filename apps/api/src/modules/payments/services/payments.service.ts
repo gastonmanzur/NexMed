@@ -320,7 +320,8 @@ Array.from(inProgressSubscriptionStatuses)
 
     await this.organizationSubscriptionRepository.updateByProviderReference({
       providerReference: status.providerPreapprovalId,
-      status: mappedOrganizationStatus
+      status: mappedOrganizationStatus,
+      ...(nextBillingDate ? { expiresAt: nextBillingDate } : {})
     });
   }
 

@@ -589,6 +589,7 @@ export class OrganizationService {
     }
 
     const providerStatus = await this.paymentProvider.getSubscriptionStatus(current.providerReference);
+    const nextBillingDate = providerStatus.nextBillingDate ? new Date(providerStatus.nextBillingDate) : undefined;
     const mappedStatus: 'active' | 'past_due' | 'suspended' | 'canceled' =
       providerStatus.status === 'authorized'
         ? 'active'
@@ -605,7 +606,7 @@ export class OrganizationService {
       providerReference: current.providerReference,
       status: mappedStatus,
       startedAt: current.startedAt ?? new Date(),
-      ...(current.expiresAt ? { expiresAt: current.expiresAt } : {}),
+      ...(nextBillingDate ? { expiresAt: nextBillingDate } : current.expiresAt ? { expiresAt: current.expiresAt } : {}),
       ...(typeof current.autoRenew === 'boolean' ? { autoRenew: current.autoRenew } : {})
     });
 

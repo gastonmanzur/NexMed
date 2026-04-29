@@ -24,6 +24,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
+  const [didRunPastDueFallbackSync, setDidRunPastDueFallbackSync] = useState(false);
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [summary, setSummary] = useState<{
     subscription: {
@@ -118,6 +119,16 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
       isMounted = false;
     };
   }, [accessToken, activeOrganizationId]);
+
+  useEffect(() => {
+    if (!accessToken || !activeOrganizationId || !summary) return;
+    if (didRunPastDueFallbackSync) return;
+    if (summary.subscription.provider !== 'mercadopago' || summary.subscription.status !== 'past_due') return;
+
+    setDidRunPastDueFallbackSync(true);
+    setMessage('Verificando estado de tu suscripción con Mercado Pago...');
+    void loadData({ forceSync: true });
+  }, [accessToken, activeOrganizationId, didRunPastDueFallbackSync, summary]);
 
   const startCheckout = async (planId: string): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
