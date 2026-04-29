@@ -23,6 +23,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
   const [checkoutLoadingPlanId, setCheckoutLoadingPlanId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [summary, setSummary] = useState<{
     subscription: {
@@ -37,7 +38,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
     limits: { maxProfessionalsActive: number };
   } | null>(null);
 
-  const loadData = async (): Promise<void> => {
+  const loadData = async (options?: { forceSync?: boolean }): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
     setLoading(true);
     setError('');
@@ -45,7 +46,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
       const [plansResult, subscriptionResult] = await Promise.all([
         organizationApi.listPlans(accessToken),
         organizationApi.getSubscription(accessToken, activeOrganizationId, {
-          sync: new URLSearchParams(window.location.search).get('status') === 'success'
+          sync: options?.forceSync ?? false
         })
       ]);
       setPlans(plansResult);
@@ -60,6 +61,62 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
   useEffect(() => {
     void loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, activeOrganizationId]);
+
+  useEffect(() => {
+    if (!accessToken || !activeOrganizationId) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const checkoutStatus = params.get('status');
+    const preapprovalId = params.get('preapproval_id');
+    const cameFromCheckout = checkoutStatus === 'success' || checkoutStatus === 'pending' || Boolean(preapprovalId);
+
+    if (!cameFromCheckout) return;
+
+    let isMounted = true;
+    const startedAt = Date.now();
+    const maxDurationMs = 60_000;
+    const pollEveryMs = 4_000;
+
+    const poll = async (): Promise<void> => {
+      if (!isMounted) return;
+
+      setIsConfirmingPayment(true);
+      setMessage('Estamos confirmando tu pago con Mercado Pago...');
+
+      try {
+        const next = await organizationApi.getSubscription(accessToken, activeOrganizationId, { sync: true });
+        if (!isMounted) return;
+
+        setSummary(next);
+
+        if (next.subscription.status !== 'past_due') {
+          setIsConfirmingPayment(false);
+          setMessage(next.subscription.status === 'active' ? '¡Pago confirmado! Tu suscripción ya está activa.' : 'Actualizamos el estado de tu suscripción.');
+          return;
+        }
+
+        if (Date.now() - startedAt >= maxDurationMs) {
+          setIsConfirmingPayment(false);
+          setMessage('Seguimos esperando la confirmación final del pago. Podés usar "Actualizar estado" en unos segundos.');
+          return;
+        }
+
+        window.setTimeout(() => {
+          void poll();
+        }, pollEveryMs);
+      } catch (cause) {
+        if (!isMounted) return;
+        setIsConfirmingPayment(false);
+        setError((cause as Error).message);
+      }
+    };
+
+    void poll();
+
+    return () => {
+      isMounted = false;
+    };
   }, [accessToken, activeOrganizationId]);
 
   const startCheckout = async (planId: string): Promise<void> => {
@@ -152,6 +209,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
               <p><strong>Límite de profesionales activos:</strong> {summary.limits.maxProfessionalsActive}</p>
               {summary.subscription.expiresAt ? <p><strong>Vence:</strong> {new Date(summary.subscription.expiresAt).toLocaleDateString('es-AR')}</p> : null}
             </div>
+            {isConfirmingPayment ? <p style={{ color: '#7a5d00' }}>Estamos confirmando tu pago...</p> : null}
             {requiresSubscription ? (
               <button type="button" className="nx-btn" onClick={() => {
                 const target = document.getElementById('planes-disponibles');
@@ -160,7 +218,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
                 Suscribirme ahora
               </button>
             ) : (
-              <button type="button" className="nx-btn-secondary" onClick={() => void loadData()}>
+              <button type="button" className="nx-btn-secondary" onClick={() => void loadData({ forceSync: true })}>
                 Actualizar estado
               </button>
             )}

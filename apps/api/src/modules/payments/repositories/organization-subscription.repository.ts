@@ -32,6 +32,27 @@ export class OrganizationSubscriptionRepository {
     ).lean() as Promise<OrganizationSubscriptionDocument>;
   }
 
+  updateByProviderReference(input: {
+    providerReference: string;
+    status: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
+    startedAt?: Date;
+    expiresAt?: Date;
+    autoRenew?: boolean;
+  }): Promise<OrganizationSubscriptionDocument | null> {
+    return OrganizationSubscriptionModel.findOneAndUpdate(
+      { provider: 'mercadopago', providerReference: input.providerReference },
+      {
+        $set: {
+          status: input.status,
+          ...(input.startedAt !== undefined ? { startedAt: input.startedAt } : {}),
+          ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
+          ...(input.autoRenew !== undefined ? { autoRenew: input.autoRenew } : {})
+        }
+      },
+      { new: true }
+    ).lean();
+  }
+
   countByStatus(): Promise<Array<{ _id: string; count: number }>> {
     return OrganizationSubscriptionModel.aggregate<{ _id: string; count: number }>([
       { $group: { _id: '$status', count: { $sum: 1 } } }
