@@ -1,0 +1,21 @@
+.nx-availability-page { width: min(1120px, 100%); margin: 0 auto; padding: 1.5rem; display: grid; gap: 1rem; }
+.nx-availability-overview { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; }
+.nx-availability-actions,.nx-availability-form-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+.nx-availability-status { margin:0; color:var(--text-muted); }
+.nx-alert { margin:0; border-radius:12px; padding:.65rem .8rem; border:1px solid transparent; font-size:.92rem; }
+.nx-alert--success { background:var(--success-bg); border-color:#9ee7da; color:#0d7668; }
+.nx-alert--error { background:var(--danger-bg); border-color:#fecdd3; color:#be123c; }
+.nx-availability-list { list-style:none; padding:0; margin:0; display:grid; gap:.65rem; }
+.nx-availability-list-item { border:1px solid var(--border); border-radius:var(--radius-md); padding:.8rem; background:#fcfdff; display:grid; gap:.55rem; }
+.nx-availability-list-item__meta { margin:0; color:var(--text); }
+.nx-badge { display:inline-flex; align-items:center; border-radius:999px; padding:.18rem .55rem; font-size:.78rem; font-weight:700; }
+.nx-badge--active { background:#e9fcf8; color:#0f766e; }
+.nx-badge--inactive { background:#eef2f7; color:#475569; }
+.nx-availability-form { margin-top:.8rem; padding-top:.9rem; border-top:1px solid var(--border); display:grid; gap:.75rem; }
+.nx-availability-form__title { margin:0; font-size:.97rem; }
+.nx-availability-form-grid,.nx-availability-range-grid { display:grid; gap:.75rem; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.nx-availability-day { border:1px solid var(--border); border-radius:var(--radius-md); padding:.8rem; background:#fff; }
+.nx-availability-day p,.nx-availability-note { margin:0; }
+.nx-availability-day__slots,.nx-availability-note { margin-top:.42rem; color:var(--text-soft); }
+@media (max-width:900px){ .nx-availability-page{padding:1rem;} .nx-availability-form-grid,.nx-availability-range-grid{grid-template-columns:1fr;} }
+@media (max-width:640px){ .nx-availability-page{padding:.8rem;} .nx-availability-actions,.nx-availability-form-actions{width:100%;} .nx-availability-actions > *,.nx-availability-form-actions > *{flex:1 1 auto;} }

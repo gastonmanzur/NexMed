@@ -13,6 +13,7 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { professionalsApi } from './professionals-api';
 import { availabilityApi } from './availability-api';
+import './ProfessionalAvailabilityPage.css';
 
 const canManageByRole = (role: OrganizationMemberRole | undefined): boolean => role === 'owner' || role === 'admin';
 
@@ -125,36 +126,39 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
   }
 
   return (
-    <main style={{ maxWidth: 1100, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' }}>
-      <Card title="Agenda de profesional">
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link to="/app/professionals">Volver a profesionales</Link>
-          <button type="button" onClick={() => void loadAll()} disabled={loading}>
-            Recargar
-          </button>
+    <main className="nx-availability-page">
+      <Card title="Agenda de profesional" subtitle="Configurá y supervisá la agenda del profesional seleccionado.">
+        <div className="nx-availability-overview">
+          <div className="nx-availability-actions">
+            <Link className="nx-btn-secondary" to="/app/professionals">Volver a profesionales</Link>
+            <button className="nx-btn-secondary" type="button" onClick={() => void loadAll()} disabled={loading}>
+              Recargar
+            </button>
+          </div>
         </div>
         {professional ? (
-          <p style={{ marginTop: '0.75rem' }}>
-            <strong>{professional.displayName}</strong> · estado <strong>{professional.status}</strong>
+          <p className="nx-availability-status">
+            <strong>{professional.displayName}</strong> · estado <span className={`nx-badge ${professional.status === 'active' ? 'nx-badge--active' : 'nx-badge--inactive'}`}>{professional.status}</span>
           </p>
         ) : null}
-        {feedback ? <p style={{ color: 'green' }}>{feedback}</p> : null}
-        {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+        {feedback ? <p className="nx-alert nx-alert--success">{feedback}</p> : null}
+        {error ? <p className="nx-alert nx-alert--error">{error}</p> : null}
       </Card>
 
       <Card title="Reglas semanales">
         {loading ? <p>Cargando reglas...</p> : null}
         {!loading && rules.length === 0 ? <p>No hay reglas cargadas. Creá la primera para habilitar disponibilidad.</p> : null}
         {rules.length > 0 ? (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
+          <ul className="nx-availability-list">
             {rules.map((rule) => (
-              <li key={rule.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.5rem' }}>
-                <p style={{ margin: 0 }}>
+              <li key={rule.id} className="nx-availability-list-item">
+                <p className="nx-availability-list-item__meta">
                   <strong>{weekdayLabels[rule.weekday]}</strong> {rule.startTime} - {rule.endTime} · turno {rule.appointmentDurationMinutes}m ·
                   buffer {rule.bufferMinutes}m · estado <strong>{rule.status}</strong>
                 </p>
                 {canManage ? (
                   <button
+                    className="nx-btn-secondary"
                     type="button"
                     onClick={async () => {
                       if (!accessToken) return;
@@ -184,7 +188,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
 
         {canManage ? (
           <form
-            style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}
+            className="nx-availability-form"
             onSubmit={async (event) => {
               event.preventDefault();
               if (!accessToken) return;
@@ -206,8 +210,9 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
               }
             }}
           >
-            <h3 style={{ marginBottom: 0 }}>Nueva regla semanal</h3>
-            <label>
+            <h3 className="nx-availability-form__title">Nueva regla semanal</h3>
+            <div className="nx-availability-form-grid">
+            <label className="nx-field">
               Día de semana
               <select
                 value={ruleForm.weekday}
@@ -220,7 +225,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 ))}
               </select>
             </label>
-            <label>
+            <label className="nx-field">
               Hora inicio
               <input
                 type="time"
@@ -229,7 +234,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 required
               />
             </label>
-            <label>
+            <label className="nx-field">
               Hora fin
               <input
                 type="time"
@@ -238,7 +243,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 required
               />
             </label>
-            <label>
+            <label className="nx-field">
               Duración del turno (min)
               <input
                 type="number"
@@ -250,7 +255,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 required
               />
             </label>
-            <label>
+            <label className="nx-field">
               Buffer (min)
               <input
                 type="number"
@@ -259,12 +264,13 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 onChange={(event) => setRuleForm((current) => ({ ...current, bufferMinutes: Number(event.target.value) }))}
               />
             </label>
-            <button type="submit" disabled={savingRule}>
+            </div>
+            <button className="nx-btn" type="submit" disabled={savingRule}>
               {savingRule ? 'Guardando...' : 'Crear regla'}
             </button>
           </form>
         ) : (
-          <p style={{ color: '#555' }}>Solo owner/admin pueden modificar reglas.</p>
+          <p className="nx-availability-note">Solo owner/admin pueden modificar reglas.</p>
         )}
       </Card>
 
@@ -272,17 +278,18 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
         {loading ? <p>Cargando excepciones...</p> : null}
         {!loading && exceptions.length === 0 ? <p>No hay excepciones para este profesional.</p> : null}
         {exceptions.length > 0 ? (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
+          <ul className="nx-availability-list">
             {exceptions.map((exception) => (
-              <li key={exception.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.5rem' }}>
-                <p style={{ margin: 0 }}>
+              <li key={exception.id} className="nx-availability-list-item">
+                <p className="nx-availability-list-item__meta">
                   <strong>{exception.date}</strong> · {exception.type}
                   {exception.startTime && exception.endTime ? ` ${exception.startTime}-${exception.endTime}` : ''} · estado{' '}
                   <strong>{exception.status}</strong>
                 </p>
-                {exception.reason ? <p style={{ margin: '0.25rem 0 0 0' }}>Motivo: {exception.reason}</p> : null}
+                {exception.reason ? <p className="nx-availability-note">Motivo: {exception.reason}</p> : null}
                 {canManage ? (
                   <button
+                    className="nx-btn-secondary"
                     type="button"
                     onClick={async () => {
                       if (!accessToken) return;
@@ -312,7 +319,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
 
         {canManage ? (
           <form
-            style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}
+            className="nx-availability-form"
             onSubmit={async (event) => {
               event.preventDefault();
               if (!accessToken) return;
@@ -341,8 +348,9 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
               }
             }}
           >
-            <h3 style={{ marginBottom: 0 }}>Nueva excepción</h3>
-            <label>
+            <h3 className="nx-availability-form__title">Nueva excepción</h3>
+            <div className="nx-availability-form-grid">
+            <label className="nx-field">
               Fecha
               <input
                 type="date"
@@ -351,7 +359,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 required
               />
             </label>
-            <label>
+            <label className="nx-field">
               Tipo
               <select
                 value={exceptionForm.type}
@@ -365,7 +373,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
             </label>
             {exceptionForm.type === 'partial_block' ? (
               <>
-                <label>
+                <label className="nx-field">
                   Hora inicio
                   <input
                     type="time"
@@ -374,7 +382,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                     required
                   />
                 </label>
-                <label>
+                <label className="nx-field">
                   Hora fin
                   <input
                     type="time"
@@ -385,7 +393,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 </label>
               </>
             ) : null}
-            <label>
+            <label className="nx-field">
               Motivo (opcional)
               <input
                 type="text"
@@ -394,24 +402,25 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                 maxLength={500}
               />
             </label>
-            <button type="submit" disabled={savingException}>
+            </div>
+            <button className="nx-btn" type="submit" disabled={savingException}>
               {savingException ? 'Guardando...' : 'Crear excepción'}
             </button>
           </form>
         ) : (
-          <p style={{ color: '#555' }}>Solo owner/admin pueden modificar excepciones.</p>
+          <p className="nx-availability-note">Solo owner/admin pueden modificar excepciones.</p>
         )}
       </Card>
 
       <Card title="Disponibilidad calculada">
-        <form
-          style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'end' }}
+        <form className="nx-availability-form"
           onSubmit={async (event) => {
             event.preventDefault();
             await refreshAvailability();
           }}
-        >
-          <label>
+>
+          <div className="nx-availability-range-grid">
+          <label className="nx-field">
             Desde
             <input
               type="date"
@@ -420,7 +429,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
               required
             />
           </label>
-          <label>
+          <label className="nx-field">
             Hasta
             <input
               type="date"
@@ -429,7 +438,10 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
               required
             />
           </label>
-          <button type="submit">Consultar</button>
+          </div>
+          <div className="nx-availability-form-actions">
+            <button className="nx-btn" type="submit">Consultar</button>
+          </div>
         </form>
 
         {availability ? (
@@ -438,18 +450,18 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
               Timezone: <strong>{availability.timezone}</strong> · Estado profesional:{' '}
               <strong>{availability.professionalStatus}</strong>
             </p>
-            <p style={{ color: '#555' }}>{availability.note}</p>
+            <p className="nx-availability-note">{availability.note}</p>
             {availability.days.length === 0 ? <p>Sin resultados para ese rango.</p> : null}
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
+            <ul className="nx-availability-list">
               {availability.days.map((day) => (
-                <li key={day.date} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.5rem' }}>
-                  <p style={{ margin: 0 }}>
+                <li key={day.date} className="nx-availability-day">
+                  <p className="nx-availability-list-item__meta">
                     <strong>{day.date}</strong>
                   </p>
                   {day.slots.length === 0 ? (
-                    <p style={{ margin: '0.25rem 0 0 0', color: '#666' }}>Sin disponibilidad</p>
+                    <p className="nx-availability-day__slots">Sin disponibilidad</p>
                   ) : (
-                    <p style={{ margin: '0.25rem 0 0 0' }}>{day.slots.map((slot) => `${slot.startTime}–${slot.endTime}`).join(' · ')}</p>
+                    <p className="nx-availability-day__slots">{day.slots.map((slot) => `${slot.startTime}–${slot.endTime}`).join(' · ')}</p>
                   )}
                 </li>
               ))}
