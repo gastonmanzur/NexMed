@@ -360,7 +360,8 @@ export interface NotificationDto {
 export interface ReminderRuleDto {
   id: string;
   organizationId: string;
-  triggerHoursBefore: number;
+  offsetValue: number;
+  offsetUnit: 'minutes' | 'days';
   channel: NotificationChannel;
   status: 'active' | 'inactive';
   createdAt: string;
