@@ -6,8 +6,9 @@ import { organizationApi } from './organization-api';
 
 export const OrganizationReminderRulesPage = (): ReactElement => {
   const { accessToken, activeOrganizationId } = useAuth();
-  const [rows, setRows] = useState<Array<{ id: string; triggerHoursBefore: number; channel: 'in_app' | 'email' | 'push'; status: 'active' | 'inactive' }>>([]);
-  const [hours, setHours] = useState('24');
+  const [rows, setRows] = useState<Array<{ id: string; offsetValue: number; offsetUnit: 'minutes' | 'days'; channel: 'in_app' | 'email' | 'push'; status: 'active' | 'inactive' }>>([]);
+  const [offsetValue, setOffsetValue] = useState('1');
+  const [offsetUnit, setOffsetUnit] = useState<'minutes' | 'days'>('days');
   const [channel, setChannel] = useState<'in_app' | 'email' | 'push'>('in_app');
   const [error, setError] = useState('');
 
@@ -29,8 +30,8 @@ export const OrganizationReminderRulesPage = (): ReactElement => {
     event.preventDefault();
     if (!accessToken || !activeOrganizationId) return;
     try {
-      await organizationApi.createReminderRule(accessToken, activeOrganizationId, { triggerHoursBefore: Number(hours), channel });
-      setHours('24');
+      await organizationApi.createReminderRule(accessToken, activeOrganizationId, { offsetValue: Number(offsetValue), offsetUnit, channel });
+      setOffsetValue('1');
       await load();
     } catch (cause) {
       setError((cause as Error).message);
@@ -48,13 +49,14 @@ export const OrganizationReminderRulesPage = (): ReactElement => {
       <Card title="Reglas de recordatorio">
         {!canUse ? <p>Necesitás una organización activa.</p> : null}
         <form onSubmit={create} style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
-          <label>Horas antes<input type="number" min={1} max={720} value={hours} onChange={(e) => setHours(e.target.value)} required /></label>
+          <label>Anticipación<input type="number" min={1} value={offsetValue} onChange={(e) => setOffsetValue(e.target.value)} required /></label>
+          <label>Unidad<select value={offsetUnit} onChange={(e) => setOffsetUnit(e.target.value as "minutes" | "days")}><option value="days">días</option><option value="minutes">minutos</option></select></label>
           <label>Canal<select value={channel} onChange={(e) => setChannel(e.target.value as 'in_app' | 'email' | 'push')}><option value="in_app">in_app</option><option value="email">email</option><option value="push">push</option></select></label>
           <button type="submit" disabled={!canUse}>Agregar</button>
         </form>
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
         <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'grid', gap: 8 }}>
-          {rows.map((row) => <li key={row.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>{row.triggerHoursBefore}h — {row.channel} — {row.status} <button type="button" onClick={() => void toggle(row.id, row.status)}>{row.status === 'active' ? 'Desactivar' : 'Activar'}</button></li>)}
+          {rows.map((row) => <li key={row.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10 }}>{row.offsetValue} {row.offsetUnit === 'minutes' ? 'min' : 'd'} — {row.channel} — {row.status} <button type="button" onClick={() => void toggle(row.id, row.status)}>{row.status === 'active' ? 'Desactivar' : 'Activar'}</button></li>)}
         </ul>
       </Card>
     </main>

@@ -16,9 +16,9 @@ export class ReminderService {
     return rows.map((row) => this.toDto(row));
   }
 
-  async createRule(organizationId: string, input: { triggerHoursBefore: number; channel: 'in_app' | 'email' | 'push' }) {
-    if (!Number.isInteger(input.triggerHoursBefore) || input.triggerHoursBefore < 1 || input.triggerHoursBefore > 720) {
-      throw new AppError('INVALID_TRIGGER_HOURS', 400, 'triggerHoursBefore must be between 1 and 720');
+  async createRule(organizationId: string, input: { offsetValue: number; offsetUnit: 'minutes' | 'days'; channel: 'in_app' | 'email' | 'push' }) {
+    if (!Number.isInteger(input.offsetValue) || input.offsetValue < 1 || input.offsetValue > (input.offsetUnit === 'minutes' ? 10080 : 3650)) {
+      throw new AppError('INVALID_REMINDER_OFFSET', 400, 'offsetValue is out of allowed range for offsetUnit');
     }
 
     try {
@@ -35,14 +35,18 @@ export class ReminderService {
   async updateRule(
     organizationId: string,
     ruleId: string,
-    input: { triggerHoursBefore?: number | undefined; channel?: 'in_app' | 'email' | 'push' | undefined }
+    input: { offsetValue?: number | undefined; offsetUnit?: 'minutes' | 'days' | undefined; channel?: 'in_app' | 'email' | 'push' | undefined }
   ) {
     if (!mongoose.isValidObjectId(ruleId)) {
       throw new AppError('INVALID_REMINDER_RULE_ID', 400, 'ruleId is invalid');
     }
 
-    if (input.triggerHoursBefore !== undefined && (!Number.isInteger(input.triggerHoursBefore) || input.triggerHoursBefore < 1 || input.triggerHoursBefore > 720)) {
-      throw new AppError('INVALID_TRIGGER_HOURS', 400, 'triggerHoursBefore must be between 1 and 720');
+    if (input.offsetValue !== undefined || input.offsetUnit !== undefined) {
+      const unit = input.offsetUnit ?? 'days';
+      const value = input.offsetValue ?? 0;
+      if (!Number.isInteger(value) || value < 1 || value > (unit === 'minutes' ? 10080 : 3650)) {
+        throw new AppError('INVALID_REMINDER_OFFSET', 400, 'offsetValue is out of allowed range for offsetUnit');
+      }
     }
 
     try {
@@ -77,10 +81,11 @@ export class ReminderService {
       const rules = await this.rules.listActiveByOrganization(orgId);
       if (rules.length === 0) continue;
 
-      const hoursToAppointment = (appointment.startAt.getTime() - now.getTime()) / 3600000;
+      const msToAppointment = appointment.startAt.getTime() - now.getTime();
       for (const rule of rules) {
-        const diff = Math.abs(hoursToAppointment - rule.triggerHoursBefore);
-        if (diff > 0.25) continue;
+        const triggerMs = rule.offsetUnit === 'minutes' ? rule.offsetValue * 60_000 : rule.offsetValue * 24 * 60 * 60_000;
+        const diffMs = Math.abs(msToAppointment - triggerMs);
+        if (diffMs > 60_000) continue;
 
         await this.notifications.notifyPatientFromAppointment(
           {
@@ -113,7 +118,7 @@ export class ReminderService {
           },
           'appointment_reminder',
           'Recordatorio de turno',
-          `Tenés un turno en ${rule.triggerHoursBefore}h`,
+          `Tenés un turno en ${rule.offsetValue} ${rule.offsetUnit === 'minutes' ? 'minutos' : 'días'}.`,
           `${appointment._id.toString()}:reminder:${rule._id.toString()}`
         );
         generated += 1;
@@ -123,11 +128,12 @@ export class ReminderService {
     return { generated };
   }
 
-  private toDto(row: { _id: { toString(): string }; organizationId: { toString(): string }; triggerHoursBefore: number; channel: 'in_app' | 'email' | 'push'; status: 'active' | 'inactive'; createdAt: Date; updatedAt: Date }) {
+  private toDto(row: { _id: { toString(): string }; organizationId: { toString(): string }; offsetValue: number; offsetUnit: 'minutes' | 'days'; channel: 'in_app' | 'email' | 'push'; status: 'active' | 'inactive'; createdAt: Date; updatedAt: Date }) {
     return {
       id: row._id.toString(),
       organizationId: row.organizationId.toString(),
-      triggerHoursBefore: row.triggerHoursBefore,
+      offsetValue: row.offsetValue,
+      offsetUnit: row.offsetUnit,
       channel: row.channel,
       status: row.status,
       createdAt: row.createdAt.toISOString(),

@@ -8,11 +8,13 @@ const service = new ReminderService();
 const orgPathSchema = z.object({ organizationId: z.string().trim().min(1) });
 const rulePathSchema = orgPathSchema.extend({ ruleId: z.string().trim().min(1) });
 const createSchema = z.object({
-  triggerHoursBefore: z.number().int().min(1).max(720),
+  offsetValue: z.number().int().min(1),
+  offsetUnit: z.enum(['minutes', 'days']).default('days'),
   channel: z.enum(['in_app', 'email', 'push']).default('in_app')
 });
 const patchSchema = z.object({
-  triggerHoursBefore: z.number().int().min(1).max(720).optional(),
+  offsetValue: z.number().int().min(1).optional(),
+  offsetUnit: z.enum(['minutes', 'days']).optional(),
   channel: z.enum(['in_app', 'email', 'push']).optional()
 });
 const statusSchema = z.object({ status: z.enum(['active', 'inactive']) });
