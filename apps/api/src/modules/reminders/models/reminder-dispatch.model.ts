@@ -5,7 +5,7 @@ const reminderDispatchSchema = new mongoose.Schema(
   {
     appointmentId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Appointment', index: true },
     organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization', index: true },
-    ruleId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'ReminderRule', index: true },
+    reminderType: { type: String, enum: ['first_half', 'second_half', 'last_before_appointment'], required: true, index: true },
     scheduledFor: { type: Date, required: true, index: true },
     channel: { type: String, enum: notificationChannels, default: 'in_app' },
     status: { type: String, enum: ['pending', 'sent', 'canceled', 'failed'], default: 'pending', index: true },
@@ -17,7 +17,7 @@ const reminderDispatchSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-reminderDispatchSchema.index({ appointmentId: 1, ruleId: 1 }, { unique: true });
+reminderDispatchSchema.index({ appointmentId: 1, reminderType: 1, scheduledFor: 1 }, { unique: true });
 reminderDispatchSchema.index({ status: 1, scheduledFor: 1 });
 
 export type ReminderDispatchDocument = InferSchemaType<typeof reminderDispatchSchema> & { _id: mongoose.Types.ObjectId };
