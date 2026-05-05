@@ -93,6 +93,7 @@ export const DashboardPage = (): ReactElement => {
             <Link className="nx-btn-secondary" to="/app/professionals">Ir a profesionales</Link>
             <Link className="nx-btn-secondary" to="/app/specialties">Ir a especialidades</Link>
             <Link className="nx-btn-secondary" to="/app/appointments">Ir a turnos</Link>
+            <Link className="nx-btn-secondary" to="/organization/settings/reminders">Configurar recordatorios</Link>
             <Link className="nx-btn-secondary" to="/feedback" state={{ fromPath: '/dashboard' }}>Enviar feedback beta</Link>
           </div>
           {!canManage ? <p style={{ color: 'var(--text-soft)' }}>Tenés acceso de lectura para módulos operativos.</p> : null}
