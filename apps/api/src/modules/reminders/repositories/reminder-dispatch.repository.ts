@@ -1,13 +1,20 @@
 import { ReminderDispatchModel, type ReminderDispatchDocument } from '../models/reminder-dispatch.model.js';
 
+type ReminderType = 'first_half' | 'second_half' | 'last_before_appointment';
+
 export class ReminderDispatchRepository {
-  async upsertPending(input: { appointmentId: string; organizationId: string; ruleId: string; scheduledFor: Date; channel: 'in_app' | 'email' | 'push' }): Promise<void> {
+  async upsertPending(input: {
+    appointmentId: string;
+    organizationId: string;
+    reminderType: ReminderType;
+    scheduledFor: Date;
+    channel: 'in_app' | 'email' | 'push';
+  }): Promise<void> {
     await ReminderDispatchModel.findOneAndUpdate(
-      { appointmentId: input.appointmentId, ruleId: input.ruleId },
+      { appointmentId: input.appointmentId, reminderType: input.reminderType, scheduledFor: input.scheduledFor },
       {
         $set: {
           organizationId: input.organizationId,
-          scheduledFor: input.scheduledFor,
           channel: input.channel,
           status: 'pending',
           canceledAt: null,
@@ -27,9 +34,7 @@ export class ReminderDispatchRepository {
   }
 
   async findPendingDue(windowStart: Date, windowEnd: Date): Promise<ReminderDispatchDocument[]> {
-    return ReminderDispatchModel.find({ status: 'pending', scheduledFor: { $gte: windowStart, $lte: windowEnd } })
-      .sort({ scheduledFor: 1 })
-      .exec();
+    return ReminderDispatchModel.find({ status: 'pending', scheduledFor: { $gte: windowStart, $lte: windowEnd } }).sort({ scheduledFor: 1 }).exec();
   }
 
   async markSent(dispatchId: string): Promise<void> {
