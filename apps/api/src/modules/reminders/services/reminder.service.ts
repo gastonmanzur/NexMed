@@ -9,6 +9,7 @@ import { logger } from '../../../config/logger.js';
 import type { AppointmentDocument } from '../../appointments/models/appointment.model.js';
 
 type ReminderType = 'first_half' | 'second_half' | 'last_before_appointment';
+type ReminderCandidate = { type: ReminderType; scheduledFor: Date; priority: number };
 
 export class ReminderService {
   constructor(
@@ -29,29 +30,12 @@ export class ReminderService {
       return;
     }
 
-    const createdAt = appointment.createdAt ?? now;
-    const startMs = appointment.startAt.getTime();
-    const createdMs = createdAt.getTime();
-    const t1 = new Date(createdMs + Math.floor((startMs - createdMs) * 0.5));
-    const t2 = new Date(t1.getTime() + Math.floor((startMs - t1.getTime()) * 0.5));
-    const lastOffsetMs = env.ALLOW_MINUTE_BASED_REMINDERS ? 60_000 : 24 * 60 * 60_000;
-    const t3 = new Date(startMs - lastOffsetMs);
+    await this.dispatches.cancelPendingByAppointment(appointmentId, 'rescheduled_recalculation');
 
-    const candidates: Array<{ type: ReminderType; scheduledFor: Date; priority: number }> = [
-      { type: 'first_half', scheduledFor: t1, priority: 3 },
-      { type: 'second_half', scheduledFor: t2, priority: 2 },
-      { type: 'last_before_appointment', scheduledFor: t3, priority: 1 }
-    ];
+    const candidates = this.buildCandidates(appointment.createdAt ?? now, appointment.startAt);
+    const validCandidates = this.selectValidCandidates(candidates, now, appointment.startAt);
 
-    const byInstant = new Map<number, { type: ReminderType; scheduledFor: Date; priority: number }>();
-    for (const candidate of candidates) {
-      const ms = candidate.scheduledFor.getTime();
-      if (ms <= now.getTime() || ms >= startMs) continue;
-      const existing = byInstant.get(ms);
-      if (!existing || candidate.priority < existing.priority) byInstant.set(ms, candidate);
-    }
-
-    for (const selected of byInstant.values()) {
+    for (const selected of validCandidates) {
       await this.dispatches.upsertPending({
         appointmentId,
         organizationId: appointment.organizationId.toString(),
@@ -60,6 +44,38 @@ export class ReminderService {
         channel: 'in_app'
       });
     }
+  }
+
+  private buildCandidates(createdAt: Date, startAt: Date): ReminderCandidate[] {
+    const startMs = startAt.getTime();
+    const createdMs = createdAt.getTime();
+    const t1 = new Date(createdMs + Math.floor((startMs - createdMs) * 0.5));
+    const t2 = new Date(t1.getTime() + Math.floor((startMs - t1.getTime()) * 0.5));
+    const lastOffsetMs = env.ALLOW_MINUTE_BASED_REMINDERS ? 60_000 : 24 * 60 * 60_000;
+    const t3 = new Date(startMs - lastOffsetMs);
+
+    return [
+      { type: 'first_half', scheduledFor: t1, priority: 3 },
+      { type: 'second_half', scheduledFor: t2, priority: 2 },
+      { type: 'last_before_appointment', scheduledFor: t3, priority: 1 }
+    ];
+  }
+
+  private selectValidCandidates(candidates: ReminderCandidate[], now: Date, startAt: Date): ReminderCandidate[] {
+    const nowMs = now.getTime();
+    const startMs = startAt.getTime();
+    const byInstant = new Map<number, ReminderCandidate>();
+
+    for (const candidate of candidates) {
+      const ms = candidate.scheduledFor.getTime();
+      if (ms <= nowMs || ms >= startMs) continue;
+      const existing = byInstant.get(ms);
+      if (!existing || candidate.priority < existing.priority) {
+        byInstant.set(ms, candidate);
+      }
+    }
+
+    return [...byInstant.values()].sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime());
   }
 
   async runDueReminders(now = new Date()): Promise<{ generated: number; scanned: number }> {
