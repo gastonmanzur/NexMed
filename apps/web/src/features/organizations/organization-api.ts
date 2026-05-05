@@ -166,7 +166,7 @@ export const organizationApi = {
     return result.data;
   },
 
-  createReminderRule: async (accessToken: string, organizationId: string, input: { offsetValue: number; offsetUnit: 'minutes' | 'days'; channel: 'in_app' | 'email' | 'push' }): Promise<ReminderRuleDto> => {
+  createReminderRule: async (accessToken: string, organizationId: string, input: { offsetValue: number; offsetUnit: 'minutes' | 'hours' | 'days'; channel: 'in_app' | 'email' | 'push' }): Promise<ReminderRuleDto> => {
     const result = await request<{ success: true; data: ReminderRuleDto }>(`/organizations/${organizationId}/reminder-rules`, {
       method: 'POST',
       body: JSON.stringify(input),

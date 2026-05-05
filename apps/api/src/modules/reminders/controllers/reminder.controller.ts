@@ -9,13 +9,13 @@ const orgPathSchema = z.object({ organizationId: z.string().trim().min(1) });
 const rulePathSchema = orgPathSchema.extend({ ruleId: z.string().trim().min(1) });
 const createSchema = z.object({
   offsetValue: z.number().int().min(1),
-  offsetUnit: z.enum(['minutes', 'days']).default('days'),
-  channel: z.enum(['in_app', 'email', 'push']).default('in_app')
+  offsetUnit: z.enum(['minutes', 'hours', 'days']).default('days'),
+  channel: z.literal('in_app').default('in_app')
 });
 const patchSchema = z.object({
   offsetValue: z.number().int().min(1).optional(),
-  offsetUnit: z.enum(['minutes', 'days']).optional(),
-  channel: z.enum(['in_app', 'email', 'push']).optional()
+  offsetUnit: z.enum(['minutes', 'hours', 'days']).optional(),
+  channel: z.literal('in_app').optional()
 });
 const statusSchema = z.object({ status: z.enum(['active', 'inactive']) });
 

@@ -9,6 +9,7 @@ import { AppointmentRepository } from '../repositories/appointment.repository.js
 import { AuditLogRepository } from '../repositories/audit-log.repository.js';
 import { NotificationService } from '../../notifications/services/notification.service.js';
 import { WaitlistService } from '../../waitlist/services/waitlist.service.js';
+import { ReminderService } from '../../reminders/services/reminder.service.js';
 import type { AppointmentDocument } from '../models/appointment.model.js';
 
 interface ListAppointmentsInput {
@@ -90,7 +91,8 @@ export class AppointmentsService {
     private readonly availabilityService = new AvailabilityService(),
     private readonly auditLogs = new AuditLogRepository(),
     private readonly notifications = new NotificationService(),
-    private readonly waitlist = new WaitlistService()
+    private readonly waitlist = new WaitlistService(),
+    private readonly reminders = new ReminderService()
   ) {}
 
   async listAppointments(organizationId: string, input: ListAppointmentsInput): Promise<AppointmentDto[]> {
@@ -197,6 +199,8 @@ export class AppointmentsService {
         `Tu turno para ${new Date(createdDto.startAt).toLocaleString('es-AR', { hour12: false })} fue reservado.`
       );
 
+      await this.reminders.scheduleForAppointment(created);
+
       return createdDto;
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
@@ -245,6 +249,7 @@ export class AppointmentsService {
       'Turno cancelado',
       'Tu turno fue cancelado.'
     );
+    await this.reminders.scheduleForAppointment(updated);
     await this.waitlist.handleSlotFreed({
       organizationId: updatedDto.organizationId,
       professionalId: updatedDto.professionalId,
@@ -328,6 +333,7 @@ export class AppointmentsService {
 
     const updatedDto = this.toDto(updated);
     await this.notifications.notifyPatientFromAppointment(updatedDto, 'appointment_canceled', 'Turno cancelado', 'Tu turno fue cancelado.');
+    await this.reminders.scheduleForAppointment(updated);
     await this.waitlist.handleSlotFreed({
       organizationId: appointment.organizationId,
       professionalId: appointment.professionalId,
@@ -443,6 +449,8 @@ export class AppointmentsService {
       'Turno reprogramado',
       `Tu turno fue reprogramado para ${new Date(replacementDto.startAt).toLocaleString('es-AR', { hour12: false })}.`
     );
+    await this.reminders.scheduleForAppointment(updatedOriginal);
+    await this.reminders.scheduleForAppointment(replacement);
     await this.waitlist.handleSlotFreed({
       organizationId: originalDto.organizationId,
       professionalId: originalDto.professionalId,

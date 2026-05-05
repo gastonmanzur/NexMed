@@ -7,8 +7,9 @@ const reminderRuleSchema = new mongoose.Schema(
   {
     organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization', index: true },
     offsetValue: { type: Number, required: true, min: 1, max: 3650 },
-    offsetUnit: { type: String, enum: ['minutes', 'days'], default: 'days' },
-    channel: { type: String, enum: notificationChannels, default: 'in_app' },
+    offsetUnit: { type: String, enum: ['minutes', 'hours', 'days'], default: 'days' },
+    channel: { type: String, enum: ['in_app'], default: 'in_app' },
+    sortOrder: { type: Number, required: true, default: 100, index: true },
     status: { type: String, enum: reminderRuleStatuses, default: 'active', index: true }
   },
   { timestamps: true }

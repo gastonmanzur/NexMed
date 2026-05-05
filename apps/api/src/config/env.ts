@@ -63,6 +63,10 @@ const envSchema = z
     PUSH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     PUSH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(40),
     AUTH_COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('strict'),
+    REMINDER_WORKER_ENABLED: z.union([z.boolean(), z.enum(['true', 'false']), z.string().length(0)]).optional(),
+    REMINDER_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+    REMINDER_WORKER_CATCHUP_MINUTES: z.coerce.number().int().min(1).max(120).default(15),
+    ALLOW_MINUTE_BASED_REMINDERS: z.union([z.boolean(), z.enum(['true', 'false']), z.string().length(0)]).optional(),
     AUTH_COOKIE_SECURE: z
       .union([z.boolean(), z.enum(['true', 'false']), z.string().length(0)])
       .optional()
@@ -89,6 +93,14 @@ const envSchema = z
             : data.AUTH_COOKIE_SECURE === 'false'
               ? false
               : data.NODE_ENV === 'production',
+      ALLOW_MINUTE_BASED_REMINDERS:
+        typeof data.ALLOW_MINUTE_BASED_REMINDERS === 'boolean'
+          ? data.ALLOW_MINUTE_BASED_REMINDERS
+          : data.ALLOW_MINUTE_BASED_REMINDERS === 'true',
+      REMINDER_WORKER_ENABLED:
+        typeof data.REMINDER_WORKER_ENABLED === 'boolean'
+          ? data.REMINDER_WORKER_ENABLED
+          : data.REMINDER_WORKER_ENABLED !== 'false',
       DISABLE_FREE_TRIAL:
         typeof data.DISABLE_FREE_TRIAL === 'boolean'
           ? data.DISABLE_FREE_TRIAL

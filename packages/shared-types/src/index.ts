@@ -361,7 +361,7 @@ export interface ReminderRuleDto {
   id: string;
   organizationId: string;
   offsetValue: number;
-  offsetUnit: 'minutes' | 'days';
+  offsetUnit: 'minutes' | 'hours' | 'days';
   channel: NotificationChannel;
   status: 'active' | 'inactive';
   createdAt: string;
