@@ -3,12 +3,16 @@ import { AppError } from '../../../core/errors.js';
 import { AppointmentRepository } from '../../appointments/repositories/appointment.repository.js';
 import { NotificationService } from '../../notifications/services/notification.service.js';
 import { ReminderRuleRepository } from '../repositories/reminder-rule.repository.js';
+import { ReminderDispatchRepository } from '../repositories/reminder-dispatch.repository.js';
+import { logger } from '../../../config/logger.js';
+import type { AppointmentDocument } from '../../appointments/models/appointment.model.js';
 
 export class ReminderService {
   constructor(
     private readonly rules = new ReminderRuleRepository(),
     private readonly appointments = new AppointmentRepository(),
-    private readonly notifications = new NotificationService()
+    private readonly notifications = new NotificationService(),
+    private readonly dispatches = new ReminderDispatchRepository()
   ) {}
 
   async listRules(organizationId: string) {
@@ -16,7 +20,7 @@ export class ReminderService {
     return rows.map((row) => this.toDto(row));
   }
 
-  async createRule(organizationId: string, input: { offsetValue: number; offsetUnit: 'minutes' | 'days'; channel: 'in_app' | 'email' | 'push' }) {
+  async createRule(organizationId: string, input: { offsetValue: number; offsetUnit: 'minutes' | 'hours' | 'days'; channel: 'in_app' }) {
     if (!Number.isInteger(input.offsetValue) || input.offsetValue < 1 || input.offsetValue > (input.offsetUnit === 'minutes' ? 10080 : 3650)) {
       throw new AppError('INVALID_REMINDER_OFFSET', 400, 'offsetValue is out of allowed range for offsetUnit');
     }
@@ -35,7 +39,7 @@ export class ReminderService {
   async updateRule(
     organizationId: string,
     ruleId: string,
-    input: { offsetValue?: number | undefined; offsetUnit?: 'minutes' | 'days' | undefined; channel?: 'in_app' | 'email' | 'push' | undefined }
+    input: { offsetValue?: number | undefined; offsetUnit?: 'minutes' | 'hours' | 'days' | undefined; channel?: 'in_app' | undefined }
   ) {
     if (!mongoose.isValidObjectId(ruleId)) {
       throw new AppError('INVALID_REMINDER_RULE_ID', 400, 'ruleId is invalid');
@@ -71,64 +75,64 @@ export class ReminderService {
     return this.toDto(row);
   }
 
-  async runDueReminders(now = new Date()): Promise<{ generated: number }> {
-    const horizon = new Date(now.getTime() + (72 * 60 * 60 * 1000));
-    const appointments = await this.appointments.findBookedStartingBetween(now, horizon);
 
-    let generated = 0;
-    for (const appointment of appointments) {
-      const orgId = appointment.organizationId.toString();
-      const rules = await this.rules.listActiveByOrganization(orgId);
-      if (rules.length === 0) continue;
-
-      const msToAppointment = appointment.startAt.getTime() - now.getTime();
-      for (const rule of rules) {
-        const triggerMs = rule.offsetUnit === 'minutes' ? rule.offsetValue * 60_000 : rule.offsetValue * 24 * 60 * 60_000;
-        const diffMs = Math.abs(msToAppointment - triggerMs);
-        if (diffMs > 60_000) continue;
-
-        await this.notifications.notifyPatientFromAppointment(
-          {
-            id: appointment._id.toString(),
-            organizationId: orgId,
-            professionalId: appointment.professionalId.toString(),
-            specialtyId: appointment.specialtyId ? appointment.specialtyId.toString() : null,
-            patientProfileId: appointment.patientProfileId ? appointment.patientProfileId.toString() : null,
-            patientName: appointment.patientName,
-            patientEmail: appointment.patientEmail ?? null,
-            patientPhone: appointment.patientPhone ?? null,
-            startAt: appointment.startAt.toISOString(),
-            endAt: appointment.endAt.toISOString(),
-            status: appointment.status,
-            source: appointment.source,
-            notes: appointment.notes ?? null,
-            createdByUserId: appointment.createdByUserId.toString(),
-            bookedByUserId: (appointment.bookedByUserId ?? appointment.createdByUserId).toString(),
-            beneficiaryType: appointment.beneficiaryType ?? 'self',
-            familyMemberId: appointment.familyMemberId ? appointment.familyMemberId.toString() : null,
-            beneficiaryDisplayName: appointment.beneficiaryDisplayName ?? appointment.patientName,
-            beneficiaryRelationship: appointment.beneficiaryRelationship ?? null,
-            canceledByUserId: appointment.canceledByUserId ? appointment.canceledByUserId.toString() : null,
-            canceledAt: appointment.canceledAt ? appointment.canceledAt.toISOString() : null,
-            cancelReason: appointment.cancelReason ?? null,
-            rescheduledFromAppointmentId: appointment.rescheduledFromAppointmentId ? appointment.rescheduledFromAppointmentId.toString() : null,
-            rescheduledToAppointmentId: appointment.rescheduledToAppointmentId ? appointment.rescheduledToAppointmentId.toString() : null,
-            createdAt: appointment.createdAt.toISOString(),
-            updatedAt: appointment.updatedAt.toISOString()
-          },
-          'appointment_reminder',
-          'Recordatorio de turno',
-          `Tenés un turno en ${rule.offsetValue} ${rule.offsetUnit === 'minutes' ? 'minutos' : 'días'}.`,
-          `${appointment._id.toString()}:reminder:${rule._id.toString()}`
-        );
-        generated += 1;
-      }
+  async scheduleForAppointment(appointment: { _id: { toString(): string }; organizationId: { toString(): string }; startAt: Date; status: string }): Promise<void> {
+    const appointmentId = appointment._id.toString();
+    if (appointment.status !== 'booked') {
+      await this.dispatches.cancelPendingByAppointment(appointmentId, `appointment_status_${appointment.status}`);
+      return;
     }
-
-    return { generated };
+    const rules = await this.rules.listActiveByOrganization(appointment.organizationId.toString());
+    for (const rule of rules) {
+      if (rule.offsetUnit === 'minutes' && !process.env.ALLOW_MINUTE_BASED_REMINDERS && !String(process.env.ALLOW_MINUTE_BASED_REMINDERS).includes('true')) {
+        continue;
+      }
+      const triggerMs = this.offsetToMs(rule.offsetValue, rule.offsetUnit);
+      await this.dispatches.upsertPending({
+        appointmentId,
+        organizationId: appointment.organizationId.toString(),
+        ruleId: rule._id.toString(),
+        scheduledFor: new Date(appointment.startAt.getTime() - triggerMs),
+        channel: 'in_app'
+      });
+    }
   }
 
-  private toDto(row: { _id: { toString(): string }; organizationId: { toString(): string }; offsetValue: number; offsetUnit: 'minutes' | 'days'; channel: 'in_app' | 'email' | 'push'; status: 'active' | 'inactive'; createdAt: Date; updatedAt: Date }) {
+  async runDueReminders(now = new Date()): Promise<{ generated: number; scanned: number }> {
+    const catchupMinutes = 15;
+    const due = await this.dispatches.findPendingDue(new Date(now.getTime() - catchupMinutes * 60_000), now);
+    let generated = 0;
+    for (const dispatch of due) {
+      const appointment = await this.appointments.findByIdInOrganization(dispatch.organizationId.toString(), dispatch.appointmentId.toString());
+      if (!appointment || appointment.status !== 'booked') {
+        await this.dispatches.cancelPendingByAppointment(dispatch.appointmentId.toString(), 'appointment_not_booked_anymore');
+        continue;
+      }
+      try {
+        await this.notifications.notifyPatientFromAppointment(this.toAppointmentDto(appointment), 'appointment_reminder', 'Recordatorio de turno', 'Tenés un turno próximo.', `${appointment._id.toString()}:reminder:${dispatch.ruleId.toString()}`);
+        await this.dispatches.markSent(dispatch._id.toString());
+        generated += 1;
+      } catch (error) {
+        logger.warn({ error, dispatchId: dispatch._id.toString() }, 'reminder dispatch failed');
+        await this.dispatches.markFailed(dispatch._id.toString());
+      }
+    }
+    return { generated, scanned: due.length };
+  }
+
+  private offsetToMs(value: number, unit: 'minutes' | 'hours' | 'days'): number {
+    if (unit === 'minutes') return value * 60_000;
+    if (unit === 'hours') return value * 3_600_000;
+    return value * 24 * 3_600_000;
+  }
+
+  private toAppointmentDto(appointment: AppointmentDocument) {
+    return {
+      id: appointment._id.toString(), organizationId: appointment.organizationId.toString(), professionalId: appointment.professionalId.toString(), specialtyId: appointment.specialtyId ? appointment.specialtyId.toString() : null, patientProfileId: appointment.patientProfileId ? appointment.patientProfileId.toString() : null, patientName: appointment.patientName, patientEmail: appointment.patientEmail ?? null, patientPhone: appointment.patientPhone ?? null, startAt: appointment.startAt.toISOString(), endAt: appointment.endAt.toISOString(), status: appointment.status, source: appointment.source, notes: appointment.notes ?? null, createdByUserId: appointment.createdByUserId.toString(), bookedByUserId: (appointment.bookedByUserId ?? appointment.createdByUserId).toString(), beneficiaryType: appointment.beneficiaryType ?? 'self', familyMemberId: appointment.familyMemberId ? appointment.familyMemberId.toString() : null, beneficiaryDisplayName: appointment.beneficiaryDisplayName ?? appointment.patientName, beneficiaryRelationship: appointment.beneficiaryRelationship ?? null, canceledByUserId: appointment.canceledByUserId ? appointment.canceledByUserId.toString() : null, canceledAt: appointment.canceledAt ? appointment.canceledAt.toISOString() : null, cancelReason: appointment.cancelReason ?? null, rescheduledFromAppointmentId: appointment.rescheduledFromAppointmentId ? appointment.rescheduledFromAppointmentId.toString() : null, rescheduledToAppointmentId: appointment.rescheduledToAppointmentId ? appointment.rescheduledToAppointmentId.toString() : null, createdAt: appointment.createdAt.toISOString(), updatedAt: appointment.updatedAt.toISOString()
+    };
+  }
+
+  private toDto(row: { _id: { toString(): string }; organizationId: { toString(): string }; offsetValue: number; offsetUnit: 'minutes' | 'hours' | 'days'; channel: 'in_app' | 'email' | 'push'; status: 'active' | 'inactive'; createdAt: Date; updatedAt: Date }) {
     return {
       id: row._id.toString(),
       organizationId: row.organizationId.toString(),

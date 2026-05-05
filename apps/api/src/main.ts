@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { dropLegacySpecialtyIndexes } from './modules/professionals/models/specialty.model.js';
+import { ReminderWorkerService } from './modules/reminders/services/reminder-worker.service.js';
 
 const bootstrap = async (): Promise<void> => {
   await mongoose.connect(env.MONGO_URI);
@@ -13,6 +14,8 @@ const bootstrap = async (): Promise<void> => {
   app.listen(env.PORT, () => {
     logger.info(`API running on port ${env.PORT}`);
   });
+
+  new ReminderWorkerService().start();
 };
 
 bootstrap().catch((error: unknown) => {
