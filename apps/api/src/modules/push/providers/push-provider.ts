@@ -10,6 +10,7 @@ export interface PushDeliveryResult {
   success: boolean;
   providerMessageId?: string;
   errorCode?: string;
+  errorMessage?: string;
   shouldInvalidateToken: boolean;
 }
 
