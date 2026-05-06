@@ -15,4 +15,5 @@ export interface PushDeliveryResult {
 
 export interface PushProvider {
   send(messages: PushMessage[]): Promise<PushDeliveryResult[]>;
+  getProviderInfo?(): Record<string, string | null>;
 }

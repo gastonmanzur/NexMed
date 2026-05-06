@@ -86,7 +86,9 @@ export const pushController = {
       body: data.body,
       ...(data.data ? { data: data.data } : {})
     });
-    res.status(200).json({ success: true, data: report });
+    const total = report.sent + report.failed;
+    const status = report.failed > 0 && report.sent === 0 && total > 0 ? 502 : 200;
+    res.status(status).json({ success: report.failed === 0, data: report });
   },
 
   sendAdmin: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
