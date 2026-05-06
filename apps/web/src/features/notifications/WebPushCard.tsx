@@ -132,11 +132,13 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
     setMessage(null);
 
     try {
+
       const activeToken = token ?? (await resolveActiveWebToken());
       if (!activeToken) {
         setError('Activá push en este navegador antes de enviar una prueba.');
         return;
       }
+
 
       const result = await notificationsApi.sendTestToMe(accessToken, {
         title: t('profile.push.testTitle'),
@@ -175,11 +177,19 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
         </button>
         <button
           type="button"
+
           className="nx-btn"
           onClick={() => void onSendTest()}
           disabled={loading}
         >
           {t('profile.push.sendTest', 'Enviar prueba')}
+
+          className="nx-btn-secondary"
+          onClick={() => void onSendTest()}
+          disabled={loading || !token}
+        >
+          {t('profile.push.sendTest')}
+
         </button>
       </div>
       {message ? <p style={{ color: 'green' }}>{message}</p> : null}
