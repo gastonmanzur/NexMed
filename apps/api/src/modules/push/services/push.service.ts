@@ -1,4 +1,5 @@
 import { AppError } from '../../../core/errors.js';
+import { logger } from '../../../config/logger.js';
 import { UserRepository } from '../../auth/repositories/user.repository.js';
 import { type PushChannel, type PushPlatform } from '../models/push-device.model.js';
 import { FcmPushProvider } from '../providers/fcm-push.provider.js';
@@ -25,6 +26,14 @@ interface SendToUserInput {
   title: string;
   body: string;
   data?: Record<string, string> | undefined;
+}
+
+interface PushAttemptResult {
+  token: string;
+  success: boolean;
+  messageId: string | null;
+  errorCode: string | null;
+  invalidateToken: boolean;
 }
 
 export class PushService {
@@ -72,7 +81,7 @@ export class PushService {
 
     const tokens = await this.devices.getActiveTokensByUser(input.targetUserId);
     if (tokens.length === 0) {
-      return { sent: 0, failed: 0, invalidatedTokens: 0, results: [] };
+      return { sent: 0, failed: 0, invalidatedTokens: 0, results: [], attempts: [], provider: this.provider.getProviderInfo?.() ?? {} };
     }
 
     let results: PushDeliveryResult[];
@@ -85,18 +94,52 @@ export class PushService {
           ...(input.data ? { data: input.data } : {})
         }))
       );
-    } catch {
+    } catch (error) {
+      logger.error(
+        {
+          push: {
+            targetUserId: input.targetUserId,
+            provider: this.provider.getProviderInfo?.() ?? {},
+            tokenCount: tokens.length
+          },
+          error
+        },
+        'Push provider request failed'
+      );
       throw new AppError('PUSH_PROVIDER_ERROR', 502, 'Push provider request failed');
     }
 
     const tokensToInvalidate = results.filter((result) => result.shouldInvalidateToken).map((result) => result.token);
     await Promise.all(tokensToInvalidate.map((token) => this.devices.invalidateToken(token)));
 
+    const attempts: PushAttemptResult[] = results.map((result) => ({
+      token: result.token,
+      success: result.success,
+      messageId: result.providerMessageId ?? null,
+      errorCode: result.errorCode ?? null,
+      invalidateToken: result.shouldInvalidateToken
+    }));
+
+    logger.info(
+      {
+        push: {
+          targetUserId: input.targetUserId,
+          provider: this.provider.getProviderInfo?.() ?? {},
+          sent: attempts.filter((attempt) => attempt.success).length,
+          failed: attempts.filter((attempt) => !attempt.success).length,
+          attempts
+        }
+      },
+      'Push delivery report'
+    );
+
     return {
-      sent: results.filter((result) => result.success).length,
-      failed: results.filter((result) => !result.success).length,
+      sent: attempts.filter((attempt) => attempt.success).length,
+      failed: attempts.filter((attempt) => !attempt.success).length,
       invalidatedTokens: tokensToInvalidate.length,
-      results
+      results,
+      attempts,
+      provider: this.provider.getProviderInfo?.() ?? {}
     };
   }
 
