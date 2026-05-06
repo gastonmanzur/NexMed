@@ -11,24 +11,52 @@ const INVALID_TOKEN_CODES = new Set(['messaging/invalid-registration-token', 'me
 export class FcmPushProvider implements PushProvider {
   private readonly app: App;
   private readonly projectId: string;
+  private readonly clientEmail: string;
 
   constructor() {
     if (!env.FCM_PROJECT_ID || !env.FCM_CLIENT_EMAIL || !env.FCM_PRIVATE_KEY) {
       throw new AppError('PUSH_PROVIDER_MISCONFIGURED', 500, 'FCM credentials are not configured');
     }
 
-    this.projectId = env.FCM_PROJECT_ID;
+    this.projectId = env.FCM_PROJECT_ID.trim();
+    this.clientEmail = env.FCM_CLIENT_EMAIL.trim();
+    const parsedPrivateKey = env.FCM_PRIVATE_KEY.replace(/\\n/g, '\n').trim();
+
+    if (this.projectId.includes('.apps.googleusercontent.com')) {
+      throw new AppError('PUSH_PROVIDER_MISCONFIGURED', 500, 'FCM_PROJECT_ID must be a Firebase project ID, not an OAuth client ID');
+    }
+
+    if (!this.clientEmail.endsWith(`@${this.projectId}.iam.gserviceaccount.com`)) {
+      throw new AppError('PUSH_PROVIDER_MISCONFIGURED', 500, 'FCM_CLIENT_EMAIL does not match FCM_PROJECT_ID');
+    }
+
+    if (!parsedPrivateKey.includes('BEGIN PRIVATE KEY') || !parsedPrivateKey.includes('END PRIVATE KEY')) {
+      throw new AppError('PUSH_PROVIDER_MISCONFIGURED', 500, 'FCM_PRIVATE_KEY is malformed');
+    }
+
     const appName = `push-fcm-${this.projectId}`;
     this.app =
       getApps().find((candidate) => candidate.name === appName) ??
       initializeApp({
         credential: cert({
           projectId: this.projectId,
-          clientEmail: env.FCM_CLIENT_EMAIL,
-          privateKey: env.FCM_PRIVATE_KEY.replace(/\\n/g, '\n')
+          clientEmail: this.clientEmail,
+          privateKey: parsedPrivateKey
         }),
         projectId: this.projectId
       }, appName);
+
+    logger.info(
+      {
+        push: {
+          provider: 'fcm',
+          firebaseProjectId: this.projectId,
+          firebaseClientEmail: this.clientEmail,
+          firebaseAppName: this.app.name
+        }
+      },
+      'Initialized Firebase Admin for push delivery'
+    );
   }
 
   getProviderInfo(): Record<string, string | null> {
@@ -83,12 +111,14 @@ export class FcmPushProvider implements PushProvider {
   private mapResults(messages: PushMessage[], batch: BatchResponse): PushDeliveryResult[] {
     return batch.responses.map((result, index) => {
       const code = result.error?.code;
+      const errorMessage = result.error?.message;
       const token = messages[index]?.token ?? 'unknown';
       return {
         token,
         success: result.success,
         ...(result.messageId ? { providerMessageId: result.messageId } : {}),
         ...(code ? { errorCode: code } : {}),
+        ...(errorMessage ? { errorMessage } : {}),
         shouldInvalidateToken: Boolean(code && INVALID_TOKEN_CODES.has(code))
       };
     });

@@ -33,6 +33,7 @@ interface PushAttemptResult {
   success: boolean;
   messageId: string | null;
   errorCode: string | null;
+  errorMessage: string | null;
   invalidateToken: boolean;
 }
 
@@ -117,6 +118,7 @@ export class PushService {
       success: result.success,
       messageId: result.providerMessageId ?? null,
       errorCode: result.errorCode ?? null,
+      errorMessage: result.errorMessage ?? null,
       invalidateToken: result.shouldInvalidateToken
     }));
 

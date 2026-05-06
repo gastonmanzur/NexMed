@@ -116,6 +116,21 @@ const envSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'FCM credentials are required when PUSH_PROVIDER=fcm' });
     }
 
+    if (data.PUSH_PROVIDER === 'fcm' && data.FCM_PROJECT_ID) {
+      const projectId = data.FCM_PROJECT_ID.trim();
+      if (projectId.includes('.apps.googleusercontent.com')) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'FCM_PROJECT_ID must be Firebase project ID (e.g. nexmed-55345), not OAuth client ID' });
+      }
+    }
+
+    if (data.PUSH_PROVIDER === 'fcm' && data.FCM_PROJECT_ID && data.FCM_CLIENT_EMAIL) {
+      const projectId = data.FCM_PROJECT_ID.trim();
+      const clientEmail = data.FCM_CLIENT_EMAIL.trim();
+      if (!clientEmail.endsWith(`@${projectId}.iam.gserviceaccount.com`)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'FCM_CLIENT_EMAIL must belong to the same Firebase project as FCM_PROJECT_ID' });
+      }
+    }
+
     if (data.NODE_ENV === 'production' && !data.MERCADOPAGO_WEBHOOK_SECRET) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'MERCADOPAGO_WEBHOOK_SECRET is required in production' });
     }
