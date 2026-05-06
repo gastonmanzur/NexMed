@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '@starter/ui';
 import { notificationsApi } from './notifications-api';
@@ -65,7 +65,7 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
       try {
         await initForegroundPushNotifications();
       } catch {
-        // Ignore foreground push listener init errors to avoid blocking dashboard rendering.
+        // Ignore foreground push listener init errors to avoid blocking profile rendering.
       }
 
       try {
@@ -74,6 +74,8 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
       } catch {
         setToken(null);
       }
+
+      setPermission(getWebNotificationPermission());
     };
 
     void restoreToken();
@@ -124,10 +126,30 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
     }
   };
 
+  const onSendTest = async (): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
 
+    try {
+      const result = await notificationsApi.sendTestToMe(accessToken, {
+        title: t('profile.push.testTitle'),
+        body: t('profile.push.testBody')
+      });
+      setMessage(t('profile.push.testResult', { sent: result.sent, failed: result.failed }));
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : t('profile.push.error'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deviceStatus = useMemo(() => (token ? t('profile.push.active') : t('profile.push.inactive')), [t, token]);
 
   return (
-    <Card title={t('profile.push.title')}>
+    <Card title={t('profile.push.title')} subtitle="Desktop y mobile web compatible.">
+      <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>{t('profile.push.permission', { status: permission })}</p>
+      <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)' }}>{t('profile.push.status', { status: deviceStatus })}</p>
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button
           type="button"
@@ -144,6 +166,14 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
           disabled={loading}
         >
           {t('profile.push.disable')}
+        </button>
+        <button
+          type="button"
+          className="nx-btn-secondary"
+          onClick={() => void onSendTest()}
+          disabled={loading || !token}
+        >
+          {t('profile.push.sendTest')}
         </button>
       </div>
       {message ? <p style={{ color: 'green' }}>{message}</p> : null}
