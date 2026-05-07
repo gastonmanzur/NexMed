@@ -12,12 +12,18 @@ interface NotificationsContextValue {
   markManyAsReadLocally: (amount: number) => void;
 }
 
+interface ForegroundBanner {
+  title: string;
+  body: string;
+}
+
 const NotificationsContext = createContext<NotificationsContextValue | null>(null);
 
 export const NotificationsProvider = ({ children }: { children: ReactNode }): ReactElement => {
   const { accessToken } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingUnread, setLoadingUnread] = useState(false);
+  const [foregroundBanner, setForegroundBanner] = useState<ForegroundBanner | null>(null);
 
   const refreshUnreadCount = useCallback(async (): Promise<void> => {
     if (!accessToken) {
@@ -97,7 +103,10 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }): Re
     void initForegroundPushNotifications().catch(() => undefined);
 
     let unsubscribe: (() => void) | null = null;
-    void onForegroundPushMessage(() => {
+    void onForegroundPushMessage((payload) => {
+      const title = payload.notification?.title ?? 'Nueva notificación';
+      const body = payload.notification?.body ?? 'Tenés una nueva actualización.';
+      setForegroundBanner({ title, body });
       void refreshUnreadCount();
     })
       .then((listener) => {
@@ -111,6 +120,20 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }): Re
       unsubscribe?.();
     };
   }, [accessToken, refreshUnreadCount]);
+
+  useEffect(() => {
+    if (!foregroundBanner) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setForegroundBanner(null);
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [foregroundBanner]);
 
   const value = useMemo<NotificationsContextValue>(
     () => ({
@@ -126,6 +149,27 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }): Re
   return (
     <NotificationsContext.Provider value={value}>
       {children}
+      {foregroundBanner ? (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            right: '1rem',
+            top: '1rem',
+            zIndex: 2000,
+            maxWidth: '320px',
+            background: '#0f172a',
+            color: '#f8fafc',
+            padding: '0.75rem 1rem',
+            borderRadius: '10px',
+            boxShadow: '0 8px 20px rgba(15, 23, 42, 0.35)'
+          }}
+        >
+          <strong style={{ display: 'block', marginBottom: '0.25rem' }}>{foregroundBanner.title}</strong>
+          <span style={{ fontSize: '0.9rem' }}>{foregroundBanner.body}</span>
+        </div>
+      ) : null}
     </NotificationsContext.Provider>
   );
 };
