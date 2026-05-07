@@ -5,6 +5,7 @@ import { PatientProfileRepository } from '../../patient/repositories/patient-pro
 import { PushService } from '../../push/services/push.service.js';
 import { NotificationRepository } from '../repositories/notification.repository.js';
 import { notificationChannels, notificationStatuses, notificationTypes } from '../models/notification.model.js';
+import { resolveNotificationActionUrl } from '../notification-action-url.js';
 
 export class NotificationService {
   constructor(
@@ -58,11 +59,17 @@ export class NotificationService {
     }
 
     const channel = input.channel ?? 'in_app';
-    await this.notifications.create(input);
+    const notification = await this.notifications.create(input);
+    const actionUrl = resolveNotificationActionUrl({
+      type: notification.type,
+      relatedEntityType: notification.relatedEntityType
+    });
     await this.dispatchPushIfEnabled({
+      notificationId: notification._id.toString(),
       userId: input.userId,
       title: input.title,
       message: input.message,
+      actionUrl,
       channel
     });
   }
@@ -119,6 +126,10 @@ export class NotificationService {
       message: row.message,
       relatedEntityType: row.relatedEntityType ?? null,
       relatedEntityId: row.relatedEntityId ?? null,
+      actionUrl: resolveNotificationActionUrl({
+        type: row.type,
+        relatedEntityType: row.relatedEntityType
+      }),
       channel: row.channel,
       status: row.status,
       readAt: row.readAt ? row.readAt.toISOString() : null,
@@ -128,9 +139,11 @@ export class NotificationService {
   }
 
   private async dispatchPushIfEnabled(input: {
+    notificationId: string;
     userId: string;
     title: string;
     message: string;
+    actionUrl: string;
     channel: (typeof notificationChannels)[number];
   }): Promise<void> {
     if (input.channel !== 'in_app' && input.channel !== 'push') {
@@ -144,7 +157,12 @@ export class NotificationService {
         targetUserId: input.userId,
         title: input.title,
         body: input.message,
-        data: { source: 'notification_service' }
+        data: {
+          source: 'notification_service',
+          notificationId: input.notificationId,
+          deepLink: input.actionUrl,
+          link: `/patient/notifications?focus=${encodeURIComponent(input.notificationId)}`
+        }
       });
     } catch {
       // Keep in-app notification flow stable even when push delivery fails.
