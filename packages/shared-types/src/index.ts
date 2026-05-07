@@ -350,6 +350,7 @@ export interface NotificationDto {
   message: string;
   relatedEntityType: string | null;
   relatedEntityId: string | null;
+  actionUrl: string;
   channel: NotificationChannel;
   status: NotificationStatus;
   readAt: string | null;

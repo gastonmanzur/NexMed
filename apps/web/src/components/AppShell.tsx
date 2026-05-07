@@ -178,7 +178,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
       }
     }
     closeNotifications();
-    navigate(notificationsPath);
+    navigate(`${notificationsPath}?focus=${encodeURIComponent(item.id)}`);
   };
 
   const markAllAsRead = async () => {

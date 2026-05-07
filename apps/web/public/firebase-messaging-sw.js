@@ -14,11 +14,39 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title ?? "Notification";
+  const notificationId = payload.data?.notificationId ?? '';
+  const focusPath = `/patient/notifications?focus=${encodeURIComponent(notificationId)}`;
 
   const options = {
     body: payload.notification?.body ?? "",
-    data: payload.data
+    data: {
+      ...payload.data,
+      notificationId,
+      focusPath,
+      deepLink: payload.data?.deepLink ?? '/patient/notifications'
+    }
   };
 
   self.registration.showNotification(title, options);
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const focusPath = event.notification.data?.focusPath ?? '/patient/notifications';
+  const destinationUrl = new URL(focusPath, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.postMessage({ type: 'nexmed:push-focus', focusPath });
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(destinationUrl);
+      }
+      return undefined;
+    })
+  );
 });

@@ -82,6 +82,27 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }): Re
   }, [accessToken, refreshUnreadCount]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      return;
+    }
+
+    const onServiceWorkerMessage = (event: MessageEvent<{ type?: string; focusPath?: string }>) => {
+      if (event.data?.type !== 'nexmed:push-focus') {
+        return;
+      }
+      const focusPath = event.data.focusPath ?? '/patient/notifications';
+      if (window.location.pathname + window.location.search !== focusPath) {
+        window.location.assign(focusPath);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', onServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', onServiceWorkerMessage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!accessToken) {
       return;
     }
