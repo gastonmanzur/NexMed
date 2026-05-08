@@ -155,30 +155,96 @@ export class PatientService {
     };
   }
 
-  async updateMyProfile(userId: string, input: { phone?: string; dateOfBirth?: string; documentId?: string }): Promise<PatientProfileDto> {
+  async updateMyProfile(
+    userId: string,
+    input: {
+      firstName?: string | undefined;
+      lastName?: string | undefined;
+      phone?: string | undefined;
+      dateOfBirth?: string | undefined;
+      documentId?: string | undefined;
+      sex?: string | undefined;
+      nationality?: string | undefined;
+      address?: string | undefined;
+      city?: string | undefined;
+      province?: string | undefined;
+      emergencyContactName?: string | undefined;
+      emergencyContactPhone?: string | undefined;
+      emergencyContactRelationship?: string | undefined;
+      insuranceProvider?: string | undefined;
+      insuranceMemberId?: string | undefined;
+      insurancePlan?: string | undefined;
+      bloodType?: string | undefined;
+      allergies?: string | undefined;
+      regularMedication?: string | undefined;
+      preexistingConditions?: string | undefined;
+      previousSurgeries?: string | undefined;
+      medicalNotes?: string | undefined;
+      contactPreference?: string | undefined;
+      acceptsNotifications?: boolean | undefined;
+      acceptsReminders?: boolean | undefined;
+      acceptsEmailCommunications?: boolean | undefined;
+      acceptsWhatsAppCommunications?: boolean | undefined;
+    }
+  ): Promise<PatientProfileDto> {
     await this.ensurePatientProfile(userId);
 
+    const normalizeDni = (value?: string): string | undefined => {
+      const normalized = normalizeOptionalText(value);
+      if (!normalized) return undefined;
+      const compact = normalized.replace(/\s+/g, '');
+      if (!/^\d{6,15}$/.test(compact)) {
+        throw new AppError('INVALID_DOCUMENT_ID', 400, 'documentId tiene formato inválido');
+      }
+      return compact;
+    };
+
     const phone = normalizePhone(input.phone);
-    const documentId = normalizeOptionalText(input.documentId);
+    const emergencyContactPhone = normalizePhone(input.emergencyContactPhone);
+    const documentId = normalizeDni(input.documentId);
 
     let dateOfBirth: Date | null | undefined;
     if (input.dateOfBirth !== undefined) {
-      if (!isValidDateOnly(input.dateOfBirth)) {
-        throw new AppError('INVALID_DATE_OF_BIRTH', 400, 'dateOfBirth must be YYYY-MM-DD');
-      }
-
+      if (!isValidDateOnly(input.dateOfBirth)) throw new AppError('INVALID_DATE_OF_BIRTH', 400, 'dateOfBirth must be YYYY-MM-DD');
       dateOfBirth = new Date(`${input.dateOfBirth}T00:00:00.000Z`);
     }
 
     const updated = await this.patientProfiles.updateByUserId(userId, {
+      ...(input.firstName !== undefined ? { firstName: normalizeOptionalText(input.firstName) ?? null } : {}),
+      ...(input.lastName !== undefined ? { lastName: normalizeOptionalText(input.lastName) ?? null } : {}),
       ...(input.phone !== undefined ? { phone: phone ?? null } : {}),
       ...(input.documentId !== undefined ? { documentId: documentId ?? null } : {}),
-      ...(input.dateOfBirth !== undefined ? { dateOfBirth: dateOfBirth ?? null } : {})
+      ...(input.dateOfBirth !== undefined ? { dateOfBirth: dateOfBirth ?? null } : {}),
+      ...(input.sex !== undefined ? { sex: normalizeOptionalText(input.sex) ?? null } : {}),
+      ...(input.nationality !== undefined ? { nationality: normalizeOptionalText(input.nationality) ?? null } : {}),
+      ...(input.address !== undefined ? { address: normalizeOptionalText(input.address) ?? null } : {}),
+      ...(input.city !== undefined ? { city: normalizeOptionalText(input.city) ?? null } : {}),
+      ...(input.province !== undefined ? { province: normalizeOptionalText(input.province) ?? null } : {}),
+      ...(input.emergencyContactName !== undefined ? { emergencyContactName: normalizeOptionalText(input.emergencyContactName) ?? null } : {}),
+      ...(input.emergencyContactPhone !== undefined ? { emergencyContactPhone: emergencyContactPhone ?? null } : {}),
+      ...(input.emergencyContactRelationship !== undefined ? { emergencyContactRelationship: normalizeOptionalText(input.emergencyContactRelationship) ?? null } : {}),
+      ...(input.insuranceProvider !== undefined ? { insuranceProvider: normalizeOptionalText(input.insuranceProvider) ?? null } : {}),
+      ...(input.insuranceMemberId !== undefined ? { insuranceMemberId: normalizeOptionalText(input.insuranceMemberId) ?? null } : {}),
+      ...(input.insurancePlan !== undefined ? { insurancePlan: normalizeOptionalText(input.insurancePlan) ?? null } : {}),
+      ...(input.bloodType !== undefined ? { bloodType: normalizeOptionalText(input.bloodType) ?? null } : {}),
+      ...(input.allergies !== undefined ? { allergies: normalizeOptionalText(input.allergies) ?? null } : {}),
+      ...(input.regularMedication !== undefined ? { regularMedication: normalizeOptionalText(input.regularMedication) ?? null } : {}),
+      ...(input.preexistingConditions !== undefined ? { preexistingConditions: normalizeOptionalText(input.preexistingConditions) ?? null } : {}),
+      ...(input.previousSurgeries !== undefined ? { previousSurgeries: normalizeOptionalText(input.previousSurgeries) ?? null } : {}),
+      ...(input.medicalNotes !== undefined ? { medicalNotes: normalizeOptionalText(input.medicalNotes) ?? null } : {}),
+      ...(input.contactPreference !== undefined ? { contactPreference: normalizeOptionalText(input.contactPreference) ?? null } : {}),
+      ...(input.acceptsNotifications !== undefined ? { acceptsNotifications: input.acceptsNotifications } : {}),
+      ...(input.acceptsReminders !== undefined ? { acceptsReminders: input.acceptsReminders } : {}),
+      ...(input.acceptsEmailCommunications !== undefined ? { acceptsEmailCommunications: input.acceptsEmailCommunications } : {}),
+      ...(input.acceptsWhatsAppCommunications !== undefined ? { acceptsWhatsAppCommunications: input.acceptsWhatsAppCommunications } : {})
     });
 
-    if (!updated) {
-      throw new AppError('PATIENT_PROFILE_NOT_FOUND', 404, 'Patient profile not found');
-    }
+    if (!updated) throw new AppError('PATIENT_PROFILE_NOT_FOUND', 404, 'Patient profile not found');
+
+    const requiredMissing =
+      !updated.firstName || !updated.lastName || !updated.documentId || !updated.dateOfBirth || !updated.phone ||
+      !updated.emergencyContactName || !updated.emergencyContactPhone || !updated.emergencyContactRelationship;
+    if (requiredMissing) throw new AppError('PATIENT_PROFILE_REQUIRED_FIELDS', 400, 'Completá los campos obligatorios del perfil');
 
     return this.toPatientProfileDto(updated);
   }
@@ -569,6 +635,28 @@ export class PatientService {
       phone: profile.phone ?? null,
       dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString().slice(0, 10) : null,
       documentId: profile.documentId ?? null,
+      sex: profile.sex ?? null,
+      nationality: profile.nationality ?? null,
+      address: profile.address ?? null,
+      city: profile.city ?? null,
+      province: profile.province ?? null,
+      emergencyContactName: profile.emergencyContactName ?? null,
+      emergencyContactPhone: profile.emergencyContactPhone ?? null,
+      emergencyContactRelationship: profile.emergencyContactRelationship ?? null,
+      insuranceProvider: profile.insuranceProvider ?? null,
+      insuranceMemberId: profile.insuranceMemberId ?? null,
+      insurancePlan: profile.insurancePlan ?? null,
+      bloodType: profile.bloodType ?? null,
+      allergies: profile.allergies ?? null,
+      regularMedication: profile.regularMedication ?? null,
+      preexistingConditions: profile.preexistingConditions ?? null,
+      previousSurgeries: profile.previousSurgeries ?? null,
+      medicalNotes: profile.medicalNotes ?? null,
+      contactPreference: profile.contactPreference ?? null,
+      acceptsNotifications: profile.acceptsNotifications ?? false,
+      acceptsReminders: profile.acceptsReminders ?? false,
+      acceptsEmailCommunications: profile.acceptsEmailCommunications ?? false,
+      acceptsWhatsAppCommunications: profile.acceptsWhatsAppCommunications ?? false,
       createdAt: profile.createdAt.toISOString(),
       updatedAt: profile.updatedAt.toISOString()
     };

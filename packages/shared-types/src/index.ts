@@ -280,6 +280,28 @@ export interface PatientProfileDto {
   phone: string | null;
   dateOfBirth: string | null;
   documentId: string | null;
+  sex: string | null;
+  nationality: string | null;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelationship: string | null;
+  insuranceProvider: string | null;
+  insuranceMemberId: string | null;
+  insurancePlan: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  regularMedication: string | null;
+  preexistingConditions: string | null;
+  previousSurgeries: string | null;
+  medicalNotes: string | null;
+  contactPreference: string | null;
+  acceptsNotifications: boolean;
+  acceptsReminders: boolean;
+  acceptsEmailCommunications: boolean;
+  acceptsWhatsAppCommunications: boolean;
   createdAt: string;
   updatedAt: string;
 }
