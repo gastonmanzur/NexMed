@@ -15,9 +15,33 @@ const availabilityQuerySchema = z.object({
 });
 
 const updateMeSchema = z.object({
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
   phone: z.string().trim().min(1).max(40).optional(),
   dateOfBirth: z.string().trim().optional(),
-  documentId: z.string().trim().max(60).optional()
+  documentId: z.string().trim().min(1).max(30).optional(),
+  sex: z.string().trim().max(20).optional(),
+  nationality: z.string().trim().max(60).optional(),
+  address: z.string().trim().max(160).optional(),
+  city: z.string().trim().max(80).optional(),
+  province: z.string().trim().max(80).optional(),
+  emergencyContactName: z.string().trim().min(1).max(120).optional(),
+  emergencyContactPhone: z.string().trim().min(1).max(40).optional(),
+  emergencyContactRelationship: z.string().trim().min(1).max(80).optional(),
+  insuranceProvider: z.string().trim().max(120).optional(),
+  insuranceMemberId: z.string().trim().max(60).optional(),
+  insurancePlan: z.string().trim().max(60).optional(),
+  bloodType: z.string().trim().max(8).optional(),
+  allergies: z.string().trim().max(1200).optional(),
+  regularMedication: z.string().trim().max(1200).optional(),
+  preexistingConditions: z.string().trim().max(1200).optional(),
+  previousSurgeries: z.string().trim().max(1200).optional(),
+  medicalNotes: z.string().trim().max(1200).optional(),
+  contactPreference: z.string().trim().max(30).optional(),
+  acceptsNotifications: z.boolean().optional(),
+  acceptsReminders: z.boolean().optional(),
+  acceptsEmailCommunications: z.boolean().optional(),
+  acceptsWhatsAppCommunications: z.boolean().optional()
 });
 
 const createAppointmentSchema = z.object({
@@ -91,11 +115,7 @@ export const patientController = {
 
   patchMe: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const input = updateMeSchema.parse(req.body);
-    const data = await service.updateMyProfile(req.auth!.userId, {
-      ...(input.phone !== undefined ? { phone: input.phone } : {}),
-      ...(input.dateOfBirth !== undefined ? { dateOfBirth: input.dateOfBirth } : {}),
-      ...(input.documentId !== undefined ? { documentId: input.documentId } : {})
-    });
+    const data = await service.updateMyProfile(req.auth!.userId, input);
     res.status(200).json({ success: true, data });
   },
 
