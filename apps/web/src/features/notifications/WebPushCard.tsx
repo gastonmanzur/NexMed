@@ -175,22 +175,14 @@ export const WebPushCard = ({ accessToken }: Props): ReactElement => {
         >
           {t('profile.push.disable')}
         </button>
-        <button
-          type="button"
-
-          className="nx-btn"
-          onClick={() => void onSendTest()}
-          disabled={loading}
-        >
-          {t('profile.push.sendTest', 'Enviar prueba')}
-
-          className="nx-btn-secondary"
-          onClick={() => void onSendTest()}
-          disabled={loading || !token}
-        >
-          {t('profile.push.sendTest')}
-
-        </button>
+       <button
+  type="button"
+  className="nx-btn nx-btn-secondary"
+  onClick={() => void onSendTest()}
+  disabled={loading || !token}
+>
+  {t('profile.push.sendTest', 'Enviar prueba')}
+</button>
       </div>
       {message ? <p style={{ color: 'green' }}>{message}</p> : null}
       {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
