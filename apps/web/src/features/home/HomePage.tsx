@@ -1,9 +1,23 @@
-import type { ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 
 const WHATSAPP_NUMBER = '541122626516';
 const WHATSAPP_MESSAGE = 'Hola, quiero una demo de NexMed';
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+
+
+type LandingTheme = 'dark' | 'light';
+
+const LANDING_THEME_KEY = 'nexmed-landing-theme';
+
+const resolveInitialTheme = (): LandingTheme => {
+  if (typeof window === 'undefined') {
+    return 'dark';
+  }
+
+  const storedTheme = window.localStorage.getItem(LANDING_THEME_KEY);
+  return storedTheme === 'light' ? 'light' : 'dark';
+};
 
 const quickBenefits = [
   'Gestión centralizada de turnos',
@@ -13,8 +27,16 @@ const quickBenefits = [
 ];
 
 export const HomePage = (): ReactElement => {
+  const [theme, setTheme] = useState<LandingTheme>(resolveInitialTheme);
+
+  useEffect(() => {
+    window.localStorage.setItem(LANDING_THEME_KEY, theme);
+  }, [theme]);
+
+  const isDarkMode = theme === 'dark';
+
   return (
-    <div className="nx-landing">
+    <div className="nx-landing" data-theme={theme}>
       <header className="nx-landing__header">
         <a href="#inicio" className="nx-landing__brand">NexMed</a>
         <nav className="nx-landing__nav">
@@ -25,6 +47,17 @@ export const HomePage = (): ReactElement => {
           <a href="#contacto">Contacto</a>
         </nav>
         <div className="nx-landing__actions">
+          <button
+            type="button"
+            className="nx-theme-toggle"
+            onClick={() => setTheme(isDarkMode ? 'light' : 'dark')}
+            aria-label={`Cambiar a modo ${isDarkMode ? 'claro' : 'oscuro'}`}
+            aria-pressed={!isDarkMode}
+            title={`Activar modo ${isDarkMode ? 'claro' : 'oscuro'}`}
+          >
+            <span className="nx-theme-toggle__icon" aria-hidden="true">{isDarkMode ? '🌙' : '☀️'}</span>
+            <span className="nx-theme-toggle__label">{isDarkMode ? 'Modo oscuro' : 'Modo claro'}</span>
+          </button>
           <Link to="/login" className="nx-btn-secondary">Ingresar</Link>
           <Link to="/register" className="nx-btn">Registrarse</Link>
         </div>
