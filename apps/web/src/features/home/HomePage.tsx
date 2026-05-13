@@ -8,6 +8,10 @@ const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent
 type LandingTheme = 'dark' | 'light';
 const LANDING_THEME_KEY = 'nexmed-landing-theme';
 
+const HERO_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1666214279911-6f15d4eb96a4?auto=format&fit=crop&w=2200&q=80';
+const HERO_VIDEO_MP4_SRC = '/media/landing/nexmed-hero-placeholder.mp4';
+const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
+
 const resolveInitialTheme = (): LandingTheme => {
   if (typeof window === 'undefined') return 'dark';
   return window.localStorage.getItem(LANDING_THEME_KEY) === 'light' ? 'light' : 'dark';
@@ -30,6 +34,7 @@ const moduleCards = [
 
 export const HomePage = (): ReactElement => {
   const [theme, setTheme] = useState<LandingTheme>(resolveInitialTheme);
+  const [heroVideoUnavailable, setHeroVideoUnavailable] = useState(false);
   const isDarkMode = theme === 'dark';
 
   useEffect(() => {
@@ -58,7 +63,29 @@ export const HomePage = (): ReactElement => {
 
       <main>
         <section id="inicio" className="nx-landing__hero">
-          <img className="nx-landing__hero-bg" src="https://images.unsplash.com/photo-1666214279911-6f15d4eb96a4?auto=format&fit=crop&w=2200&q=80" alt="Centro médico moderno con atención profesional" />
+          {!heroVideoUnavailable ? (
+            <video
+              className="nx-landing__hero-bg nx-landing__hero-video"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster={HERO_FALLBACK_IMAGE}
+              aria-hidden="true"
+              onError={() => setHeroVideoUnavailable(true)}
+            >
+              <source src={HERO_VIDEO_WEBM_SRC} type="video/webm" />
+              <source src={HERO_VIDEO_MP4_SRC} type="video/mp4" />
+            </video>
+          ) : null}
+          <img
+            className={`nx-landing__hero-bg nx-landing__hero-fallback ${heroVideoUnavailable ? 'is-visible' : ''}`}
+            src={HERO_FALLBACK_IMAGE}
+            alt="Centro médico moderno con atención profesional"
+            loading="eager"
+            fetchPriority="high"
+          />
           <div className="nx-landing__hero-overlay" />
           <div className="nx-landing__hero-content">
             <p className="nx-landing__eyebrow">NexMed | Gestión premium para salud y estética</p>
