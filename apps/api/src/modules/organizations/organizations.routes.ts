@@ -11,6 +11,7 @@ import { professionalsRouter, specialtiesRouter } from '../professionals/profess
 import { professionalAvailabilityRouter } from '../availability/availability.routes.js';
 import { appointmentsRouter } from '../appointments/appointments.routes.js';
 import { organizationReminderRouter } from '../reminders/reminder.routes.js';
+import { analyticsRouter } from '../analytics/analytics.routes.js';
 
 export const organizationsRouter = Router();
 
@@ -110,3 +111,4 @@ organizationsRouter.use('/:organizationId/professionals/:professionalId', profes
 organizationsRouter.use('/:organizationId/appointments', appointmentsRouter);
 
 organizationsRouter.use('/:organizationId/reminder-rules', organizationReminderRouter);
+organizationsRouter.use('/:organizationId/analytics', analyticsRouter);

@@ -18,6 +18,7 @@ const centerItems: NavItem[] = [
   { id: 'center-professionals', label: 'Profesionales', to: '/app/professionals' },
   { id: 'center-specialties', label: 'Especialidades', to: '/app/specialties' },
   { id: 'center-appointments', label: 'Agenda', to: '/app/appointments' },
+  { id: 'center-analytics', label: 'Métricas', to: '/app/analytics' },
   { id: 'center-invite', label: 'Invitación', to: '/app/invite' },
   { id: 'center-subscription', label: 'Suscripción', to: '/app/subscription' },
   { id: 'center-reminders', label: 'Recordatorios', to: '/organization/settings/reminders' },

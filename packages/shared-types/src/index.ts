@@ -407,3 +407,35 @@ export interface WaitlistRequestDto {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AnalyticsSummaryDto {
+  filters: {
+    from: string;
+    to: string;
+    professionalId: string | null;
+    specialtyId: string | null;
+  };
+  kpis: {
+    totalAppointments: number;
+    bookedAppointments: number;
+    canceledAppointments: number;
+    rescheduledAppointments: number;
+    completedAppointments: number;
+    uniqueAttendedPatients: number;
+    newPatients: number;
+    recurringPatients: number;
+    cancellationRate: number;
+    rescheduleRate: number;
+    upcomingAppointments: number;
+    notificationsSent: number;
+    remindersSent: number;
+  };
+  byProfessional: Array<{ professionalId: string; label: string; count: number }>;
+  bySpecialty: Array<{ specialtyId: string | null; label: string; count: number }>;
+  timelineDaily: Array<{ date: string; count: number }>;
+  statusBreakdown: Record<string, number>;
+  coverage: {
+    supported: string[];
+    notSupportedYet: string[];
+  };
+}
