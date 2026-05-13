@@ -52,6 +52,7 @@ import { FeedbackPage } from '../features/feedback/FeedbackPage';
 import { AppShell } from '../components/AppShell';
 import { OrganizationInvitePage } from '../features/organizations/OrganizationInvitePage';
 import { OrganizationSubscriptionPage } from '../features/subscription/OrganizationSubscriptionPage';
+import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
 
 const shell = (page: ReactElement): ReactElement => <AppShell>{page}</AppShell>;
 
@@ -215,6 +216,15 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             {shell(<SpecialtyFormPage />)}
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/app/analytics"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
+            {shell(<AnalyticsPage />)}
           </ProtectedRoute>
         }
       />
