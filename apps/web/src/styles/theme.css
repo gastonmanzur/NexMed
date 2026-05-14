@@ -2056,18 +2056,31 @@ body {
 }
 .nx-landing[data-theme='light'] .nx-landing__hero-overlay {
   background:
-    radial-gradient(125% 82% at 84% 16%, rgba(14, 116, 144, .12), transparent 56%),
-    radial-gradient(96% 70% at 50% 118%, rgba(15, 23, 42, .18), transparent 62%),
-    linear-gradient(106deg, rgba(15, 23, 42, .62) 10%, rgba(30, 41, 59, .52) 40%, rgba(51, 65, 85, .36) 70%, rgba(30, 41, 59, .42) 100%);
+    radial-gradient(132% 86% at 14% 8%, rgba(255, 255, 255, .56), transparent 56%),
+    radial-gradient(115% 82% at 90% 22%, rgba(148, 179, 219, .24), transparent 62%),
+    radial-gradient(88% 62% at 50% 118%, rgba(203, 216, 236, .28), transparent 64%),
+    linear-gradient(116deg, rgba(252, 254, 255, .84) 4%, rgba(242, 247, 255, .76) 38%, rgba(231, 239, 250, .72) 72%, rgba(223, 233, 248, .74) 100%);
 }
 
-.nx-landing__hero-content { position: relative; z-index: 1; padding: clamp(3.8rem, 8vw, 7rem); max-width: 740px; }
+
+.nx-landing__hero-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: clamp(.85rem, 1.7vw, 1.35rem);
+  text-align: center;
+  padding: clamp(4.2rem, 9vw, 7.4rem) clamp(1.25rem, 5vw, 2.5rem) clamp(3.6rem, 7vw, 5.4rem);
+  max-width: min(840px, 100%);
+  margin: 0 auto;
+}
+
 .nx-landing__section { padding: 4.8rem 0; }
-.nx-landing h1 { font-size: clamp(2.35rem, 5vw, 4.25rem); line-height: 1.03; margin: 0 0 1rem; letter-spacing: -.02em; }
+.nx-landing h1 { font-size: clamp(2.35rem, 5vw, 4.25rem); line-height: 1.03; margin: 0; letter-spacing: -.02em; }
 .nx-landing h2 { font-size: clamp(1.8rem, 3vw, 2.8rem); margin: 0 0 1rem; letter-spacing: -.01em; }
 .nx-landing h3 { margin: .5rem 0 .65rem; }
 .nx-landing p { color: var(--landing-text-muted); max-width: 68ch; }
-.nx-landing__eyebrow { font-size: .78rem; text-transform: uppercase; letter-spacing: .13em; color: #f9fafb; font-weight: 700; margin-bottom: 1rem; }
+.nx-landing__eyebrow { font-size: .78rem; text-transform: uppercase; letter-spacing: .13em; color: #f9fafb; font-weight: 700; margin: 0; }
 .nx-landing[data-theme='light'] .nx-landing__eyebrow { color: #0f172a; }
 
 .nx-landing__hero h1,
@@ -2075,10 +2088,15 @@ body {
   color: #f8fbff;
   text-shadow: 0 10px 24px rgba(2, 8, 23, .32);
 }
-.nx-landing__hero p { color: rgba(241, 245, 249, .94); }
+.nx-landing__hero p {
+  color: rgba(241, 245, 249, .94);
+  margin: 0;
+  max-width: 62ch;
+}
+
 .nx-landing[data-theme='light'] .nx-landing__hero h1,
 .nx-landing[data-theme='light'] .nx-landing__hero p,
-.nx-landing[data-theme='light'] .nx-landing__hero .nx-landing__eyebrow { color: #f8fbff; }
+.nx-landing[data-theme='light'] .nx-landing__hero .nx-landing__eyebrow { color: #0f1b2d; text-shadow: 0 8px 22px rgba(248, 251, 255, .72); }
 .nx-landing__hero .nx-btn-primary { box-shadow: 0 14px 32px rgba(15, 23, 42, .38); }
 .nx-landing__hero .nx-btn-secondary {
   background: rgba(248, 250, 252, .92);
@@ -2096,6 +2114,12 @@ body {
 }
 
 .nx-landing__cta-grid { display: flex; flex-wrap: wrap; gap: .75rem; }
+.nx-landing__hero .nx-landing__cta-grid {
+  justify-content: center;
+  row-gap: .85rem;
+  margin-top: clamp(.55rem, 1.6vw, 1rem);
+}
+
 .nx-landing .nx-btn-secondary { border-color: var(--landing-card-border); color: var(--landing-text); background: color-mix(in srgb, var(--landing-card-bg) 72%, transparent); }
 .nx-landing__cards { display: grid; gap: 1.1rem; margin-top: 1.2rem; }
 .nx-landing__cards--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2136,11 +2160,15 @@ body {
   }
   .nx-landing[data-theme='light'] .nx-landing__hero-overlay {
     background:
-      radial-gradient(130% 88% at 86% 14%, rgba(14, 116, 144, .1), transparent 58%),
-      radial-gradient(95% 66% at 50% 116%, rgba(15, 23, 42, .13), transparent 62%),
-      linear-gradient(180deg, rgba(15, 23, 42, .48) 0%, rgba(30, 41, 59, .4) 44%, rgba(51, 65, 85, .34) 100%);
+      radial-gradient(128% 92% at 14% 8%, rgba(255, 255, 255, .52), transparent 58%),
+      radial-gradient(116% 82% at 86% 16%, rgba(148, 179, 219, .2), transparent 62%),
+      radial-gradient(92% 66% at 50% 116%, rgba(203, 216, 236, .24), transparent 64%),
+      linear-gradient(180deg, rgba(252, 254, 255, .8) 0%, rgba(239, 245, 253, .74) 44%, rgba(228, 237, 250, .7) 100%);
   }
-  .nx-landing__hero-content { padding: 5rem 1.1rem 3.6rem; }
+  .nx-landing__hero-content {
+    padding: 4.8rem 1.1rem 3.4rem;
+    gap: .95rem;
+  }
   .nx-landing__cards--3, .nx-showcase-grid, .nx-landing__steps { grid-template-columns: 1fr; }
   .nx-landing__alt-grid img { height: 300px; }
 }
