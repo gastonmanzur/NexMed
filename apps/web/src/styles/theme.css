@@ -2172,3 +2172,15 @@ body {
   .nx-landing__cards--3, .nx-showcase-grid, .nx-landing__steps { grid-template-columns: 1fr; }
   .nx-landing__alt-grid img { height: 300px; }
 }
+
+.nx-admin-landing__header{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:1rem}
+.nx-admin-landing__actions{display:flex;gap:.65rem;flex-wrap:wrap}
+.nx-admin-landing__layout{display:grid;grid-template-columns:220px 1fr;gap:1rem}
+.nx-admin-landing__layout>aside{display:flex;flex-direction:column;gap:.45rem}
+.nx-admin-landing__layout>aside button{padding:.55rem .7rem;border:1px solid var(--nx-border);background:var(--nx-bg-elevated);border-radius:10px;text-align:left}
+.nx-admin-landing__layout>aside button.is-active{border-color:var(--nx-accent);color:var(--nx-accent)}
+.nx-admin-landing__layout>section{padding:1rem;border:1px solid var(--nx-border);border-radius:14px;background:var(--nx-bg-elevated)}
+.nx-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.nx-field{display:flex;flex-direction:column;gap:.3rem}
+.nx-field input,.nx-field textarea{width:100%}
+@media (max-width:900px){.nx-admin-landing__layout{grid-template-columns:1fr}.nx-card-grid{grid-template-columns:1fr}}

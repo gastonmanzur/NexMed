@@ -109,11 +109,11 @@ export const HomePage = (): ReactElement => {
 
         <section className="nx-landing__section">
           <div className="nx-landing__cards nx-landing__cards--3">
-            {quickFeatures.map((item) => (
+            {(content.features?.length ? content.features.filter((i:any)=>i.visible!==false) : quickFeatures).map((item:any) => (
               <article key={item.title} className="nx-landing__card nx-feature-card">
                 <span>{item.icon}</span>
                 <h3>{item.title}</h3>
-                <p>{item.text}</p>
+                <p>{item.description ?? item.text}</p>
               </article>
             ))}
           </div>
@@ -141,43 +141,34 @@ export const HomePage = (): ReactElement => {
         </section>
 
         <section id="modulos" className="nx-landing__section">
-          <h2>Showcase de módulos NexMed</h2>
+          <h2>{content.modules?.title || "Showcase de módulos NexMed"}</h2><p>{content.modules?.subtitle}</p>
           <div className="nx-showcase-grid">
-            {moduleCards.map((item) => (
+            {(content.modules?.cards?.length ? content.modules.cards.filter((i:any)=>i.visible!==false) : moduleCards).map((item:any) => (
               <article key={item.title} className="nx-showcase-card">
-                <img src={item.image} alt={item.title} />
-                <div><h3>{item.title}</h3><p>{item.text}</p></div>
+                <img src={item.media?.url || item.image} alt={item.title} />
+                <div><h3>{item.title}</h3><p>{item.description ?? item.text}</p></div>
               </article>
             ))}
           </div>
         </section>
 
         <section id="beneficios" className="nx-landing__section nx-landing__split-benefits">
-          <article className="nx-landing__card"><h3>Beneficios para el centro</h3><ul><li>Menos ausencias y más confirmaciones</li><li>Mejor ocupación de agenda</li><li>Procesos internos más ordenados</li><li>Imagen de marca más profesional</li></ul></article>
-          <article className="nx-landing__card"><h3>Beneficios para pacientes</h3><ul><li>Reserva simple desde celular</li><li>Recordatorios claros y a tiempo</li><li>Menos fricción para reprogramar</li><li>Atención más fluida y confiable</li></ul></article>
+          <article className="nx-landing__card"><h3>{content.benefits?.centerTitle || "Beneficios para el centro"}</h3><ul>{(content.benefits?.centerItems?.length ? content.benefits.centerItems : ["Menos ausencias y más confirmaciones","Mejor ocupación de agenda","Procesos internos más ordenados","Imagen de marca más profesional"]).map((item:string)=><li key={item}>{item}</li>)}</ul></article>
+          <article className="nx-landing__card"><h3>{content.benefits?.patientTitle || "Beneficios para pacientes"}</h3><ul>{(content.benefits?.patientItems?.length ? content.benefits.patientItems : ["Reserva simple desde celular","Recordatorios claros y a tiempo","Menos fricción para reprogramar","Atención más fluida y confiable"]).map((item:string)=><li key={item}>{item}</li>)}</ul></article>
         </section>
 
         <section className="nx-landing__section">
           <h2>Testimonios</h2>
-          <div className="nx-landing__cards nx-landing__cards--3">
-            <article className="nx-landing__card"><p>“Pasamos de gestionar por chat a operar con una agenda profesional. Hoy el equipo trabaja mucho más coordinado.”</p><strong>Directora · Centro estético, CABA</strong></article>
-            <article className="nx-landing__card"><p>“Los recordatorios automáticos bajaron ausencias y mejoraron la puntualidad de los turnos.”</p><strong>Coordinación · Clínica ambulatoria</strong></article>
-            <article className="nx-landing__card"><p>“La experiencia de reserva es clara y rápida. Nuestros pacientes lo notaron desde la primera semana.”</p><strong>Administración · Consultorio multidisciplinario</strong></article>
-          </div>
+          <div className="nx-landing__cards nx-landing__cards--3">{(content.testimonials?.length ? content.testimonials.filter((i:any)=>i.visible!==false) : [{text:"Pasamos de gestionar por chat a operar con una agenda profesional.",name:"Directora",role:"Centro estético"}]).map((item:any, idx:number)=><article key={idx} className="nx-landing__card"><p>“{item.text}”</p><strong>{item.name} · {item.role}</strong></article>)}</div>
         </section>
 
         <section id="faq" className="nx-landing__section">
           <h2>Preguntas frecuentes</h2>
-          <div className="nx-faq-grid">
-            <article className="nx-landing__card"><h3>¿NexMed sirve para centros pequeños?</h3><p>Sí. Podés empezar con uno o pocos profesionales y crecer sin migraciones complejas.</p></article>
-            <article className="nx-landing__card"><h3>¿Incluye recordatorios automáticos?</h3><p>Sí, para ayudar a reducir inasistencias y mejorar la organización de cada jornada.</p></article>
-            <article className="nx-landing__card"><h3>¿Se adapta a clínicas y estética?</h3><p>Exactamente: está diseñado para consultorios, clínicas y centros de estética.</p></article>
-            <article className="nx-landing__card"><h3>¿Puedo ver una demo antes de contratar?</h3><p>Sí. Podemos mostrarte un flujo real aplicado a tu tipo de centro.</p></article>
-          </div>
+          <div className="nx-faq-grid">{(content.faq?.length ? content.faq.filter((i:any)=>i.visible!==false).sort((a:any,b:any)=>(a.order??0)-(b.order??0)) : [{question:"¿NexMed sirve para centros pequeños?",answer:"Sí. Podés empezar con uno o pocos profesionales."}]).map((item:any, idx:number)=><article key={idx} className="nx-landing__card"><h3>{item.question}</h3><p>{item.answer}</p></article>)}</div>
         </section>
 
         <section id="contacto" className="nx-landing__section nx-landing__section--cta">
-          <h2>Solicitá una demo y elevá la experiencia de tu centro.</h2>
+          <h2>{content.finalCta?.title || "Solicitá una demo y elevá la experiencia de tu centro."}</h2><p>{content.finalCta?.subtitle}</p>
           <div className="nx-landing__cta-grid">
             <a className="nx-btn" href={whatsappUrl} target="_blank" rel="noreferrer">Solicitar demo</a>
             <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
@@ -188,7 +179,7 @@ export const HomePage = (): ReactElement => {
       </main>
 
       <footer className="nx-landing__footer">
-        <div><strong>NexMed</strong><p>Plataforma para consultorios, clínicas y centros de estética.</p></div>
+        <div><strong>NexMed</strong><p>{content.footer?.brandText || "Plataforma para consultorios, clínicas y centros de estética."}</p></div>
       </footer>
     </div>
   );
