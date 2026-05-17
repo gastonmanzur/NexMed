@@ -172,33 +172,8 @@ export interface AdminDiscountItem {
 }
 
 
-export interface LandingContentState { draft: any; published: any; publishedAt: string | null; updatedAt: string; }
-
-export interface LandingUploadResult { url: string; mimeType: string; sizeBytes: number; }
 
 export const adminApi = {
-
-  getLandingAdmin: async (accessToken: string): Promise<LandingContentState> => {
-    const result = await request<{ success: true; data: LandingContentState }>(`/landing/admin`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
-    return result.data;
-  },
-  saveLandingDraft: async (accessToken: string, draft: any): Promise<LandingContentState> => {
-    const result = await request<{ success: true; data: LandingContentState }>(`/landing/admin/draft`, { method: 'PUT', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(draft) });
-    return result.data;
-  },
-  publishLanding: async (accessToken: string): Promise<LandingContentState> => {
-    const result = await request<{ success: true; data: LandingContentState }>(`/landing/admin/publish`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } });
-    return result.data;
-  },
-
-  uploadLandingMedia: async (accessToken: string, file: File): Promise<LandingUploadResult> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch(`${API_URL}/landing/admin/media`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
-    const payload = await response.json();
-    if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? 'No se pudo subir el archivo');
-    return payload.data as LandingUploadResult;
-  },
 
   getSummary: async (accessToken: string): Promise<AdminSummary> => {
     const result = await request<{ success: true; data: AdminSummary }>('/admin/summary', {

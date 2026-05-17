@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 
-const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, '');
 
 type LandingTheme = 'dark' | 'light';
 const LANDING_THEME_KEY = 'nexmed-landing-theme';
@@ -42,10 +41,6 @@ export const HomePage = (): ReactElement => {
   useEffect(() => {
     window.localStorage.setItem(LANDING_THEME_KEY, theme);
   }, [theme]);
-
-  useEffect(() => {
-    fetch(`${API_URL}/landing/published`).then((r)=>r.json()).then((payload)=>{ if (payload?.success && payload?.data) setContent({ ...fallbackContent, ...payload.data }); }).catch(()=>undefined);
-  }, []);
 
 
   return (
