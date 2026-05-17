@@ -1,3 +1,78 @@
-import { type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactElement } from 'react';
+import { adminApi } from './admin-api';
+import { useAuth } from '../auth/AuthContext';
 
-export const AdminLandingPage = (): ReactElement => <div>Landing admin en construcción.</div>;
+type AnyRecord = Record<string, any>;
+
+const sectionTabs = [
+  ['hero', 'Hero'], ['features', 'Features'], ['problemSolution', 'Problema/Solución'], ['howItWorks', 'Cómo funciona'],
+  ['benefits', 'Beneficios'], ['modules', 'Showcase'], ['testimonials', 'Testimonios'], ['faq', 'FAQ'], ['finalCta', 'CTA final'], ['footer', 'Footer']
+] as const;
+
+const deepClone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+
+const setAtPath = (obj: AnyRecord, path: string, value: unknown) => {
+  const keys = path.split('.');
+  let ref: AnyRecord = obj;
+  for (let i = 0; i < keys.length - 1; i += 1) { const k = keys[i] as string; ref = ref[k] ?? (ref[k] = {}); }
+  const last = keys[keys.length - 1] as string;
+  ref[last] = value;
+};
+
+const Text = ({ label, value, onChange }: { label: string; value?: string; onChange: (value: string) => void }) => (
+  <label className="nx-field"><span>{label}</span><input value={value ?? ''} onChange={(e)=>onChange(e.target.value)} /></label>
+);
+const Area = ({ label, value, onChange }: { label: string; value?: string; onChange: (value: string) => void }) => (
+  <label className="nx-field"><span>{label}</span><textarea rows={3} value={value ?? ''} onChange={(e)=>onChange(e.target.value)} /></label>
+);
+
+export const AdminLandingPage = (): ReactElement => {
+  const { accessToken } = useAuth();
+  const [state, setState] = useState<any>(null);
+  const [active, setActive] = useState<(typeof sectionTabs)[number][0]>('hero');
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => { if (accessToken) adminApi.getLandingAdmin(accessToken).then(setState); }, [accessToken]);
+  const draft = state?.draft;
+  const update = (path: string, value: unknown) => setState((prev: any) => { const next = deepClone(prev); setAtPath(next.draft, path, value); return next; });
+
+  const save = async () => { if (!accessToken || !draft) return; setSaving(true); try { const next = await adminApi.saveLandingDraft(accessToken, draft); setState(next); setMessage('Borrador guardado.'); } finally { setSaving(false); } };
+  const publish = async () => { if (!accessToken) return; setPublishing(true); try { const next = await adminApi.publishLanding(accessToken); setState(next); setMessage('Cambios publicados.'); } finally { setPublishing(false); } };
+
+  const uploadAt = async (path: string, file?: File | null, type: 'image' | 'video' = 'image') => {
+    if (!accessToken || !file) return;
+    const media = await adminApi.uploadLandingMedia(accessToken, file);
+    update(path, { ...(draft?.hero?.media ?? {}), url: media.url, type });
+  };
+
+  if (!draft) return <div>Cargando configuración de landing...</div>;
+
+  return <div className="nx-admin-page nx-admin-landing">
+    <header className="nx-admin-landing__header"><div><h1>Administración del sitio público</h1><p>Gestioná la landing de NexMed con borrador, publicación y vista previa.</p></div>
+      <div className="nx-admin-landing__actions"><button className="nx-btn-secondary" onClick={save} disabled={saving}>{saving ? 'Guardando...' : 'Guardar borrador'}</button><button className="nx-btn" onClick={publish} disabled={publishing}>{publishing ? 'Publicando...' : 'Publicar cambios'}</button><a className="nx-btn-secondary" href="/" target="_blank" rel="noreferrer">Vista previa</a></div>
+    </header>
+    {message ? <p>{message}</p> : null}
+    <div className="nx-admin-landing__layout"><aside>{sectionTabs.map(([id, label]) => <button key={id} className={active===id? 'is-active' : ''} onClick={()=>setActive(id)}>{label}</button>)}</aside>
+    <section>
+      {active === 'hero' && <div className="nx-card-grid">
+        <Text label="Eyebrow" value={draft.hero?.eyebrow} onChange={(v)=>update('draft.hero.eyebrow', v)} />
+        <Text label="Título" value={draft.hero?.title} onChange={(v)=>update('draft.hero.title', v)} />
+        <Area label="Subtítulo" value={draft.hero?.subtitle} onChange={(v)=>update('draft.hero.subtitle', v)} />
+        <Area label="Texto complementario" value={draft.hero?.supportingText} onChange={(v)=>update('draft.hero.supportingText', v)} />
+        <Text label="Poster" value={draft.hero?.media?.posterUrl} onChange={(v)=>update('draft.hero.media.posterUrl', v)} />
+        <input type="file" accept="image/*,video/*" onChange={(e: ChangeEvent<HTMLInputElement>)=>uploadAt('draft.hero.media', e.target.files?.[0], e.target.files?.[0]?.type.startsWith('video') ? 'video' : 'image')} />
+      </div>}
+      {active === 'features' && <pre>{JSON.stringify(draft.features ?? [], null, 2)}</pre>}
+      {active === 'problemSolution' && <Area label="Texto" value={draft.problemSolution?.text} onChange={(v)=>update('draft.problemSolution.text', v)} />}
+      {active === 'howItWorks' && <Area label="Subtítulo" value={draft.howItWorks?.subtitle} onChange={(v)=>update('draft.howItWorks.subtitle', v)} />}
+      {active === 'benefits' && <div className="nx-card-grid"><Area label="Beneficios centro (uno por línea)" value={(draft.benefits?.centerItems ?? []).join('\n')} onChange={(v)=>update('draft.benefits.centerItems', v.split('\n').filter(Boolean))} /><Area label="Beneficios pacientes (uno por línea)" value={(draft.benefits?.patientItems ?? []).join('\n')} onChange={(v)=>update('draft.benefits.patientItems', v.split('\n').filter(Boolean))} /></div>}
+      {active === 'modules' && <pre>{JSON.stringify(draft.modules ?? {}, null, 2)}</pre>}
+      {active === 'testimonials' && <pre>{JSON.stringify(draft.testimonials ?? [], null, 2)}</pre>}
+      {active === 'faq' && <pre>{JSON.stringify(draft.faq ?? [], null, 2)}</pre>}
+      {active === 'finalCta' && <Text label="Título" value={draft.finalCta?.title} onChange={(v)=>update('draft.finalCta.title', v)} />}
+      {active === 'footer' && <Area label="Texto" value={draft.footer?.brandText} onChange={(v)=>update('draft.footer.brandText', v)} />}
+    </section></div>
+  </div>;
+};
