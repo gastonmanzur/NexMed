@@ -41,7 +41,6 @@ const adminItems: NavItem[] = [
   { id: 'admin-subscriptions', label: 'Suscripciones', to: '/admin/subscriptions' },
   { id: 'admin-plans', label: 'Planes y promociones', to: '/admin/plans' },
   { id: 'admin-discounts', label: 'Descuentos', to: '/admin/discounts' },
-  { id: 'admin-landing', label: 'Sitio público', to: '/admin/landing' }
 ];
 
 const initialsFor = (firstName?: string, lastName?: string, email?: string): string => {

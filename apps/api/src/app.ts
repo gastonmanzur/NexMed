@@ -20,7 +20,6 @@ import { notificationsRouter } from './modules/notifications/notifications.route
 import { reminderAdminRouter } from './modules/reminders/reminder.routes.js';
 import { feedbackRouter } from './modules/feedback/feedback.routes.js';
 import { plansRouter } from './modules/plans/plans.routes.js';
-import { landingRouter } from './modules/landing/landing.routes.js';
 
 export const createApp = () => {
   const app = express();
@@ -48,7 +47,6 @@ export const createApp = () => {
   app.use(cookieParser());
   app.use(pinoHttp({ logger }));
 
-  app.use('/media/landing', express.static(path.resolve(process.cwd(), 'uploads/landing'), { fallthrough: true, index: false }));
 
   app.use(
     env.AVATAR_PUBLIC_BASE_PATH,
@@ -73,7 +71,6 @@ export const createApp = () => {
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/feedback', feedbackRouter);
   app.use('/api/plans', plansRouter);
-  app.use('/api/landing', landingRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

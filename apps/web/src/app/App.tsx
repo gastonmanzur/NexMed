@@ -9,7 +9,6 @@ import { AdminPlansPage } from '../features/admin/AdminPlansPage';
 import { AdminDiscountsPage } from '../features/admin/AdminDiscountsPage';
 import { AdminDiscountCreatePage } from '../features/admin/AdminDiscountCreatePage';
 import { AdminDiscountDetailPage } from '../features/admin/AdminDiscountDetailPage';
-import { AdminLandingPage } from '../features/admin/AdminLandingPage';
 import {
   LoginPage,
   RegisterPage,
@@ -333,15 +332,6 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute allowedGlobalRoles={['super_admin']}>
             {shell(<AdminDiscountCreatePage />)}
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/admin/landing"
-        element={
-          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
-            {shell(<AdminLandingPage />)}
           </ProtectedRoute>
         }
       />
