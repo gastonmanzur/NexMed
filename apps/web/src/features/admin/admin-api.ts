@@ -171,7 +171,24 @@ export interface AdminDiscountItem {
   updatedAt: string;
 }
 
+
+export interface LandingContentState { draft: any; published: any; publishedAt: string | null; updatedAt: string; }
+
 export const adminApi = {
+
+  getLandingAdmin: async (accessToken: string): Promise<LandingContentState> => {
+    const result = await request<{ success: true; data: LandingContentState }>(`/landing/admin`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+  saveLandingDraft: async (accessToken: string, draft: any): Promise<LandingContentState> => {
+    const result = await request<{ success: true; data: LandingContentState }>(`/landing/admin/draft`, { method: 'PUT', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(draft) });
+    return result.data;
+  },
+  publishLanding: async (accessToken: string): Promise<LandingContentState> => {
+    const result = await request<{ success: true; data: LandingContentState }>(`/landing/admin/publish`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+
   getSummary: async (accessToken: string): Promise<AdminSummary> => {
     const result = await request<{ success: true; data: AdminSummary }>('/admin/summary', {
       method: 'GET',
