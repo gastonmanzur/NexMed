@@ -1,9 +1,7 @@
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 
-const WHATSAPP_NUMBER = '541122626516';
-const WHATSAPP_MESSAGE = 'Hola, quiero una demo de NexMed';
-const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, '');
 
 type LandingTheme = 'dark' | 'light';
 const LANDING_THEME_KEY = 'nexmed-landing-theme';
@@ -16,6 +14,8 @@ const resolveInitialTheme = (): LandingTheme => {
   if (typeof window === 'undefined') return 'dark';
   return window.localStorage.getItem(LANDING_THEME_KEY) === 'light' ? 'light' : 'dark';
 };
+
+const fallbackContent: any = { hero: { eyebrow: 'NexMed | Gestión premium para salud y estética', title: 'La plataforma que ordena tu centro y mejora cada experiencia de atención.', subtitle: 'Hecha para consultorios, clínicas y centros de estética que buscan una imagen moderna, más eficiencia operativa y mejor vínculo con pacientes.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Solicitar demo', href: '#contacto', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
 
 const quickFeatures = [
   { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.' },
@@ -35,11 +35,18 @@ const moduleCards = [
 export const HomePage = (): ReactElement => {
   const [theme, setTheme] = useState<LandingTheme>(resolveInitialTheme);
   const [heroVideoUnavailable, setHeroVideoUnavailable] = useState(false);
+  const [content, setContent] = useState<any>(fallbackContent);
   const isDarkMode = theme === 'dark';
+  const whatsappUrl = useMemo(() => `https://wa.me/${content.hero?.whatsapp?.number ?? '541122626516'}?text=${encodeURIComponent(content.hero?.whatsapp?.message ?? '')}`, [content]);
 
   useEffect(() => {
     window.localStorage.setItem(LANDING_THEME_KEY, theme);
   }, [theme]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/landing/published`).then((r)=>r.json()).then((payload)=>{ if (payload?.success && payload?.data) setContent({ ...fallbackContent, ...payload.data }); }).catch(()=>undefined);
+  }, []);
+
 
   return (
     <div className="nx-landing" data-theme={theme}>
@@ -81,19 +88,19 @@ export const HomePage = (): ReactElement => {
           ) : null}
           <img
             className={`nx-landing__hero-bg nx-landing__hero-fallback ${heroVideoUnavailable ? 'is-visible' : ''}`}
-            src={HERO_FALLBACK_IMAGE}
+            src={content.hero?.media?.url || HERO_FALLBACK_IMAGE}
             alt="Centro médico moderno con atención profesional"
             loading="eager"
             fetchPriority="high"
           />
           <div className="nx-landing__hero-overlay" />
           <div className="nx-landing__hero-content">
-            <p className="nx-landing__eyebrow">NexMed | Gestión premium para salud y estética</p>
-            <h1>La plataforma que ordena tu centro y mejora cada experiencia de atención.</h1>
-            <p>Hecha para consultorios, clínicas y centros de estética que buscan una imagen moderna, más eficiencia operativa y mejor vínculo con pacientes.</p>
+            <p className="nx-landing__eyebrow">{content.hero?.eyebrow}</p>
+            <h1>{content.hero?.title}</h1>
+            <p>{content.hero?.subtitle}</p>
             <div className="nx-landing__cta-grid">
               <a className="nx-btn" href="#contacto">Solicitar demo</a>
-              <a className="nx-btn-secondary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
+              <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
               <Link className="nx-btn-secondary" to="/login">Ingresar</Link>
               <Link className="nx-btn-secondary" to="/register">Registrarse</Link>
             </div>
@@ -172,8 +179,8 @@ export const HomePage = (): ReactElement => {
         <section id="contacto" className="nx-landing__section nx-landing__section--cta">
           <h2>Solicitá una demo y elevá la experiencia de tu centro.</h2>
           <div className="nx-landing__cta-grid">
-            <a className="nx-btn" href={WHATSAPP_URL} target="_blank" rel="noreferrer">Solicitar demo</a>
-            <a className="nx-btn-secondary" href={WHATSAPP_URL} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
+            <a className="nx-btn" href={whatsappUrl} target="_blank" rel="noreferrer">Solicitar demo</a>
+            <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
             <Link className="nx-btn-secondary" to="/login">Ingresar</Link>
             <Link className="nx-btn-secondary" to="/register">Registrarse</Link>
           </div>
