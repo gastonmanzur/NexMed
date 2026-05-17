@@ -8,6 +8,8 @@ const LANDING_THEME_KEY = 'nexmed-landing-theme';
 const HERO_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1666214279911-6f15d4eb96a4?auto=format&fit=crop&w=2200&q=80';
 const HERO_VIDEO_MP4_SRC = '/media/landing/nexmed-hero-placeholder.mp4';
 const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
+// TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
+const FIRST_CARD_TEAMWORK_IMAGE = 'https://images.unsplash.com/photo-1584432810601-6c7f27d2362b?auto=format&fit=crop&w=1500&q=80';
 
 const resolveInitialTheme = (): LandingTheme => {
   if (typeof window === 'undefined') return 'dark';
@@ -115,7 +117,7 @@ export const HomePage = (): ReactElement => {
         </section>
 
         <section className="nx-landing__section nx-landing__alt-grid">
-          <img src="https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1500&q=80" alt="Recepción de clínica con equipo coordinado" />
+          <img className="nx-landing__alt-grid-image nx-landing__alt-grid-image--teamwork" src={FIRST_CARD_TEAMWORK_IMAGE} alt="Secretaria en computadora mientras médico de pie señala la pantalla" />
           <div>
             <h2>Del caos operativo a una gestión centralizada.</h2>
             <p>NexMed reúne agenda, pacientes, profesionales y notificaciones en una experiencia simple, elegante y lista para escalar con tu centro.</p>
