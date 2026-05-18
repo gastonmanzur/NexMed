@@ -18,10 +18,11 @@ const resolveInitialTheme = (): LandingTheme => {
 
 const fallbackContent: any = { hero: { eyebrow: 'NexMed | Gestión premium para salud y estética', title: 'La plataforma que ordena tu centro y mejora cada experiencia de atención.', subtitle: 'Hecha para consultorios, clínicas y centros de estética que buscan una imagen moderna, más eficiencia operativa y mejor vínculo con pacientes.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Solicitar demo', href: '#contacto', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
 
+// TODO(landing-images): Reemplazar estas fotos provisorias por producción final de marca.
 const quickFeatures = [
-  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.' },
-  { icon: '🔔', title: 'Recordatorios automáticos', text: 'Confirmaciones y avisos que reducen ausencias sin sumar trabajo manual.' },
-  { icon: '✨', title: 'Experiencia premium', text: 'Desde la reserva hasta la atención, todo se siente ordenado y profesional.' }
+  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: 'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1600&q=80' },
+  { icon: '🔔', title: 'Recordatorios automáticos', text: 'Confirmaciones y avisos que reducen ausencias sin sumar trabajo manual.', image: 'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1600&q=80' },
+  { icon: '✨', title: 'Experiencia premium', text: 'Desde la reserva hasta la atención, todo se siente ordenado y profesional.', image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1600&q=80' }
 ];
 
 const moduleCards = [
@@ -31,6 +32,13 @@ const moduleCards = [
   { title: 'Notificaciones', text: 'Mensajes clave en cada etapa del turno.', image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1400&q=80' },
   { title: 'Recordatorios', text: 'Automatizaciones por la propia App.', image: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=1400&q=80' },
   { title: 'Organización del centro', text: 'Métricas y control para decisiones más rápidas.', image: 'https://images.unsplash.com/photo-1583911860205-72f8ac8ddcbe?auto=format&fit=crop&w=1400&q=80' }
+];
+
+const howItWorksSteps = [
+  { step: 'Paso 1', title: 'Configurar tu centro', text: 'Servicios, horarios, profesionales y reglas en minutos.', image: 'https://images.unsplash.com/photo-1581595219315-a187dd40c322?auto=format&fit=crop&w=1600&q=80' },
+  { step: 'Paso 2', title: 'Activar reservas', text: 'Turnos online con flujo claro para cada paciente.', image: 'https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?auto=format&fit=crop&w=1600&q=80' },
+  { step: 'Paso 3', title: 'Automatizar mensajes', text: 'Recordatorios y avisos previos sin carga administrativa.', image: 'https://images.unsplash.com/photo-1584516150909-c43483ee7938?auto=format&fit=crop&w=1600&q=80' },
+  { step: 'Paso 4', title: 'Optimizar resultados', text: 'Medí desempeño y ajustá tu operación con datos.', image: 'https://images.unsplash.com/photo-1638202993928-7d1134b8402e?auto=format&fit=crop&w=1600&q=80' }
 ];
 
 export const HomePage = (): ReactElement => {
@@ -108,6 +116,7 @@ export const HomePage = (): ReactElement => {
           <div className="nx-landing__cards nx-landing__cards--3">
             {(content.features?.length ? content.features.filter((i:any)=>i.visible!==false) : quickFeatures).map((item:any) => (
               <article key={item.title} className="nx-landing__card nx-feature-card">
+                {'image' in item ? <img className="nx-feature-card__image" src={item.image as string} alt={item.title} loading="lazy" /> : null}
                 <span>{item.icon}</span>
                 <h3>{item.title}</h3>
                 <p>{item.description ?? item.text}</p>
@@ -125,14 +134,18 @@ export const HomePage = (): ReactElement => {
         </section>
 
         <section className="nx-landing__section nx-landing__alt-grid nx-landing__alt-grid--reverse">
-          <img src="https://images.unsplash.com/photo-1576671414121-aa0c81c86939?auto=format&fit=crop&w=1500&q=80" alt="Profesional de salud revisando agenda digital" />
+          <img src="https://images.unsplash.com/photo-1631815588090-d1bcbe9a42e0?auto=format&fit=crop&w=1600&q=80" alt="Equipo médico revisando agenda digital en consultorio moderno" />
           <div>
             <h2>Cómo funciona en 4 pasos.</h2>
             <div className="nx-landing__steps">
-              <article className="nx-landing__card"><span>Paso 1</span><h3>Configurar tu centro</h3><p>Servicios, horarios, profesionales y reglas en minutos.</p></article>
-              <article className="nx-landing__card"><span>Paso 2</span><h3>Activar reservas</h3><p>Turnos online con flujo claro para cada paciente.</p></article>
-              <article className="nx-landing__card"><span>Paso 3</span><h3>Automatizar mensajes</h3><p>Recordatorios y avisos previos sin carga administrativa.</p></article>
-              <article className="nx-landing__card"><span>Paso 4</span><h3>Optimizar resultados</h3><p>Medí desempeño y ajustá tu operación con datos.</p></article>
+              {howItWorksSteps.map((step) => (
+                <article key={step.title} className="nx-landing__card nx-step-card">
+                  <img className="nx-step-card__image" src={step.image} alt={step.title} loading="lazy" />
+                  <span>{step.step}</span>
+                  <h3>{step.title}</h3>
+                  <p>{step.text}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
@@ -150,8 +163,14 @@ export const HomePage = (): ReactElement => {
         </section>
 
         <section id="beneficios" className="nx-landing__section nx-landing__split-benefits">
-          <article className="nx-landing__card"><h3>{content.benefits?.centerTitle || "Beneficios para el centro"}</h3><ul>{(content.benefits?.centerItems?.length ? content.benefits.centerItems : ["Menos ausencias y más confirmaciones","Mejor ocupación de agenda","Procesos internos más ordenados","Imagen de marca más profesional"]).map((item:string)=><li key={item}>{item}</li>)}</ul></article>
-          <article className="nx-landing__card"><h3>{content.benefits?.patientTitle || "Beneficios para pacientes"}</h3><ul>{(content.benefits?.patientItems?.length ? content.benefits.patientItems : ["Reserva simple desde celular","Recordatorios claros y a tiempo","Menos fricción para reprogramar","Atención más fluida y confiable"]).map((item:string)=><li key={item}>{item}</li>)}</ul></article>
+          <article className="nx-landing__card nx-benefit-card">
+            <img src="https://images.unsplash.com/photo-1643297654416-05743e808056?auto=format&fit=crop&w=1600&q=80" alt="Recepción de clínica organizada revisando agenda en computadora" loading="lazy" />
+            <h3>{content.benefits?.centerTitle || "Beneficios para el centro"}</h3><ul>{(content.benefits?.centerItems?.length ? content.benefits.centerItems : ["Menos ausencias y más confirmaciones","Mejor ocupación de agenda","Procesos internos más ordenados","Imagen de marca más profesional"]).map((item:string)=><li key={item}>{item}</li>)}</ul>
+          </article>
+          <article className="nx-landing__card nx-benefit-card">
+            <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1600&q=80" alt="Paciente usando el celular para gestionar turnos y recordatorios" loading="lazy" />
+            <h3>{content.benefits?.patientTitle || "Beneficios para pacientes"}</h3><ul>{(content.benefits?.patientItems?.length ? content.benefits.patientItems : ["Reserva simple desde celular","Recordatorios claros y a tiempo","Menos fricción para reprogramar","Atención más fluida y confiable"]).map((item:string)=><li key={item}>{item}</li>)}</ul>
+          </article>
         </section>
 
         <section className="nx-landing__section">
