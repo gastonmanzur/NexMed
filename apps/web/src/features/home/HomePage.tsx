@@ -8,8 +8,21 @@ const LANDING_THEME_KEY = 'nexmed-landing-theme';
 const HERO_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1666214279911-6f15d4eb96a4?auto=format&fit=crop&w=2200&q=80';
 const HERO_VIDEO_MP4_SRC = '/media/landing/nexmed-hero-placeholder.mp4';
 const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
+// Reemplazo estricto de imágenes de landing (orden provisto por cliente):
+// 1) Recordatorios automáticos
+// 2) Del caos operativo a una gestión centralizada
+// 3) Configurar tu centro
+// 4) Activar reservas
+// 5) Automatizar mensajes
+// 6) Optimizar resultados
+const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = 'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1600&q=80';
+const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = 'https://images.unsplash.com/photo-1584432810601-6c7f27d2362b?auto=format&fit=crop&w=1500&q=80';
+const LANDING_IMAGE_CONFIGURAR_CENTRO = 'https://images.unsplash.com/photo-1581595219315-a187dd40c322?auto=format&fit=crop&w=1600&q=80';
+const LANDING_IMAGE_ACTIVAR_RESERVAS = 'https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?auto=format&fit=crop&w=1600&q=80';
+const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = 'https://images.unsplash.com/photo-1584516150909-c43483ee7938?auto=format&fit=crop&w=1600&q=80';
+const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = 'https://images.unsplash.com/photo-1638202993928-7d1134b8402e?auto=format&fit=crop&w=1600&q=80';
 // TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
-const FIRST_CARD_TEAMWORK_IMAGE = 'https://images.unsplash.com/photo-1584432810601-6c7f27d2362b?auto=format&fit=crop&w=1500&q=80';
+const FIRST_CARD_TEAMWORK_IMAGE = LANDING_IMAGE_CHAOS_A_CENTRALIZADA;
 
 const resolveInitialTheme = (): LandingTheme => {
   if (typeof window === 'undefined') return 'dark';
@@ -20,8 +33,8 @@ const fallbackContent: any = { hero: { eyebrow: 'NexMed | Gestión premium para 
 
 // TODO(landing-images): Reemplazar estas fotos provisorias por producción final de marca.
 const quickFeatures = [
-  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: '/media/landing/agenda-profesional.jpg' },
-  { icon: '🔔', title: 'Recordatorios automáticos', text: 'Confirmaciones y avisos que reducen ausencias sin sumar trabajo manual.', image: 'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1600&q=80' },
+  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1600&q=80' },
+  { icon: '🔔', title: 'Recordatorios automáticos', text: 'Confirmaciones y avisos que reducen ausencias sin sumar trabajo manual.', image: LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS },
   { icon: '✨', title: 'Experiencia premium', text: 'Desde la reserva hasta la atención, todo se siente ordenado y profesional.', image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1600&q=80' }
 ];
 
@@ -35,10 +48,10 @@ const moduleCards = [
 ];
 
 const howItWorksSteps = [
-  { step: 'Paso 1', title: 'Configurar tu centro', text: 'Servicios, horarios, profesionales y reglas en minutos.', image: 'https://images.unsplash.com/photo-1581595219315-a187dd40c322?auto=format&fit=crop&w=1600&q=80' },
-  { step: 'Paso 2', title: 'Activar reservas', text: 'Turnos online con flujo claro para cada paciente.', image: 'https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?auto=format&fit=crop&w=1600&q=80' },
-  { step: 'Paso 3', title: 'Automatizar mensajes', text: 'Recordatorios y avisos previos sin carga administrativa.', image: 'https://images.unsplash.com/photo-1584516150909-c43483ee7938?auto=format&fit=crop&w=1600&q=80' },
-  { step: 'Paso 4', title: 'Optimizar resultados', text: 'Medí desempeño y ajustá tu operación con datos.', image: 'https://images.unsplash.com/photo-1638202993928-7d1134b8402e?auto=format&fit=crop&w=1600&q=80' }
+  { step: 'Paso 1', title: 'Configurar tu centro', text: 'Servicios, horarios, profesionales y reglas en minutos.', image: LANDING_IMAGE_CONFIGURAR_CENTRO },
+  { step: 'Paso 2', title: 'Activar reservas', text: 'Turnos online con flujo claro para cada paciente.', image: LANDING_IMAGE_ACTIVAR_RESERVAS },
+  { step: 'Paso 3', title: 'Automatizar mensajes', text: 'Recordatorios y avisos previos sin carga administrativa.', image: LANDING_IMAGE_AUTOMATIZAR_MENSAJES },
+  { step: 'Paso 4', title: 'Optimizar resultados', text: 'Medí desempeño y ajustá tu operación con datos.', image: LANDING_IMAGE_OPTIMIZAR_RESULTADOS }
 ];
 
 export const HomePage = (): ReactElement => {
