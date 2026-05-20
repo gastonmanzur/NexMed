@@ -7,6 +7,8 @@ import { NotificationRepository } from '../repositories/notification.repository.
 import { notificationChannels, notificationStatuses, notificationTypes } from '../models/notification.model.js';
 import { resolveNotificationActionUrl } from '../notification-action-url.js';
 
+const normalizeNullable = <T>(value: T | null | undefined): T | null => value ?? null;
+
 export class NotificationService {
   constructor(
     private readonly notifications = new NotificationRepository(),
@@ -62,7 +64,7 @@ export class NotificationService {
     const notification = await this.notifications.create(input);
     const actionUrl = resolveNotificationActionUrl({
       type: notification.type,
-      relatedEntityType: notification.relatedEntityType
+      relatedEntityType: normalizeNullable(notification.relatedEntityType)
     });
     await this.dispatchPushIfEnabled({
       notificationId: notification._id.toString(),
@@ -128,7 +130,7 @@ export class NotificationService {
       relatedEntityId: row.relatedEntityId ?? null,
       actionUrl: resolveNotificationActionUrl({
         type: row.type,
-        relatedEntityType: row.relatedEntityType
+        relatedEntityType: normalizeNullable(row.relatedEntityType)
       }),
       channel: row.channel,
       status: row.status,
