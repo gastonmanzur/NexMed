@@ -16,12 +16,7 @@ const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
 // 5) Automatizar mensajes
 // 6) Optimizar resultados
 
-const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = 'https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = 'https://images.unsplash.com/photo-1584432810601-6c7f27d2362b?auto=format&fit=crop&w=1500&q=80';
-const LANDING_IMAGE_CONFIGURAR_CENTRO = 'https://images.unsplash.com/photo-1581595219315-a187dd40c322?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_ACTIVAR_RESERVAS = 'https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = 'https://images.unsplash.com/photo-1584516150909-c43483ee7938?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = 'https://images.unsplash.com/photo-1638202993928-7d1134b8402e?auto=format&fit=crop&w=1600&q=80';
+
 
 const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = '/media/landing/recordatorios-automaticos.jpg';
 const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = '/media/landing/caos-a-gestion-centralizada.jpg';
