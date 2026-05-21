@@ -25,7 +25,7 @@ const LANDING_IMAGE_CONFIGURAR_CENTRO = '/media/landing/configurar-centro.png';
 const LANDING_IMAGE_ACTIVAR_RESERVAS = '/media/landing/Activar-reserva.png';
 const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = '/media/landing/Automatizar-mensajes.png';
 const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = '/media/landing/Optimisar-rendimientos.png';
-// const LANDING_IMAGE_EQUIPO_MEDICO = '/media/landing/Optimisar-rendimientos.png';
+const LANDING_IMAGE_EQUIPO_MEDICO = '/media/landing/Optimisar-rendimientos.png';
 
 
 // TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
