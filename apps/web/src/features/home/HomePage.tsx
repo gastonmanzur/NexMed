@@ -19,7 +19,7 @@ const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
 
 
 
-const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = '/media/landing/recordatorio.png';
+const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = '/media/landing/recordatorios.png';
 const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = '/media/landing/del-caos-al-orden.png';
 const LANDING_IMAGE_CONFIGURAR_CENTRO = '/media/landing/configurar-centro.png';
 const LANDING_IMAGE_ACTIVAR_RESERVAS = '/media/landing/Activar-reserva.png';
