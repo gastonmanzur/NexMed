@@ -25,7 +25,7 @@ const LANDING_IMAGE_CONFIGURAR_CENTRO = '/media/landing/configurar-centro.png';
 const LANDING_IMAGE_ACTIVAR_RESERVAS = '/media/landing/Activar-reserva.png';
 const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = '/media/landing/Automatizar-mensajes.png';
 const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = '/media/landing/Optimisar-rendimientos.png';
-const LANDING_IMAGE_EQUIPO_MEDICO = '/media/landing/Optimisar-rendimientos.png';
+const LANDING_IMAGE_EQUIPO_MEDICO = '/media/landing/Equipo-medico.png';
 
 
 // TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
@@ -155,7 +155,7 @@ export const HomePage = (): ReactElement => {
         </section>
 
         <section className="nx-landing__section nx-landing__alt-grid nx-landing__alt-grid--reverse">
-          <img src= LANDING_IMAGE_EQUIPO_MEDICO alt="Equipo médico revisando agenda digital en consultorio moderno" />
+          <img src= {LANDING_IMAGE_EQUIPO_MEDICO} alt="Equipo médico revisando agenda digital en consultorio moderno" />
           <div>
             <h2>Cómo funciona en 4 pasos.</h2>
             <div className="nx-landing__steps">
