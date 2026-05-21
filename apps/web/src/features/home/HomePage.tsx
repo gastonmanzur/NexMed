@@ -31,6 +31,8 @@ const LANDING_IMAGE_PACIENTES = '/media/landing/Pacientes.png';
 const LANDING_IMAGE_NOTIFICACIONES = '/media/landing/Notificaciones.png';
 const LANDING_IMAGE_RECORDATORIOS = '/media/landing/Recordatorios-2.png';
 const LANDING_IMAGE_ORGANIZACION_DEL_CENTRO = '/media/landing/Organizacion-del-centro.png';
+const LANDING_IMAGE_BENEFICIOS_PARA_EL_CENTRO = '/media/landing/Beneficios_centro.png';
+const LANDING_IMAGE_BENEFICIOS_PARA_LOS_PACIENTES = '/media/landing/Beneficios-pacientes.png';
 
 
 // TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
@@ -190,11 +192,11 @@ export const HomePage = (): ReactElement => {
 
         <section id="beneficios" className="nx-landing__section nx-landing__split-benefits">
           <article className="nx-landing__card nx-benefit-card">
-            <img src="https://images.unsplash.com/photo-1643297654416-05743e808056?auto=format&fit=crop&w=1600&q=80" alt="Recepción de clínica organizada revisando agenda en computadora" loading="lazy" />
+            <img src={LANDING_IMAGE_BENEFICIOS_PARA_EL_CENTRO} alt="Recepción de clínica organizada revisando agenda en computadora" loading="lazy" />
             <h3>{content.benefits?.centerTitle || "Beneficios para el centro"}</h3><ul>{(content.benefits?.centerItems?.length ? content.benefits.centerItems : ["Menos ausencias y más confirmaciones","Mejor ocupación de agenda","Procesos internos más ordenados","Imagen de marca más profesional"]).map((item:string)=><li key={item}>{item}</li>)}</ul>
           </article>
           <article className="nx-landing__card nx-benefit-card">
-            <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1600&q=80" alt="Paciente usando el celular para gestionar turnos y recordatorios" loading="lazy" />
+            <img src={LANDING_IMAGE_BENEFICIOS_PARA_LOS_PACIENTES} alt="Paciente usando el celular para gestionar turnos y recordatorios" loading="lazy" />
             <h3>{content.benefits?.patientTitle || "Beneficios para pacientes"}</h3><ul>{(content.benefits?.patientItems?.length ? content.benefits.patientItems : ["Reserva simple desde celular","Recordatorios claros y a tiempo","Menos fricción para reprogramar","Atención más fluida y confiable"]).map((item:string)=><li key={item}>{item}</li>)}</ul>
           </article>
         </section>
