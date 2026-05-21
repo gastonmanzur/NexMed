@@ -18,7 +18,7 @@ const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
 
 
 
-
+const LANDING_IMAGE_AGENDA_PROFECIONAL = '/media/landing/Agenda-profecional.png';
 const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = '/media/landing/recordatorios.png';
 const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = '/media/landing/del-caos-al-orden.png';
 const LANDING_IMAGE_CONFIGURAR_CENTRO = '/media/landing/configurar-centro.png';
@@ -40,7 +40,7 @@ const fallbackContent: any = { hero: { eyebrow: 'NexMed | Gestión premium para 
 // TODO(landing-images): Reemplazar estas fotos provisorias por producción final de marca.
 const quickFeatures = [
 
-  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: '/media/landing/agenda-profesional.svg' },
+  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: LANDING_IMAGE_AGENDA_PROFECIONAL },
   { icon: '🔔', title: 'Recordatorios automáticos', text: 'Confirmaciones y avisos que reducen ausencias sin sumar trabajo manual.', image: LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS },
   { icon: '✨', title: 'Experiencia premium', text: 'Desde la reserva hasta la atención, todo se siente ordenado y profesional.', image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1600&q=80' }
 ];
