@@ -52,12 +52,12 @@ const quickFeatures = [
 ];
 
 const moduleCards = [
-  { title: 'Agenda', text: 'Calendario inteligente por equipo y sucursal.', image: 'https://images.unsplash.com/photo-1631815588090-d1bcbe9a42e0?auto=format&fit=crop&w=1400&q=80' },
+  { title: 'Agenda', text: 'Calendario inteligente por equipo y sucursal.', image: LANDING_IMAGE_AGENDA },
   { title: 'Profesionales', text: 'Roles, disponibilidad y carga balanceada.', image: 'https://images.unsplash.com/photo-1666214280391-8ff5bd3c0bf0?auto=format&fit=crop&w=1400&q=80' },
-  { title: 'Pacientes', text: 'Historial centralizado y comunicación fluida.', image: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1400&q=80' },
-  { title: 'Notificaciones', text: 'Mensajes clave en cada etapa del turno.', image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1400&q=80' },
-  { title: 'Recordatorios', text: 'Automatizaciones por la propia App.', image: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=1400&q=80' },
-  { title: 'Organización del centro', text: 'Métricas y control para decisiones más rápidas.', image: 'https://images.unsplash.com/photo-1583911860205-72f8ac8ddcbe?auto=format&fit=crop&w=1400&q=80' }
+  { title: 'Pacientes', text: 'Historial centralizado y comunicación fluida.', image: LANDING_IMAGE_PACIENTES },
+  { title: 'Notificaciones', text: 'Mensajes clave en cada etapa del turno.', image: LANDING_IMAGE_NOTIFICACIONES },
+  { title: 'Recordatorios', text: 'Automatizaciones por la propia App.', image: LANDING_IMAGE_RECORDATORIOS },
+  { title: 'Organización del centro', text: 'Métricas y control para decisiones más rápidas.', image: LANDING_IMAGE_ORGANIZACION_DEL_CENTRO }
 ];
 
 const howItWorksSteps = [
