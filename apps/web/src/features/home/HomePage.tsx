@@ -19,12 +19,12 @@ const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
 
 
 
-const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = '/media/landing/recordatorios-automaticos.png';
-const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = '/media/landing/caos-a-gestion-centralizada.png';
-const LANDING_IMAGE_CONFIGURAR_CENTRO = '/media/landing/configurar-tu-centro.png';
-const LANDING_IMAGE_ACTIVAR_RESERVAS = '/media/landing/activar-reservas.png';
-const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = '/media/landing/automatizar-mensajes.png';
-const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = '/media/landing/optimizar-resultados.png';
+const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = '/media/landing/recordatorio.png';
+const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = '/media/landing/del-caos-al-orden.png';
+const LANDING_IMAGE_CONFIGURAR_CENTRO = '/media/landing/configurar-centro.png';
+const LANDING_IMAGE_ACTIVAR_RESERVAS = '/media/landing/Activar-reserva.png';
+const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = '/media/landing/Automatizar-mensajes.png';
+const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = '/media/landing/Optimisar-rendimientos.png';
 
 
 // TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
