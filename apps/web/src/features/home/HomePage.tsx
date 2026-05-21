@@ -18,12 +18,14 @@ const HERO_VIDEO_WEBM_SRC = '/media/landing/nexmed-hero-placeholder.webm';
 
 
 
-const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = 'https://images.unsplash.com/photo-1631815588090-d1bcbe9a42e0?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_CONFIGURAR_CENTRO = 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_ACTIVAR_RESERVAS = 'https://images.unsplash.com/photo-1666214279911-6f15d4eb96a4?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=1600&q=80';
-const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = 'https://images.unsplash.com/photo-1583911860205-72f8ac8ddcbe?auto=format&fit=crop&w=1600&q=80';
+
+const LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS = '/media/landing/recordatorios-automaticos.svg';
+const LANDING_IMAGE_CHAOS_A_CENTRALIZADA = '/media/landing/caos-a-gestion-centralizada.svg';
+const LANDING_IMAGE_CONFIGURAR_CENTRO = '/media/landing/configurar-tu-centro.svg';
+const LANDING_IMAGE_ACTIVAR_RESERVAS = '/media/landing/activar-reservas.svg';
+const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = '/media/landing/automatizar-mensajes.svg';
+const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = '/media/landing/optimizar-resultados.svg';
+
 
 // TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
 const FIRST_CARD_TEAMWORK_IMAGE = LANDING_IMAGE_CHAOS_A_CENTRALIZADA;
@@ -37,7 +39,8 @@ const fallbackContent: any = { hero: { eyebrow: 'NexMed | Gestión premium para 
 
 // TODO(landing-images): Reemplazar estas fotos provisorias por producción final de marca.
 const quickFeatures = [
-  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1600&q=80' },
+
+  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: '/media/landing/agenda-profesional.svg' },
   { icon: '🔔', title: 'Recordatorios automáticos', text: 'Confirmaciones y avisos que reducen ausencias sin sumar trabajo manual.', image: LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS },
   { icon: '✨', title: 'Experiencia premium', text: 'Desde la reserva hasta la atención, todo se siente ordenado y profesional.', image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1600&q=80' }
 ];
