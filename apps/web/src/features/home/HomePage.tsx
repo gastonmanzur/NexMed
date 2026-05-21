@@ -26,6 +26,11 @@ const LANDING_IMAGE_ACTIVAR_RESERVAS = '/media/landing/Activar-reserva.png';
 const LANDING_IMAGE_AUTOMATIZAR_MENSAJES = '/media/landing/Automatizar-mensajes.png';
 const LANDING_IMAGE_OPTIMIZAR_RESULTADOS = '/media/landing/Optimisar-rendimientos.png';
 const LANDING_IMAGE_EQUIPO_MEDICO = '/media/landing/Equipo-medico.png';
+const LANDING_IMAGE_AGENDA = '/media/landing/Agenda-inteligente.png';
+const LANDING_IMAGE_PACIENTES = '/media/landing/Pacientes.png';
+const LANDING_IMAGE_NOTIFICACIONES = '/media/landing/Notificaciones.png';
+const LANDING_IMAGE_RECORDATORIOS = '/media/landing/Recordatorios-2.png';
+const LANDING_IMAGE_ORGANIZACION_DEL_CENTRO = '/media/landing/Organizacion-del-centro.png';
 
 
 // TODO(landing-hero-card-image): Reemplazar por asset final aprobado por diseño cuando esté disponible.
