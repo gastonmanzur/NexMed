@@ -173,7 +173,7 @@ export const HomePage = (): ReactElement => {
           </div>
         </section>
 
-        /* {/* <section className="nx-landing__section nx-landing__alt-grid nx-landing__alt-grid--reverse">
+       <section className="nx-landing__section nx-landing__alt-grid nx-landing__alt-grid--reverse">
           // <img src= {LANDING_IMAGE_EQUIPO_MEDICO} alt="Equipo médico revisando agenda digital en consultorio moderno" />
           <div>
             <h2>Cómo funciona en 4 pasos.</h2>
@@ -188,7 +188,7 @@ export const HomePage = (): ReactElement => {
               ))}
             </div>
           </div>
-        </section> */} */
+        </section> 
 
         <section id="modulos" className="nx-landing__section">
           <h2>{content.modules?.title || "Módulos que hoy ya podés usar en NexMed"}</h2><p>{content.modules?.subtitle || "Cada bloque está pensado para resolver una parte operativa concreta de tu centro, sin promesas infladas."}</p>
