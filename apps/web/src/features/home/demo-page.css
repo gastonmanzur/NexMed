@@ -1,0 +1,18 @@
+.nx-demo-page { padding: 1.5rem; min-height: 100vh; background: radial-gradient(circle at top, #1d2d58, #070b17 65%); color: #edf3ff; }
+.nx-demo-header { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; margin-bottom:1rem; }
+.nx-demo-kicker { color:#8fb4ff; text-transform:uppercase; letter-spacing:.08em; font-size:.8rem; margin:0; }
+.nx-demo-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.nx-demo-card { background:rgba(11,22,45,.85); border:1px solid rgba(160,187,255,.2); border-radius:16px; padding:1rem; box-shadow:0 10px 26px rgba(0,0,0,.25); }
+.nx-demo-card--cta { grid-column:1/-1; }
+.nx-tour { position:fixed; inset:0; z-index:50; }
+.nx-tour__overlay { position:absolute; inset:0; background:rgba(4,8,16,.72); backdrop-filter: blur(3px); transition:all .25s ease; }
+.nx-tour__spotlight { position:fixed; border-radius:18px; border:1px solid rgba(166,198,255,.7); box-shadow: 0 0 0 9999px rgba(2,6,14,.72), 0 0 24px rgba(114,173,255,.6); pointer-events:none; transition: all .28s ease; }
+.nx-tour__panel { position:fixed; right:1rem; bottom:1rem; width:min(420px, calc(100vw - 2rem)); background:linear-gradient(160deg, #0f1f3f, #0a1329); border:1px solid rgba(157,184,255,.35); border-radius:20px; padding:1rem; box-shadow:0 18px 48px rgba(0,0,0,.45); }
+.nx-tour__panel-head { display:flex; justify-content:space-between; align-items:center; font-size:.85rem; color:#a8c1ff; }
+.nx-tour__panel-head button{ background:none; border:none; color:#d5e2ff; cursor:pointer; }
+.nx-tour__progress{ margin:.75rem 0; height:6px; border-radius:999px; background:rgba(255,255,255,.14); overflow:hidden; }
+.nx-tour__progress span{ display:block; height:100%; background:linear-gradient(90deg,#5ca8ff,#8f73ff); transition:width .25s ease; }
+.nx-tour__actions{ display:flex; gap:.5rem; margin-top:1rem; flex-wrap:wrap; }
+.nx-tour__actions--close{ margin-top:.75rem; }
+.nx-demo-restart { position:fixed; right:1rem; bottom:1rem; }
+@media (max-width: 900px){ .nx-demo-grid{ grid-template-columns:1fr; } .nx-tour__panel{ left:1rem; right:1rem; width:auto; } }

@@ -43,7 +43,7 @@ const resolveInitialTheme = (): LandingTheme => {
   return window.localStorage.getItem(LANDING_THEME_KEY) === 'light' ? 'light' : 'dark';
 };
 
-const fallbackContent: any = { hero: { eyebrow: 'NexMed | Agenda, turnos y pacientes para centros de salud y estética', title: 'Organizá turnos, automatizá recordatorios y ordená la agenda de tu centro en un solo sistema.', subtitle: 'NexMed te ayuda a reducir trabajo manual en recepción y a sostener una atención más clara para pacientes y equipo.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Solicitar demo', href: '#contacto', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
+const fallbackContent: any = { hero: { eyebrow: 'NexMed | Agenda, turnos y pacientes para centros de salud y estética', title: 'Organizá turnos, automatizá recordatorios y ordená la agenda de tu centro en un solo sistema.', subtitle: 'NexMed te ayuda a reducir trabajo manual en recepción y a sostener una atención más clara para pacientes y equipo.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Ver demo', href: '/demo', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
 
 // TODO(landing-images): Reemplazar estas fotos provisorias por producción final de marca.
 const quickFeatures = [
@@ -138,7 +138,7 @@ export const HomePage = (): ReactElement => {
             <p>{content.hero?.subtitle}</p>
             <p className="nx-landing__hero-proof">Pensado para consultorios, clínicas y centros de estética que hoy gestionan turnos con WhatsApp, planillas o múltiples sistemas.</p>
             <div className="nx-landing__cta-grid">
-              <a className="nx-btn" href="#contacto">Solicitar demo</a>
+              <a className="nx-btn" href="/demo">Ver demo</a>
               <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
               <Link className="nx-btn-tertiary" to="/login">Ingresar</Link>
               <Link className="nx-btn-tertiary" to="/register">Registrarse</Link>
@@ -244,7 +244,7 @@ export const HomePage = (): ReactElement => {
         <section id="contacto" className="nx-landing__section nx-landing__section--cta">
           <h2>{content.finalCta?.title || "Solicitá una demo de NexMed y evaluá si encaja con tu centro."}</h2><p>{content.finalCta?.subtitle || "Te mostramos agenda, turnos, recordatorios, notificaciones y gestión de pacientes con el alcance real disponible hoy."}</p>
           <div className="nx-landing__cta-grid">
-            <a className="nx-btn" href={whatsappUrl} target="_blank" rel="noreferrer">Solicitar demo</a>
+            <Link className="nx-btn" to="/demo">Ver demo</Link>
             <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
             <Link className="nx-btn-tertiary" to="/login">Ingresar</Link>
             <Link className="nx-btn-tertiary" to="/register">Registrarse</Link>
