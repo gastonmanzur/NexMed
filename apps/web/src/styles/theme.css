@@ -2260,12 +2260,7 @@ body {
     grid-template-columns: repeat(2, minmax(240px, 1fr));
     max-width: 100%;
   }
-  .nx-step-card {
-    min-height: 460px;
-  }
-  .nx-step-card__image {
-    height: 240px;
-  }
+
 }
 @media (max-width: 720px) {
   .nx-landing main, .nx-landing__footer { width: min(1180px, 100% - 1rem); }
