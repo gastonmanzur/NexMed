@@ -43,30 +43,30 @@ const resolveInitialTheme = (): LandingTheme => {
   return window.localStorage.getItem(LANDING_THEME_KEY) === 'light' ? 'light' : 'dark';
 };
 
-const fallbackContent: any = { hero: { eyebrow: 'NexMed | Gestión premium para salud y estética', title: 'La plataforma que ordena tu centro y mejora cada experiencia de atención.', subtitle: 'Hecha para consultorios, clínicas y centros de estética que buscan una imagen moderna, más eficiencia operativa y mejor vínculo con pacientes.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Solicitar demo', href: '#contacto', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
+const fallbackContent: any = { hero: { eyebrow: 'NexMed | Gestión de turnos y pacientes para salud y estética', title: 'Organizá agenda, turnos y pacientes en un solo lugar.', subtitle: 'Para consultorios, clínicas y centros de estética que quieren menos tareas manuales y una operación más ordenada.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Solicitar demo', href: '#contacto', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
 
 // TODO(landing-images): Reemplazar estas fotos provisorias por producción final de marca.
 const quickFeatures = [
 
-  { icon: '📅', title: 'Agenda profesional', text: 'Turnos por profesional, sede y servicio con una vista clara de toda la operación.', image: LANDING_IMAGE_AGENDA_PROFECIONAL },
-  { icon: '🔔', title: 'Recordatorios automáticos', text: 'Confirmaciones y avisos que reducen ausencias sin sumar trabajo manual.', image: LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS },
-  { icon: '✨', title: 'Experiencia premium', text: 'Desde la reserva hasta la atención, todo se siente ordenado y profesional.', image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1600&q=80' }
+  { icon: '📅', title: 'Agenda profesional', text: 'Visualizá turnos por profesional, sede y servicio con menos cruces y menos desorden.', image: LANDING_IMAGE_AGENDA_PROFECIONAL },
+  { icon: '🔔', title: 'Recordatorios automáticos', text: 'Programá avisos y confirmaciones para reducir ausencias sin aumentar carga administrativa.', image: LANDING_IMAGE_RECORDATORIOS_AUTOMATICOS },
+  { icon: '👥', title: 'Gestión de pacientes', text: 'Centralizá perfiles y seguimiento para sostener una atención más consistente.', image: LANDING_IMAGE_PACIENTES }
 ];
 
 const moduleCards = [
-  { title: 'Agenda', text: 'Calendario inteligente por equipo y sucursal.', image: LANDING_IMAGE_AGENDA },
-  { title: 'Profesionales', text: 'Roles, disponibilidad y carga balanceada.', image: 'https://images.unsplash.com/photo-1666214280391-8ff5bd3c0bf0?auto=format&fit=crop&w=1400&q=80' },
-  { title: 'Pacientes', text: 'Historial centralizado y comunicación fluida.', image: LANDING_IMAGE_PACIENTES },
-  { title: 'Notificaciones', text: 'Mensajes clave en cada etapa del turno.', image: LANDING_IMAGE_NOTIFICACIONES },
-  { title: 'Recordatorios', text: 'Automatizaciones por la propia App.', image: LANDING_IMAGE_RECORDATORIOS },
-  { title: 'Organización del centro', text: 'Métricas y control para decisiones más rápidas.', image: LANDING_IMAGE_ORGANIZACION_DEL_CENTRO }
+  { title: 'Agenda', text: 'Vista de turnos por día, profesional y sede para ordenar la operación diaria.', image: LANDING_IMAGE_AGENDA },
+  { title: 'Profesionales', text: 'Configurá disponibilidad del equipo y distribuí mejor la carga de atención.', image: LANDING_IMAGE_EQUIPO_MEDICO },
+  { title: 'Pacientes', text: 'Perfiles centralizados con información útil para seguimiento y atención.', image: LANDING_IMAGE_PACIENTES },
+  { title: 'Notificaciones', text: 'Avisos sobre cambios y acciones relevantes para el paciente.', image: LANDING_IMAGE_NOTIFICACIONES },
+  { title: 'Recordatorios', text: 'Reglas de recordatorio automáticas para confirmar turnos con anticipación.', image: LANDING_IMAGE_RECORDATORIOS },
+  { title: 'Organización del centro', text: 'Panel operativo para controlar agenda, equipos y tareas del centro.', image: LANDING_IMAGE_ORGANIZACION_DEL_CENTRO }
 ];
 
 const howItWorksSteps = [
   { step: 'Paso 1', title: 'Configurar tu centro', text: 'Servicios, horarios, profesionales y reglas en minutos.', image: LANDING_IMAGE_CONFIGURAR_CENTRO },
   { step: 'Paso 2', title: 'Activar reservas', text: 'Turnos online con flujo claro para cada paciente.', image: LANDING_IMAGE_ACTIVAR_RESERVAS },
   { step: 'Paso 3', title: 'Automatizar mensajes', text: 'Recordatorios y avisos previos sin carga administrativa.', image: LANDING_IMAGE_AUTOMATIZAR_MENSAJES },
-  { step: 'Paso 4', title: 'Optimizar resultados', text: 'Medí desempeño y ajustá tu operación con datos.', image: LANDING_IMAGE_OPTIMIZAR_RESULTADOS }
+  { step: 'Paso 4', title: 'Ajustar la operación', text: 'Revisá agenda y atención diaria para mejorar la coordinación del centro.', image: LANDING_IMAGE_OPTIMIZAR_RESULTADOS }
 ];
 
 export const HomePage = (): ReactElement => {
@@ -129,6 +129,11 @@ export const HomePage = (): ReactElement => {
           <div className="nx-landing__hero-overlay" />
           <div className="nx-landing__hero-content">
             <p className="nx-landing__eyebrow">{content.hero?.eyebrow}</p>
+            <div className="nx-landing__segment-chips" aria-label="Tipo de centro">
+              <span>Consultorios</span>
+              <span>Clínicas</span>
+              <span>Centros de estética</span>
+            </div>
             <h1>{content.hero?.title}</h1>
             <p>{content.hero?.subtitle}</p>
             <div className="nx-landing__cta-grid">
@@ -157,7 +162,7 @@ export const HomePage = (): ReactElement => {
           <img className="nx-landing__alt-grid-image nx-landing__alt-grid-image--teamwork" src={FIRST_CARD_TEAMWORK_IMAGE} alt="Secretaria en computadora mientras médico de pie señala la pantalla" />
           <div>
             <h2>Del caos operativo a una gestión centralizada.</h2>
-            <p>NexMed reúne agenda, pacientes, profesionales y notificaciones en una experiencia simple, elegante y lista para escalar con tu centro.</p>
+            <p>NexMed reúne agenda, turnos, pacientes, profesionales y notificaciones para que el equipo trabaje con procesos claros y menos tareas manuales.</p>
           </div>
         </section>
 
@@ -179,7 +184,7 @@ export const HomePage = (): ReactElement => {
         </section>
 
         <section id="modulos" className="nx-landing__section">
-          <h2>{content.modules?.title || "Showcase de módulos NexMed"}</h2><p>{content.modules?.subtitle}</p>
+          <h2>{content.modules?.title || "Módulos que hoy ya podés usar en NexMed"}</h2><p>{content.modules?.subtitle || "Cada bloque está pensado para resolver una parte operativa concreta de tu centro, sin promesas infladas."}</p>
           <div className="nx-showcase-grid">
             {(content.modules?.cards?.length ? content.modules.cards.filter((i:any)=>i.visible!==false) : moduleCards).map((item:any) => (
               <article key={item.title} className="nx-showcase-card">
@@ -202,17 +207,36 @@ export const HomePage = (): ReactElement => {
         </section>
 
         <section className="nx-landing__section">
-          <h2>Testimonios</h2>
-          <div className="nx-landing__cards nx-landing__cards--3">{(content.testimonials?.length ? content.testimonials.filter((i:any)=>i.visible!==false) : [{text:"Pasamos de gestionar por chat a operar con una agenda profesional.",name:"Directora",role:"Centro estético"}]).map((item:any, idx:number)=><article key={idx} className="nx-landing__card"><p>“{item.text}”</p><strong>{item.name} · {item.role}</strong></article>)}</div>
+          <h2>Confianza basada en uso real, no en humo</h2>
+          <p className="nx-landing__section-lead">NexMed está enfocado en resolver la operación diaria de centros de salud y estética: agenda, turnos, comunicación y organización interna.</p>
+          <div className="nx-landing__cards nx-landing__cards--3">
+            <article className="nx-landing__card">
+              <h3>Ideal para consultorios en crecimiento</h3>
+              <p>Si hoy coordinás gran parte de tus turnos por chat o planillas, NexMed te ayuda a ordenar la agenda en un flujo único.</p>
+            </article>
+            <article className="nx-landing__card">
+              <h3>Útil para clínicas con varios profesionales</h3>
+              <p>Centralizá disponibilidad, turnos y comunicación para reducir cruces entre recepción, equipo médico y pacientes.</p>
+            </article>
+            <article className="nx-landing__card">
+              <h3>Preparado para centros de estética</h3>
+              <p>Organizá reservas y recordatorios con una experiencia más clara para el equipo y para cada paciente.</p>
+            </article>
+          </div>
         </section>
 
         <section id="faq" className="nx-landing__section">
           <h2>Preguntas frecuentes</h2>
-          <div className="nx-faq-grid">{(content.faq?.length ? content.faq.filter((i:any)=>i.visible!==false).sort((a:any,b:any)=>(a.order??0)-(b.order??0)) : [{question:"¿NexMed sirve para centros pequeños?",answer:"Sí. Podés empezar con uno o pocos profesionales."}]).map((item:any, idx:number)=><article key={idx} className="nx-landing__card"><h3>{item.question}</h3><p>{item.answer}</p></article>)}</div>
+          <div className="nx-faq-grid">{(content.faq?.length ? content.faq.filter((i:any)=>i.visible!==false).sort((a:any,b:any)=>(a.order??0)-(b.order??0)) : [
+            {question:"¿NexMed es para consultorios pequeños?",answer:"Sí. Podés comenzar con un consultorio y luego sumar más profesionales o sedes."},
+            {question:"¿Qué puede automatizar hoy NexMed?",answer:"La gestión de turnos, recordatorios y notificaciones asociadas a la atención. Si necesitás un flujo particular, lo vemos en demo."},
+            {question:"¿Incluye métricas avanzadas o BI?",answer:"NexMed hoy se enfoca en panel operativo y organización diaria del centro. En demo te mostramos el alcance actual sin sobrepromesas."},
+            {question:"¿Cómo pido una demo?",answer:"Podés solicitarla desde esta landing o escribir por WhatsApp para coordinar una llamada y ver el producto real."}
+          ]).map((item:any, idx:number)=><article key={idx} className="nx-landing__card"><h3>{item.question}</h3><p>{item.answer}</p></article>)}</div>
         </section>
 
         <section id="contacto" className="nx-landing__section nx-landing__section--cta">
-          <h2>{content.finalCta?.title || "Solicitá una demo y elevá la experiencia de tu centro."}</h2><p>{content.finalCta?.subtitle}</p>
+          <h2>{content.finalCta?.title || "Solicitá una demo de NexMed y evaluá si encaja con tu centro."}</h2><p>{content.finalCta?.subtitle || "Te mostramos agenda, turnos, recordatorios, notificaciones y gestión de pacientes con casos reales de uso."}</p>
           <div className="nx-landing__cta-grid">
             <a className="nx-btn" href={whatsappUrl} target="_blank" rel="noreferrer">Solicitar demo</a>
             <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>

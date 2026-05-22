@@ -2082,6 +2082,23 @@ body {
 .nx-landing p { color: var(--landing-text-muted); max-width: 68ch; }
 .nx-landing__eyebrow { font-size: .78rem; text-transform: uppercase; letter-spacing: .13em; color: #f9fafb; font-weight: 700; margin: 0; }
 .nx-landing[data-theme='light'] .nx-landing__eyebrow { color: #0f172a; }
+.nx-landing__segment-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0 .2rem; }
+.nx-landing__segment-chips span {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, .4);
+  background: rgba(15, 23, 42, .3);
+  border-radius: 999px;
+  padding: .25rem .68rem;
+  font-size: .76rem;
+  font-weight: 650;
+  color: #f8fafc;
+}
+.nx-landing[data-theme='light'] .nx-landing__segment-chips span {
+  border-color: rgba(15, 23, 42, .2);
+  background: rgba(255, 255, 255, .72);
+  color: #0f172a;
+}
 
 .nx-landing__hero h1,
 .nx-landing__hero p {
@@ -2124,6 +2141,7 @@ body {
 .nx-landing__cards { display: grid; gap: 1.1rem; margin-top: 1.2rem; }
 .nx-landing__cards--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .nx-landing__card, .nx-showcase-card { background: var(--landing-card-bg); border: 1px solid var(--landing-card-border); border-radius: 22px; padding: 1.25rem; }
+.nx-landing__section-lead { max-width: 74ch; color: var(--landing-text-soft); margin: .6rem 0 0; }
 .nx-feature-card span { font-size: 1.5rem; display: inline-flex; margin-bottom: .35rem; }
 .nx-feature-card { display: grid; gap: .35rem; }
 .nx-feature-card__image {
