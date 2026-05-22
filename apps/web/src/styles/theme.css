@@ -2221,10 +2221,10 @@ body {
   margin-inline: auto;
 }
 .nx-landing__steps span { font-size: .78rem; text-transform: uppercase; letter-spacing: .09em; color: var(--landing-text-soft); font-weight: 700; }
-.nx-step-card { display: grid; gap: .4rem; align-content: start; }
+.nx-step-card { display: grid; gap: .6rem; align-content: start; min-height: 520px; padding: 1.35rem; }
 .nx-step-card__image {
   width: 100%;
-  height: 130px;
+  height: 300px;
   border-radius: 12px;
   object-fit: cover;
   border: 1px solid color-mix(in srgb, var(--landing-card-border) 78%, transparent);
@@ -2260,6 +2260,7 @@ body {
     grid-template-columns: repeat(2, minmax(240px, 1fr));
     max-width: 100%;
   }
+
 }
 @media (max-width: 720px) {
   .nx-landing main, .nx-landing__footer { width: min(1180px, 100% - 1rem); }
@@ -2281,6 +2282,8 @@ body {
     gap: .95rem;
   }
   .nx-landing__cards--3, .nx-showcase-grid, .nx-landing__steps { grid-template-columns: 1fr; }
+  .nx-step-card { min-height: 0; }
+  .nx-step-card__image { height: clamp(210px, 56vw, 280px); }
   .nx-landing__alt-grid img { height: 300px; }
 }
 
