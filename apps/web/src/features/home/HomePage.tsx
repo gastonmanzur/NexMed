@@ -174,7 +174,7 @@ export const HomePage = (): ReactElement => {
         </section>
 
        <section className="nx-landing__section nx-landing__alt-grid nx-landing__alt-grid--reverse">
-          // <img src= {LANDING_IMAGE_EQUIPO_MEDICO} alt="Equipo médico revisando agenda digital en consultorio moderno" />
+       
           <div>
             <h2>Cómo funciona en 4 pasos.</h2>
             <div className="nx-landing__steps">
