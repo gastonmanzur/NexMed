@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomePage } from '../features/home/HomePage';
+import { DemoPage } from '../features/home/DemoPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { AdminOrganizationsPage } from '../features/admin/AdminOrganizationsPage';
 import { AdminOrganizationDetailPage } from '../features/admin/AdminOrganizationDetailPage';
@@ -60,6 +61,7 @@ export const App = (): ReactElement => {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/app/demo" element={<DemoPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
