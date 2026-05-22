@@ -61,7 +61,7 @@ export const App = (): ReactElement => {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/app/demo" element={<DemoPage />} />
+
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
