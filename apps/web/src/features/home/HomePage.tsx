@@ -173,9 +173,8 @@ export const HomePage = (): ReactElement => {
           </div>
         </section>
 
-       <section className="nx-landing__section nx-landing__alt-grid nx-landing__alt-grid--reverse">
-       
-          <div>
+       <section className="nx-landing__section nx-landing__section--steps">
+          <div className="nx-landing__steps-shell">
             <h2>Cómo funciona en 4 pasos.</h2>
             <div className="nx-landing__steps">
               {howItWorksSteps.map((step) => (
