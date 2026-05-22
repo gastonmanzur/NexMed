@@ -2114,6 +2114,44 @@ body {
 .nx-landing[data-theme='light'] .nx-landing__hero h1,
 .nx-landing[data-theme='light'] .nx-landing__hero p,
 .nx-landing[data-theme='light'] .nx-landing__hero .nx-landing__eyebrow { color: #0f1b2d; text-shadow: 0 8px 22px rgba(248, 251, 255, .72); }
+
+.nx-landing__hero-proof {
+  font-size: .95rem;
+  color: rgba(241, 245, 249, .92);
+  margin: -.15rem 0 .1rem;
+  max-width: 70ch;
+}
+.nx-landing[data-theme='light'] .nx-landing__hero-proof { color: #0f1b2d; }
+
+.nx-btn-tertiary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--landing-card-border) 85%, transparent);
+  padding: .72rem 1rem;
+  font-weight: 600;
+  color: var(--landing-text-soft);
+  background: transparent;
+  transition: border-color .2s ease, color .2s ease, background .2s ease;
+}
+.nx-btn-tertiary:hover {
+  border-color: color-mix(in srgb, var(--landing-card-border) 50%, var(--primary));
+  color: var(--landing-text);
+  background: color-mix(in srgb, var(--landing-card-bg) 55%, transparent);
+  text-decoration: none;
+}
+
+.nx-landing__evidence-list {
+  margin: .9rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--landing-text);
+  display: grid;
+  gap: .45rem;
+}
+.nx-landing__evidence-list li { line-height: 1.45; }
+
 .nx-landing__hero .nx-btn-primary { box-shadow: 0 14px 32px rgba(15, 23, 42, .38); }
 .nx-landing__hero .nx-btn-secondary {
   background: rgba(248, 250, 252, .92);
