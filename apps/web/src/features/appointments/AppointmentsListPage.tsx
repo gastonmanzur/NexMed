@@ -22,7 +22,7 @@ const startOfWeek = (date: Date): Date => {
 
 const formatDayLabel = (date: Date): string => date.toLocaleDateString('es-AR', { weekday: 'short' });
 const formatDayNumber = (date: Date): string => date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
-const formatHour = (value: string): string => new Date(value).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
 
 const statusTone = (status: AppointmentStatus): string => {
   if (status === 'booked') return 'booked';
@@ -32,21 +32,6 @@ const statusTone = (status: AppointmentStatus): string => {
   return 'canceled';
 };
 
-const statusLabel = (status: AppointmentStatus): string => {
-  if (status === 'booked') return 'Confirmado';
-  if (status === 'completed') return 'Completado';
-  if (status === 'rescheduled') return 'Reprogramado';
-  if (status === 'no_show') return 'Ausente';
-  return 'Cancelado';
-};
-
-const avatarFromName = (name: string): string =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || 'PR';
 
 export const AppointmentsListPage = (): ReactElement => {
   const { user, accessToken, activeOrganizationId, memberships } = useAuth();
@@ -60,23 +45,12 @@ export const AppointmentsListPage = (): ReactElement => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
 
-  const activeMembership = useMemo(
-    () => memberships.find((item) => item.organizationId === activeOrganizationId) ?? null,
-    [activeOrganizationId, memberships]
-  );
+
   const canManage = activeMembership?.role === 'owner' || activeMembership?.role === 'admin' || activeMembership?.role === 'staff';
   const professionalsById = useMemo(() => new Map(professionals.map((item) => [item.id, item.displayName])), [professionals]);
   const specialtiesById = useMemo(() => new Map(specialties.map((item) => [item.id, item.name])), [specialties]);
 
-  const weekDays = useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, index) => {
-        const day = new Date(weekAnchor);
-        day.setDate(weekAnchor.getDate() + index);
-        return day;
-      }),
-    [weekAnchor]
-  );
+
 
   const load = async (): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
@@ -109,9 +83,7 @@ export const AppointmentsListPage = (): ReactElement => {
     }
   };
 
-  useEffect(() => {
-    void load();
-  }, [accessToken, activeOrganizationId, weekAnchor]);
+
 
   if (!user) return <Navigate to="/login" replace />;
   if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
@@ -123,32 +95,12 @@ export const AppointmentsListPage = (): ReactElement => {
       .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   });
 
-  const todayIsoKey = new Date().toISOString().slice(0, 10);
-  const todayAppointments = appointments
-    .filter((item) => item.startAt.slice(0, 10) === todayIsoKey)
+
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   const weekStartLabel = weekDays.at(0)?.toLocaleDateString('es-AR') ?? '-';
   const weekEndLabel = weekDays.at(-1)?.toLocaleDateString('es-AR') ?? '-';
 
-  const nextAppointments = [...appointments]
-    .filter((item) => new Date(item.startAt).getTime() >= Date.now())
-    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
-    .slice(0, 6);
 
-  return (
-    <main className="nx-page nx-agenda-page">
-      <section className="nx-agenda-toolbar">
-        <label className="nx-field"><span>Profesional</span><select value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}><option value="">Todos</option>{professionals.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}</select></label>
-        <label className="nx-field"><span>Estado</span><select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}><option value="">Todos</option>{appointmentStatuses.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
-        <div className="nx-agenda-toolbar__range">
-          <button className="nx-btn-secondary" onClick={() => setWeekAnchor((curr) => { const n = new Date(curr); n.setDate(n.getDate() - 7); return startOfWeek(n); })}>←</button>
-          <strong>{weekStartLabel} - {weekEndLabel}</strong>
-          <button className="nx-btn-secondary" onClick={() => setWeekAnchor((curr) => { const n = new Date(curr); n.setDate(n.getDate() + 7); return startOfWeek(n); })}>→</button>
-        </div>
-        <div className="nx-agenda-toolbar__view">
-          {viewModes.map((mode) => <button key={mode} className={mode === activeViewMode ? 'is-active' : ''} onClick={() => setActiveViewMode(mode)}>{mode}</button>)}
-        </div>
-        <div className="nx-agenda-toolbar__actions">{canManage ? <Link className="nx-btn" to="/app/appointments/new">+ Nuevo turno</Link> : null}<button className="nx-btn-secondary" onClick={() => void load()} disabled={loading}>Actualizar</button></div>
       </section>
 
       {error ? <p className="nx-agenda-error">{error}</p> : null}
@@ -166,17 +118,12 @@ export const AppointmentsListPage = (): ReactElement => {
                 <div className="nx-agenda-row" key={slotHour}>
                   <span className="nx-agenda-time">{`${slotHour.toString().padStart(2, '0')}:00`}</span>
                   {weekDays.map((day, dayIndex) => {
-                    const entries = (byDay[dayIndex] ?? []).filter((item) => new Date(item.startAt).getHours() === slotHour).slice(0, 3);
+
                     return (
                       <div className="nx-agenda-cell" key={`${day.toISOString()}-${slotHour}`}>
                         {entries.map((appointment) => (
                           <Link to={`/app/appointments/${appointment.id}`} key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)}`}>
-                            <div className="nx-agenda-event__head">
-                              <strong>{appointment.patientName}</strong>
-                              <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
-                            </div>
-                            <span className="nx-agenda-event__meta">{formatHour(appointment.startAt)} · {professionalsById.get(appointment.professionalId) ?? 'Profesional'}</span>
-                            <small>{appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) ?? 'Especialidad' : 'Consulta general'}</small>
+
                           </Link>
                         ))}
                       </div>
@@ -189,39 +136,7 @@ export const AppointmentsListPage = (): ReactElement => {
         </article>
 
         <aside className="nx-agenda-sidepanel">
-          <section className="nx-agenda-sidepanel__card">
-            <h3>Profesionales del centro</h3>
-            <ul>
-              {professionals.slice(0, 6).map((p) => (
-                <li key={p.id}>
-                  <span className="nx-prof-avatar">{avatarFromName(p.displayName)}</span>
-                  <div><strong>{p.displayName}</strong><span>{p.email || 'Agenda activa'}</span></div>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section className="nx-agenda-sidepanel__card">
-            <h3>Agenda del día</h3>
-            <p className="nx-agenda-kpi">{todayAppointments.length} turnos hoy</p>
-            <ul>
-              {todayAppointments.slice(0, 5).map((a) => (
-                <li key={a.id}>
-                  <div><strong>{a.patientName}</strong><span>{professionalsById.get(a.professionalId) ?? 'Profesional'}</span></div>
-                  <b>{formatHour(a.startAt)}</b>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section className="nx-agenda-sidepanel__card">
-            <h3>Próximos pacientes</h3>
-            <ul>
-              {nextAppointments.map((a) => (
-                <li key={a.id}>
-                  <div><strong>{a.patientName}</strong><span>{a.specialtyId ? specialtiesById.get(a.specialtyId) ?? 'Especialidad' : 'Consulta general'}</span></div>
-                  <b>{formatHour(a.startAt)}</b>
-                </li>
-              ))}
-            </ul>
+
           </section>
         </aside>
       </section>
