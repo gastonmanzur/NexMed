@@ -142,6 +142,7 @@ export interface ProfessionalDto {
   phone: string | null;
   licenseNumber: string | null;
   notes: string | null;
+  avatarUrl: string | null;
   status: ProfessionalStatus;
   userId: string | null;
   specialties: SpecialtySummaryDto[];

@@ -6,6 +6,7 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { professionalsApi } from './professionals-api';
 import { ConfirmActionButton } from '../../components/ConfirmActionButton';
+import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
 const containerStyle = { maxWidth: 980, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' };
@@ -80,10 +81,12 @@ export const ProfessionalsListPage = (): ReactElement => {
           <ul className="nx-doctor-list">
             {professionals.map((professional) => (
               <li key={professional.id} className="nx-doctor-card">
-                <p style={{ margin: 0 }}>
-                  <strong>{professional.displayName}</strong> · estado:{' '}
+                <div className="nx-doctor-card__top">
+                  {professional.avatarUrl ? <img src={resolveAvatarUrl(professional.avatarUrl)} alt={`Foto de ${professional.displayName}`} className="nx-doctor-card__avatar" /> : <span className="nx-doctor-card__avatar nx-avatar--fallback">{`${professional.firstName.charAt(0)}${professional.lastName.charAt(0)}`.trim() || 'PR'}</span>}
+                  <p style={{ margin: 0 }}><strong>{professional.displayName}</strong> · estado:{' '}
                   <span className="nx-badge">{professional.status}</span>
                 </p>
+                </div>
                 <p className="nx-doctor-card__description">
                   Contacto: {professional.email ?? '-'} / {professional.phone ?? '-'}
                 </p>

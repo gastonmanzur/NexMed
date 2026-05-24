@@ -171,6 +171,16 @@ export class ProfessionalsService {
     return this.getProfessional(organizationId, professionalId);
   }
 
+
+  async updateProfessionalAvatar(organizationId: string, professionalId: string, avatarUrl: string | null): Promise<ProfessionalDto> {
+    const professional = await this.professionals.updateByIdInOrganization(organizationId, professionalId, { avatarUrl });
+    if (!professional) {
+      throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
+    }
+
+    return this.getProfessional(organizationId, professionalId);
+  }
+
   async updateProfessionalStatus(
     organizationId: string,
     professionalId: string,
@@ -479,6 +489,7 @@ export class ProfessionalsService {
       phone?: string | null;
       licenseNumber?: string | null;
       notes?: string | null;
+      avatarUrl?: string | null;
       status: ProfessionalStatus;
       userId?: { toString(): string } | null;
       createdAt: Date;
@@ -496,6 +507,7 @@ export class ProfessionalsService {
       phone: professional.phone ?? null,
       licenseNumber: professional.licenseNumber ?? null,
       notes: professional.notes ?? null,
+      avatarUrl: professional.avatarUrl ?? null,
       status: professional.status,
       userId: professional.userId ? professional.userId.toString() : null,
       specialties,

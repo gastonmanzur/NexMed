@@ -2290,3 +2290,5 @@ body {
 .nx-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
 .nx-field{display:flex;flex-direction:column;gap:.3rem}
 .nx-field input,.nx-field textarea{width:100%}
+
+.nx-professional-avatar-upload { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
