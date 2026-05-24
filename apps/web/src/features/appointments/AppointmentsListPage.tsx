@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { appointmentsApi } from './appointments-api';
 import { professionalsApi } from '../professionals/professionals-api';
 import { specialtiesApi } from '../specialties/specialties-api';
+import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
 import './appointments-agenda.css';
 
 const appointmentStatuses: AppointmentStatus[] = ['booked', 'canceled_by_staff', 'canceled_by_patient', 'rescheduled', 'completed', 'no_show'];
@@ -61,6 +62,7 @@ export const AppointmentsListPage = (): ReactElement => {
   const [selectedProfessionalId, setSelectedProfessionalId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
+  const [invalidAvatarUrls, setInvalidAvatarUrls] = useState<Record<string, true>>({});
 
   const activeMembership = useMemo(
     () => memberships.find((membership) => membership.organizationId === activeOrganizationId),
@@ -69,7 +71,7 @@ export const AppointmentsListPage = (): ReactElement => {
 
   const canManage = activeMembership?.role === 'owner' || activeMembership?.role === 'admin' || activeMembership?.role === 'staff';
 
-  const professionalsById = useMemo(() => new Map(professionals.map((item) => [item.id, item.displayName])), [professionals]);
+  const professionalsById = useMemo(() => new Map(professionals.map((item) => [item.id, item])), [professionals]);
   const specialtiesById = useMemo(() => new Map(specialties.map((item) => [item.id, item.name])), [specialties]);
 
   const weekDays = useMemo(
@@ -144,6 +146,24 @@ export const AppointmentsListPage = (): ReactElement => {
 
   const weekStartLabel = weekDays.at(0)?.toLocaleDateString('es-AR') ?? '-';
   const weekEndLabel = weekDays.at(-1)?.toLocaleDateString('es-AR') ?? '-';
+  const renderProfessionalAvatar = (professional: ProfessionalDto | null): ReactElement => {
+    const initials = avatarFromName(professional?.displayName ?? 'PR');
+    const rawAvatarUrl = professional?.avatarUrl;
+    const avatarUrl = rawAvatarUrl ? resolveAvatarUrl(rawAvatarUrl) : null;
+
+    if (avatarUrl && !invalidAvatarUrls[avatarUrl]) {
+      return (
+        <img
+          src={avatarUrl}
+          alt={`Foto de ${professional?.displayName ?? 'profesional'}`}
+          className="nx-prof-avatar nx-prof-avatar--image"
+          onError={() => setInvalidAvatarUrls((current) => ({ ...current, [avatarUrl]: true }))}
+        />
+      );
+    }
+
+    return <span className="nx-prof-avatar">{initials}</span>;
+  };
 
   return (
     <main className="nx-agenda-page">
@@ -243,7 +263,7 @@ export const AppointmentsListPage = (): ReactElement => {
                           </div>
                           <span className="nx-agenda-event__meta">{formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min</span>
                           <small>
-                            {professionalsById.get(appointment.professionalId) ?? 'Profesional no asignado'}
+                            {professionalsById.get(appointment.professionalId)?.displayName ?? 'Profesional no asignado'}
                             {' · '}
                             {(appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) : null) ?? 'Especialidad'}
                           </small>
@@ -264,7 +284,7 @@ export const AppointmentsListPage = (): ReactElement => {
             <ul>
               {todayAppointments.slice(0, 5).map((appointment) => (
                 <li key={appointment.id}>
-                  <span className="nx-prof-avatar">{avatarFromName(professionalsById.get(appointment.professionalId) ?? 'PR')}</span>
+                  {renderProfessionalAvatar(professionalsById.get(appointment.professionalId) ?? null)}
                   <div>
                     <strong>{appointment.patientName}</strong>
                     <span>{formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min</span>
@@ -282,7 +302,7 @@ export const AppointmentsListPage = (): ReactElement => {
             <ul>
               {professionals.slice(0, 5).map((professional) => (
                 <li key={professional.id}>
-                  <span className="nx-prof-avatar">{avatarFromName(professional.displayName)}</span>
+                  {renderProfessionalAvatar(professional)}
                   <div>
                     <strong>{professional.displayName}</strong>
                     <span>{professional.email ?? 'Sin email'}</span>
