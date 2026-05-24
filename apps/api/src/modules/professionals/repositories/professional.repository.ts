@@ -9,6 +9,7 @@ interface CreateProfessionalInput {
   phone?: string | undefined;
   licenseNumber?: string | undefined;
   notes?: string | undefined;
+  avatarUrl?: string | null | undefined;
   status?: 'active' | 'inactive' | 'archived' | undefined;
   userId?: string | null | undefined;
 }
@@ -21,6 +22,7 @@ interface UpdateProfessionalInput {
   phone?: string | undefined;
   licenseNumber?: string | undefined;
   notes?: string | undefined;
+  avatarUrl?: string | null | undefined;
   status?: 'active' | 'inactive' | 'archived' | undefined;
   userId?: string | null | undefined;
 }

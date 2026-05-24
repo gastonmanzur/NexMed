@@ -1,7 +1,14 @@
+import multer from 'multer';
 import type { Response } from 'express';
 import { z } from 'zod';
 import type { AuthenticatedRequest } from '../../auth/types/auth-request.js';
 import { ProfessionalsService } from '../services/professionals.service.js';
+import { env } from '../../../config/env.js';
+import { AppError } from '../../../core/errors.js';
+import sharp from 'sharp';
+import path from 'node:path';
+import { LocalStorageProvider } from '../../avatar/file-storage/local-storage.provider.js';
+import { logger } from '../../../config/logger.js';
 
 const professionalStatusSchema = z.enum(['active', 'inactive', 'archived']);
 const specialtyStatusSchema = z.enum(['active', 'inactive', 'archived']);
@@ -66,6 +73,29 @@ const updateSpecialtyStatusSchema = z.object({
   status: specialtyStatusSchema
 });
 
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: env.AVATAR_MAX_SIZE_BYTES } });
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const PROFESSIONAL_AVATAR_SIZE = 256;
+const avatarRootDir = path.resolve(process.cwd(), env.AVATAR_STORAGE_DIR);
+const storageProvider = new LocalStorageProvider(avatarRootDir, env.AVATAR_PUBLIC_BASE_PATH);
+
+const extractStorageKey = (avatarUrl?: string | null): string | null => {
+  if (!avatarUrl) return null;
+  const marker = `${env.AVATAR_PUBLIC_BASE_PATH}/`;
+  const index = avatarUrl.indexOf(marker);
+  if (index === -1) return null;
+  return avatarUrl.slice(index + marker.length) || null;
+};
+
+export const professionalAvatarUploadMiddleware = upload.single('avatar');
+export const professionalAvatarMulterErrorHandler = (error: unknown): never => {
+  if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+    throw new AppError('FILE_TOO_LARGE', 413, 'Avatar exceeds max file size');
+  }
+  throw error instanceof Error ? error : new AppError('UPLOAD_ERROR', 400, 'Unable to upload avatar');
+};
+
 const service = new ProfessionalsService();
 
 export const professionalsController = {
@@ -109,6 +139,38 @@ export const professionalsController = {
     res.status(200).json({ success: true, data });
   },
 
+
+  uploadProfessionalAvatar: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
+    if (!req.file) throw new AppError('FILE_REQUIRED', 400, 'Avatar file is required');
+    if (!ALLOWED_MIME_TYPES.includes(req.file.mimetype as (typeof ALLOWED_MIME_TYPES)[number])) throw new AppError('UNSUPPORTED_IMAGE_TYPE', 400, 'Unsupported image type');
+    let normalizedBuffer: Buffer;
+    try {
+      normalizedBuffer = await sharp(req.file.buffer).rotate().resize(PROFESSIONAL_AVATAR_SIZE, PROFESSIONAL_AVATAR_SIZE, { fit: 'cover', position: 'centre' }).webp({ quality: 82 }).toBuffer();
+    } catch {
+      throw new AppError('IMAGE_PROCESSING_ERROR', 400, 'Unable to process avatar image');
+    }
+    const current = await service.getProfessional(organizationId, professionalId);
+    const previousKey = extractStorageKey(current.avatarUrl);
+    const stored = await storageProvider.put({ buffer: normalizedBuffer, extension: 'webp', mimeType: 'image/webp' });
+    const data = await service.updateProfessionalAvatar(organizationId, professionalId, stored.url);
+    if (previousKey && previousKey !== stored.key) {
+      try { await storageProvider.remove(previousKey); } catch (error) { logger.warn({ error, previousKey, professionalId }, 'Failed to clean up previous professional avatar file'); }
+    }
+    res.status(200).json({ success: true, data });
+  },
+
+  deleteProfessionalAvatar: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
+    const current = await service.getProfessional(organizationId, professionalId);
+    const previousKey = extractStorageKey(current.avatarUrl);
+    const data = await service.updateProfessionalAvatar(organizationId, professionalId, null);
+    if (previousKey) {
+      try { await storageProvider.remove(previousKey); } catch (error) { logger.warn({ error, previousKey, professionalId }, 'Failed to clean up removed professional avatar file'); }
+    }
+    res.status(200).json({ success: true, data });
+  },
+
   listSpecialties: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId } = pathParamsSchema.parse(req.params);
     const data = await service.listSpecialties(organizationId);
@@ -142,3 +204,4 @@ export const professionalsController = {
     res.status(200).json({ success: true, data });
   }
 };
+

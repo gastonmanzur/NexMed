@@ -15,7 +15,7 @@ interface ApiErrorPayload {
 
 const request = async <T>(path: string, init: RequestInit): Promise<T> => {
   const headers = new Headers(init.headers ?? {});
-  if (!headers.has('Content-Type')) {
+  if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -111,6 +111,31 @@ export const professionalsApi = {
       }
     );
 
+    return result.data;
+  },
+
+
+
+  uploadAvatar: async (
+    accessToken: string,
+    organizationId: string,
+    professionalId: string,
+    file: File
+  ): Promise<ProfessionalDto> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const result = await request<{ success: true; data: ProfessionalDto }>(
+      `/organizations/${organizationId}/professionals/${professionalId}/avatar`,
+      { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData }
+    );
+    return result.data;
+  },
+
+  deleteAvatar: async (accessToken: string, organizationId: string, professionalId: string): Promise<ProfessionalDto> => {
+    const result = await request<{ success: true; data: ProfessionalDto }>(
+      `/organizations/${organizationId}/professionals/${professionalId}/avatar`,
+      { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } }
+    );
     return result.data;
   },
 

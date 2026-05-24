@@ -12,6 +12,7 @@ const professionalSchema = new mongoose.Schema(
     phone: { type: String, required: false, trim: true },
     licenseNumber: { type: String, required: false, trim: true },
     notes: { type: String, required: false, trim: true },
+    avatarUrl: { type: String, required: false, trim: true, default: null },
     status: { type: String, enum: professionalStatuses, default: 'active', index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null }
   },

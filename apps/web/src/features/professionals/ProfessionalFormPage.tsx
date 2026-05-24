@@ -1,6 +1,7 @@
 import type { OrganizationMemberRole, SpecialtyDto } from '@starter/shared-types';
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
@@ -34,6 +35,9 @@ export const ProfessionalFormPage = (): ReactElement => {
   const [loading, setLoading] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [error, setError] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId) {
@@ -61,6 +65,7 @@ export const ProfessionalFormPage = (): ReactElement => {
           setNotes(professional.notes ?? '');
           setStatus(professional.status);
           setSelectedSpecialtyIds(professional.specialties.map((specialty) => specialty.id));
+          setAvatarPreview(professional.avatarUrl ? resolveAvatarUrl(professional.avatarUrl) : null);
         }
       } catch (cause) {
         setError((cause as Error).message);
@@ -162,6 +167,21 @@ export const ProfessionalFormPage = (): ReactElement => {
               </div>
             </fieldset>
 
+
+            <fieldset className="nx-entity-form-page__fieldset">
+              <legend>Foto del profesional</legend>
+              <div className="nx-professional-avatar-upload">
+                {avatarPreview && !removeAvatar ? <img src={avatarPreview} alt="Avatar profesional" className="nx-avatar nx-doctor-card__avatar" /> : <span className="nx-avatar nx-avatar--fallback nx-doctor-card__avatar">{`${firstName.charAt(0)}${lastName.charAt(0)}`.trim() || 'PR'}</span>}
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  setAvatarFile(file);
+                  setRemoveAvatar(false);
+                  setAvatarPreview(file ? URL.createObjectURL(file) : avatarPreview);
+                }} />
+                <button type="button" className="nx-btn-secondary" onClick={() => { setAvatarFile(null); setRemoveAvatar(true); setAvatarPreview(null); }}>Quitar foto</button>
+              </div>
+            </fieldset>
+
             {error ? <p className="nx-entity-form-page__error">{error}</p> : null}
 
             <div className="nx-form-actions nx-entity-form-page__actions">
@@ -190,12 +210,20 @@ export const ProfessionalFormPage = (): ReactElement => {
                       ...(isEdit ? { status } : {})
                     };
 
+                    let savedId = professionalId;
                     if (isEdit && professionalId) {
-                      await professionalsApi.update(accessToken, activeOrganizationId, professionalId, payload);
+                      const updated = await professionalsApi.update(accessToken, activeOrganizationId, professionalId, payload);
+                      savedId = updated.id;
                     } else {
-                      await professionalsApi.create(accessToken, activeOrganizationId, payload);
+                      const created = await professionalsApi.create(accessToken, activeOrganizationId, payload);
+                      savedId = created.id;
                     }
-
+                    if (savedId && avatarFile) {
+                      await professionalsApi.uploadAvatar(accessToken, activeOrganizationId, savedId, avatarFile);
+                    }
+                    if (savedId && removeAvatar) {
+                      await professionalsApi.deleteAvatar(accessToken, activeOrganizationId, savedId);
+                    }
                     navigate('/app/professionals');
                   } catch (cause) {
                     setError((cause as Error).message);
