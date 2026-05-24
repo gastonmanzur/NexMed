@@ -23,6 +23,7 @@ const startOfWeek = (date: Date): Date => {
 const formatDayLabel = (date: Date): string => date.toLocaleDateString('es-AR', { weekday: 'short' });
 const formatDayNumber = (date: Date): string => date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 
+
 const statusTone = (status: AppointmentStatus): string => {
   if (status === 'booked') return 'booked';
   if (status === 'completed') return 'completed';
@@ -30,6 +31,7 @@ const statusTone = (status: AppointmentStatus): string => {
   if (status === 'no_show') return 'no-show';
   return 'canceled';
 };
+
 
 export const AppointmentsListPage = (): ReactElement => {
   const { user, accessToken, activeOrganizationId, memberships } = useAuth();
@@ -43,16 +45,12 @@ export const AppointmentsListPage = (): ReactElement => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
 
-  const activeMembership = useMemo(() => memberships.find((item) => item.organizationId === activeOrganizationId) ?? null, [activeOrganizationId, memberships]);
+
   const canManage = activeMembership?.role === 'owner' || activeMembership?.role === 'admin' || activeMembership?.role === 'staff';
   const professionalsById = useMemo(() => new Map(professionals.map((item) => [item.id, item.displayName])), [professionals]);
   const specialtiesById = useMemo(() => new Map(specialties.map((item) => [item.id, item.name])), [specialties]);
 
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(weekAnchor);
-    day.setDate(weekAnchor.getDate() + index);
-    return day;
-  }), [weekAnchor]);
+
 
   const load = async (): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
@@ -85,7 +83,7 @@ export const AppointmentsListPage = (): ReactElement => {
     }
   };
 
-  useEffect(() => { void load(); }, [accessToken, activeOrganizationId, weekAnchor]);
+
 
   if (!user) return <Navigate to="/login" replace />;
   if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
@@ -97,38 +95,12 @@ export const AppointmentsListPage = (): ReactElement => {
       .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   });
 
-  const todayAppointments = appointments
-    .filter((item) => item.startAt.slice(0, 10) === new Date().toISOString().slice(0, 10))
+
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   const weekStartLabel = weekDays.at(0)?.toLocaleDateString('es-AR') ?? '-';
   const weekEndLabel = weekDays.at(-1)?.toLocaleDateString('es-AR') ?? '-';
 
-  return (
-    <main className="nx-page nx-agenda-page">
-      <section className="nx-agenda-hero">
-        <div>
-          <p className="nx-agenda-hero__eyebrow">Agenda operativa</p>
-          <h1>Agenda semanal premium</h1>
-          <p>Controlá turnos, profesionales y estado del centro en una vista diseñada para operación real y demos comerciales.</p>
-        </div>
-        <div className="nx-agenda-hero__actions">
-          {canManage ? <Link className="nx-btn" to="/app/appointments/new">+ Nuevo turno</Link> : null}
-          <button className="nx-btn-secondary" onClick={() => setWeekAnchor(startOfWeek(new Date()))}>Hoy</button>
-        </div>
-      </section>
 
-      <section className="nx-agenda-toolbar">
-        <label className="nx-field"><span>Profesional</span><select value={selectedProfessionalId} onChange={(e) => setSelectedProfessionalId(e.target.value)}><option value="">Todos</option>{professionals.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}</select></label>
-        <label className="nx-field"><span>Estado</span><select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}><option value="">Todos</option>{appointmentStatuses.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
-        <div className="nx-agenda-toolbar__range">
-          <button className="nx-btn-secondary" onClick={() => setWeekAnchor((curr) => { const n = new Date(curr); n.setDate(n.getDate() - 7); return startOfWeek(n); })}>←</button>
-          <strong>{weekStartLabel} - {weekEndLabel}</strong>
-          <button className="nx-btn-secondary" onClick={() => setWeekAnchor((curr) => { const n = new Date(curr); n.setDate(n.getDate() + 7); return startOfWeek(n); })}>→</button>
-        </div>
-        <div className="nx-agenda-toolbar__view">
-          {viewModes.map((mode) => <button key={mode} className={mode === activeViewMode ? 'is-active' : ''} onClick={() => setActiveViewMode(mode)}>{mode}</button>)}
-        </div>
-        <button className="nx-btn" onClick={() => void load()} disabled={loading}>Actualizar</button>
       </section>
 
       {error ? <p className="nx-agenda-error">{error}</p> : null}
@@ -146,14 +118,12 @@ export const AppointmentsListPage = (): ReactElement => {
                 <div className="nx-agenda-row" key={slotHour}>
                   <span className="nx-agenda-time">{`${slotHour.toString().padStart(2, '0')}:00`}</span>
                   {weekDays.map((day, dayIndex) => {
-                    const entries = (byDay[dayIndex] ?? []).filter((item) => new Date(item.startAt).getHours() === slotHour);
+
                     return (
                       <div className="nx-agenda-cell" key={`${day.toISOString()}-${slotHour}`}>
                         {entries.map((appointment) => (
                           <Link to={`/app/appointments/${appointment.id}`} key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)}`}>
-                            <strong>{appointment.patientName}</strong>
-                            <span>{new Date(appointment.startAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} · {professionalsById.get(appointment.professionalId) ?? 'Profesional'}</span>
-                            <small>{appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) ?? 'Especialidad' : 'Consulta general'} · {appointment.status}</small>
+
                           </Link>
                         ))}
                       </div>
@@ -166,20 +136,7 @@ export const AppointmentsListPage = (): ReactElement => {
         </article>
 
         <aside className="nx-agenda-sidepanel">
-          <section>
-            <h3>Equipo activo</h3>
-            <ul>{professionals.slice(0, 6).map((p) => <li key={p.id}><strong>{p.displayName}</strong><span>{p.email || 'Disponible'}</span></li>)}</ul>
-          </section>
-          <section>
-            <h3>Hoy</h3>
-            <p className="nx-agenda-kpi">{todayAppointments.length} turnos</p>
-            <ul>{todayAppointments.slice(0, 5).map((a) => <li key={a.id}><strong>{a.patientName}</strong><span>{new Date(a.startAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} · {a.status}</span></li>)}</ul>
-          </section>
-          <section>
-            <h3>Estado operativo</h3>
-            <div className="nx-agenda-status-row"><span>Confirmados</span><b>{appointments.filter((a) => a.status === 'booked').length}</b></div>
-            <div className="nx-agenda-status-row"><span>Completados</span><b>{appointments.filter((a) => a.status === 'completed').length}</b></div>
-            <div className="nx-agenda-status-row"><span>Reprogramados</span><b>{appointments.filter((a) => a.status === 'rescheduled').length}</b></div>
+
           </section>
         </aside>
       </section>
