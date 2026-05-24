@@ -59,7 +59,7 @@
 
 .nx-agenda-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 364px;
   gap: 1rem;
   align-items: start;
 }
@@ -177,17 +177,17 @@
 }
 
 .nx-agenda-sidepanel__card {
-  padding: 0.92rem;
+  padding: 1.08rem;
 }
 
 .nx-agenda-sidepanel__card h3 {
-  margin: 0 0 0.65rem;
-  font-size: 0.95rem;
+  margin: 0 0 0.78rem;
+  font-size: 1.04rem;
 }
 
 .nx-agenda-kpi {
-  margin: 0 0 0.72rem;
-  font-size: 1.35rem;
+  margin: 0 0 0.88rem;
+  font-size: 1.48rem;
   font-weight: 800;
 }
 
@@ -203,30 +203,36 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.55rem;
-  padding: 0.5rem;
-  border-radius: 10px;
+  gap: 0.72rem;
+  padding: 0.66rem 0.7rem;
+  border-radius: 12px;
   background: #f8fbff;
   border: 1px solid #e7eef7;
 }
 
 .nx-agenda-sidepanel li div { display: grid; }
-.nx-agenda-sidepanel li strong { font-size: 0.8rem; color: #0f172a; }
-.nx-agenda-sidepanel li span { font-size: 0.7rem; color: #64748b; }
-.nx-agenda-sidepanel li b { font-size: 0.73rem; color: #1e3a8a; }
+.nx-agenda-sidepanel li strong { font-size: 0.9rem; color: #0f172a; line-height: 1.2; }
+.nx-agenda-sidepanel li span { font-size: 0.8rem; color: #64748b; line-height: 1.25; }
+.nx-agenda-sidepanel li b { font-size: 0.78rem; color: #1e3a8a; }
 
 .nx-prof-avatar {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, #c7d2fe 0%, #a7f3d0 100%);
   color: #0f172a;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.nx-prof-avatar--image {
+  object-fit: cover;
+  border: 1px solid #dbe4f1;
+  background: #f8fafc;
 }
 
 .nx-agenda-error { margin: 0; color: #b91c1c; font-weight: 600; }
