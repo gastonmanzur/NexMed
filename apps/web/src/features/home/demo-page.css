@@ -26,9 +26,7 @@
 .nx-demo-card li span{ display:block; color:#60708c; font-size:.82rem; }
 .nx-demo-card--cta{ grid-column:1/-1; }
 .nx-tour{ position:fixed; inset:0; z-index:80; }
-.nx-tour__overlay{ position:absolute; inset:0; background:rgba(6,12,23,.66); backdrop-filter:blur(3px); }
-.nx-tour__spotlight{ position:fixed; border-radius:16px; border:1px solid rgba(170,203,255,.9); box-shadow:0 0 0 9999px rgba(2,8,20,.62), 0 0 34px rgba(125,174,255,.55); pointer-events:none; transition:all .24s ease; }
-.nx-tour__panel{ position:fixed; width:min(390px,calc(100vw - 2rem)); background:#fff; border:1px solid #d7e6fa; border-radius:18px; padding:1rem; box-shadow:0 20px 48px rgba(5,14,31,.35); }
+
 .nx-tour__panel.is-right{ right:1rem; bottom:1rem; }
 .nx-tour__panel.is-left{ left:1rem; bottom:1rem; }
 .nx-tour__panel.is-bottom{ left:50%; transform:translateX(-50%); bottom:1rem; }
@@ -38,4 +36,4 @@
 .nx-tour__progress span{ display:block; height:100%; background:linear-gradient(90deg,#5ca8ff,#8f73ff); }
 .nx-tour__actions{ display:flex; gap:.55rem; flex-wrap:wrap; margin-top:.9rem; }
 .nx-demo-restart{ position:fixed; right:1rem; bottom:1rem; z-index:10; }
-@media (max-width: 920px){ .nx-demo-app{ grid-template-columns:1fr; } .nx-demo-sidebar{ grid-template-rows:auto auto; } .nx-demo-kpis,.nx-demo-grid{ grid-template-columns:1fr; } }
+
