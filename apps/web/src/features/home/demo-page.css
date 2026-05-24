@@ -26,9 +26,7 @@
 .nx-demo-card li span{ display:block; color:#60708c; font-size:.82rem; }
 .nx-demo-card--cta{ grid-column:1/-1; }
 .nx-tour{ position:fixed; inset:0; z-index:80; }
-.nx-tour__overlay{ position:absolute; inset:0; background:rgba(7,16,32,.24); backdrop-filter:blur(0.8px); }
-.nx-tour__spotlight{ position:fixed; border-radius:20px; border:1px solid rgba(133,184,255,.95); box-shadow:0 0 0 9999px rgba(8,20,40,.22), 0 0 0 2px rgba(255,255,255,.5), 0 0 26px rgba(90,155,255,.35); pointer-events:none; transition:all .24s ease; }
-.nx-tour__panel{ position:fixed; width:min(390px,calc(100vw - 2rem)); background:#fff; border:1px solid #d7e6fa; border-radius:18px; padding:1rem; box-shadow:0 22px 46px rgba(5,14,31,.28), 0 0 0 1px rgba(255,255,255,.75); }
+
 .nx-tour__panel.is-right{ right:1rem; bottom:1rem; }
 .nx-tour__panel.is-left{ left:1rem; bottom:1rem; }
 .nx-tour__panel.is-bottom{ left:50%; transform:translateX(-50%); bottom:1rem; }
@@ -38,4 +36,4 @@
 .nx-tour__progress span{ display:block; height:100%; background:linear-gradient(90deg,#5ca8ff,#8f73ff); }
 .nx-tour__actions{ display:flex; gap:.55rem; flex-wrap:wrap; margin-top:.9rem; }
 .nx-demo-restart{ position:fixed; right:1rem; bottom:1rem; z-index:10; }
-@media (max-width: 920px){ .nx-demo-app{ grid-template-columns:1fr; } .nx-demo-sidebar{ grid-template-rows:auto auto; } .nx-demo-kpis,.nx-demo-grid{ grid-template-columns:1fr; } .nx-tour__overlay{ background:rgba(7,16,32,.2); backdrop-filter:none; } .nx-tour__spotlight{ box-shadow:0 0 0 9999px rgba(8,20,40,.18), 0 0 0 2px rgba(255,255,255,.55), 0 0 20px rgba(90,155,255,.3); } }
+

@@ -69,7 +69,7 @@ export const DemoPage = (): ReactElement => {
     const target = document.querySelector<HTMLElement>(`[data-tour-id="${step.id}"]`);
     if (!target) return undefined;
     const rect = target.getBoundingClientRect();
-    return { top: rect.top - 16, left: rect.left - 16, width: rect.width + 32, height: rect.height + 32 };
+
   }, [step.id, currentStep, isTourOpen]);
 
   const progress = ((currentStep + 1) / DEMO_STEPS.length) * 100;
