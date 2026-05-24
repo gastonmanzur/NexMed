@@ -23,6 +23,7 @@ const startOfWeek = (date: Date): Date => {
 const formatDayLabel = (date: Date): string => date.toLocaleDateString('es-AR', { weekday: 'short' });
 const formatDayNumber = (date: Date): string => date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 
+const formatHour = (value: string): string => new Date(value).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
 const statusTone = (status: AppointmentStatus): string => {
   if (status === 'booked') return 'booked';
@@ -32,6 +33,22 @@ const statusTone = (status: AppointmentStatus): string => {
   return 'canceled';
 };
 
+
+const statusLabel = (status: AppointmentStatus): string => {
+  if (status === 'booked') return 'Confirmado';
+  if (status === 'completed') return 'Completado';
+  if (status === 'rescheduled') return 'Reprogramado';
+  if (status === 'no_show') return 'Ausente';
+  return 'Cancelado';
+};
+
+const avatarFromName = (name: string): string =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'PR';
 
 export const AppointmentsListPage = (): ReactElement => {
   const { user, accessToken, activeOrganizationId, memberships } = useAuth();
@@ -45,11 +62,20 @@ export const AppointmentsListPage = (): ReactElement => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
 
-
   const canManage = activeMembership?.role === 'owner' || activeMembership?.role === 'admin' || activeMembership?.role === 'staff';
   const professionalsById = useMemo(() => new Map(professionals.map((item) => [item.id, item.displayName])), [professionals]);
   const specialtiesById = useMemo(() => new Map(specialties.map((item) => [item.id, item.name])), [specialties]);
 
+
+  const weekDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, index) => {
+        const day = new Date(weekAnchor);
+        day.setDate(weekAnchor.getDate() + index);
+        return day;
+      }),
+    [weekAnchor]
+  );
 
 
   const load = async (): Promise<void> => {
@@ -84,16 +110,32 @@ export const AppointmentsListPage = (): ReactElement => {
   };
 
 
+  useEffect(() => {
+    void load();
+  }, [accessToken, activeOrganizationId, selectedProfessionalId, selectedStatus, weekAnchor]);
+
 
   if (!user) return <Navigate to="/login" replace />;
   if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
 
+
+  const byDay = useMemo(() => weekDays.map((day) => {
+
   const byDay = weekDays.map((day) => {
+
     const key = day.toISOString().slice(0, 10);
     return appointments
       .filter((item) => item.startAt.slice(0, 10) === key)
       .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+  }), [appointments, weekDays]);
+
+  const todayIsoKey = new Date().toISOString().slice(0, 10);
+  const todayAppointments = appointments
+    .filter((item) => item.startAt.slice(0, 10) === todayIsoKey)
+
   });
+
 
 
     .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
