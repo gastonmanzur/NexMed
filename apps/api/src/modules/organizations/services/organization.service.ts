@@ -1,8 +1,11 @@
 import { randomBytes } from 'node:crypto';
+import mongoose from 'mongoose';
 import type {
   OrganizationDto,
   OrganizationMembershipDto,
   OrganizationOnboardingStatusDto,
+  OrganizationPatientDetailDto,
+  OrganizationPatientListItemDto,
   OrganizationProfileDto,
   OrganizationSettingsDto
 } from '@starter/shared-types';
@@ -11,6 +14,8 @@ import { AppError } from '../../../core/errors.js';
 import { AppointmentModel } from '../../appointments/models/appointment.model.js';
 import { ProfessionalModel } from '../../professionals/models/professional.model.js';
 import { PatientOrganizationLinkModel } from '../../patient/models/patient-organization-link.model.js';
+import { PatientProfileModel } from '../../patient/models/patient-profile.model.js';
+import { UserModel } from '../../auth/models/user.model.js';
 import { WaitlistRequestModel } from '../../waitlist/models/waitlist-request.model.js';
 import { OrganizationMemberRepository } from '../repositories/organization-member.repository.js';
 import { OrganizationRepository } from '../repositories/organization.repository.js';
@@ -249,6 +254,103 @@ export class OrganizationService {
       activeProfessionals,
       linkedPatients,
       activeWaitlistRequests
+    };
+  }
+
+  async listPatientsForOrganization(input: { organizationId: string; actorUserId: string; search?: string }): Promise<OrganizationPatientListItemDto[]> {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active') throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+
+    if (!mongoose.isValidObjectId(input.organizationId)) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'organizationId is invalid');
+    }
+    const organizationObjectId = new mongoose.Types.ObjectId(input.organizationId);
+    const search = input.search?.trim();
+    const pipeline: any[] = [
+      { $match: { organizationId: organizationObjectId, status: { $in: ['active', 'blocked'] } } },
+      { $sort: { linkedAt: -1, createdAt: -1 } },
+      { $lookup: { from: PatientProfileModel.collection.name, localField: 'patientProfileId', foreignField: '_id', as: 'profile' } },
+      { $unwind: '$profile' },
+      { $lookup: { from: UserModel.collection.name, localField: 'profile.userId', foreignField: '_id', as: 'user' } },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } }
+    ];
+    if (search) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'profile.firstName': { $regex: search, $options: 'i' } },
+            { 'profile.lastName': { $regex: search, $options: 'i' } },
+            { 'profile.documentId': { $regex: search, $options: 'i' } },
+            { 'user.email': { $regex: search, $options: 'i' } }
+          ]
+        }
+      });
+    }
+    pipeline.push(
+      { $lookup: { from: AppointmentModel.collection.name, let: { pid: '$patientProfileId', oid: '$organizationId' }, pipeline: [
+        { $match: { $expr: { $and: [{ $eq: ['$patientProfileId', '$$pid'] }, { $eq: ['$organizationId', '$$oid'] }] } } },
+        { $group: { _id: null, totalAppointments: { $sum: 1 }, lastAppointmentAt: { $max: '$startAt' } } }
+      ], as: 'appointmentStats' } },
+      { $addFields: { appointmentStats: { $ifNull: [{ $arrayElemAt: ['$appointmentStats', 0] }, { totalAppointments: 0, lastAppointmentAt: null }] } } }
+    );
+    const rows = await PatientOrganizationLinkModel.aggregate(pipeline);
+    return rows.map((row) => ({
+      patientProfileId: row.patientProfileId.toString(),
+      linkedAt: row.linkedAt.toISOString(),
+      status: row.status,
+      firstName: row.profile.firstName ?? null,
+      lastName: row.profile.lastName ?? null,
+      documentId: row.profile.documentId ?? null,
+      phone: row.profile.phone ?? null,
+      email: row.user?.email ?? null,
+      insuranceProvider: row.profile.insuranceProvider ?? null,
+      insuranceMemberId: row.profile.insuranceMemberId ?? null,
+      totalAppointments: Number(row.appointmentStats.totalAppointments ?? 0),
+      lastAppointmentAt: row.appointmentStats.lastAppointmentAt ? new Date(row.appointmentStats.lastAppointmentAt).toISOString() : null
+    }));
+  }
+
+  async getPatientDetailForOrganization(input: { organizationId: string; actorUserId: string; patientProfileId: string }): Promise<OrganizationPatientDetailDto> {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active') throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    if (!mongoose.isValidObjectId(input.organizationId)) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'organizationId is invalid');
+    }
+    if (!mongoose.isValidObjectId(input.patientProfileId)) {
+      throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');
+    }
+    const organizationObjectId = new mongoose.Types.ObjectId(input.organizationId);
+    const patientProfileObjectId = new mongoose.Types.ObjectId(input.patientProfileId);
+    const link = await PatientOrganizationLinkModel.findOne({
+      organizationId: organizationObjectId,
+      patientProfileId: patientProfileObjectId,
+      status: { $in: ['active', 'blocked'] }
+    }).exec();
+    if (!link) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient not linked to organization');
+    const profile = await PatientProfileModel.findById(patientProfileObjectId).exec();
+    if (!profile) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient profile not found');
+    const user = await UserModel.findById(profile.userId).exec();
+    const stats = await AppointmentModel.aggregate<{ totalAppointments: number; lastAppointmentAt: Date | null }>([
+      { $match: { organizationId: organizationObjectId, patientProfileId: profile._id } },
+      { $group: { _id: null, totalAppointments: { $sum: 1 }, lastAppointmentAt: { $max: '$startAt' } } }
+    ]);
+    return {
+      patientProfile: {
+        id: profile._id.toString(), userId: profile.userId.toString(), firstName: profile.firstName ?? null, lastName: profile.lastName ?? null,
+        phone: profile.phone ?? null, dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString().slice(0, 10) : null, documentId: profile.documentId ?? null,
+        sex: profile.sex ?? null, nationality: profile.nationality ?? null, address: profile.address ?? null, city: profile.city ?? null, province: profile.province ?? null,
+        emergencyContactName: profile.emergencyContactName ?? null, emergencyContactPhone: profile.emergencyContactPhone ?? null, emergencyContactRelationship: profile.emergencyContactRelationship ?? null,
+        insuranceProvider: profile.insuranceProvider ?? null, insuranceMemberId: profile.insuranceMemberId ?? null, insurancePlan: profile.insurancePlan ?? null,
+        bloodType: profile.bloodType ?? null, allergies: profile.allergies ?? null, regularMedication: profile.regularMedication ?? null, preexistingConditions: profile.preexistingConditions ?? null,
+        previousSurgeries: profile.previousSurgeries ?? null, medicalNotes: profile.medicalNotes ?? null, contactPreference: profile.contactPreference ?? null,
+        acceptsNotifications: profile.acceptsNotifications ?? false, acceptsReminders: profile.acceptsReminders ?? false, acceptsEmailCommunications: profile.acceptsEmailCommunications ?? false, acceptsWhatsAppCommunications: profile.acceptsWhatsAppCommunications ?? false,
+        createdAt: profile.createdAt.toISOString(), updatedAt: profile.updatedAt.toISOString()
+      },
+      email: user?.email ?? null,
+      linkedAt: link.linkedAt.toISOString(),
+      linkStatus: link.status,
+      totalAppointments: stats[0]?.totalAppointments ?? 0,
+      lastAppointmentAt: stats[0]?.lastAppointmentAt ? new Date(stats[0].lastAppointmentAt).toISOString() : null
     };
   }
 

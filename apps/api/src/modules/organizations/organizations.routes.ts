@@ -79,6 +79,18 @@ organizationsRouter.get(
   asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(organizationController.getDashboardSummary)
 );
+organizationsRouter.get(
+  '/:organizationId/patients',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(organizationController.listPatients)
+);
+organizationsRouter.get(
+  '/:organizationId/patients/:patientProfileId',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(organizationController.getPatientDetail)
+);
 
 
 organizationsRouter.get(

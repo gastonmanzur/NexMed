@@ -329,6 +329,30 @@ export interface PatientMeDto {
   organizations: PatientOrganizationSummaryDto[];
 }
 
+export interface OrganizationPatientListItemDto {
+  patientProfileId: string;
+  linkedAt: string;
+  status: PatientOrganizationLinkStatus;
+  firstName: string | null;
+  lastName: string | null;
+  documentId: string | null;
+  phone: string | null;
+  email: string | null;
+  insuranceProvider: string | null;
+  insuranceMemberId: string | null;
+  totalAppointments: number;
+  lastAppointmentAt: string | null;
+}
+
+export interface OrganizationPatientDetailDto {
+  patientProfile: PatientProfileDto;
+  email: string | null;
+  linkedAt: string;
+  linkStatus: PatientOrganizationLinkStatus;
+  totalAppointments: number;
+  lastAppointmentAt: string | null;
+}
+
 export interface JoinOrganizationPreviewDto {
   tokenOrSlug: string;
   organization: Pick<OrganizationDto, 'id' | 'name' | 'displayName' | 'slug' | 'status' | 'type'>;

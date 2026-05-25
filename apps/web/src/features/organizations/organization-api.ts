@@ -1,4 +1,6 @@
 import type {
+  OrganizationPatientDetailDto,
+  OrganizationPatientListItemDto,
   OrganizationDto,
   OrganizationMembershipDto,
   OrganizationOnboardingStatusDto,
@@ -154,6 +156,15 @@ export const organizationApi = {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
+    return result.data;
+  },
+  listPatients: async (accessToken: string, organizationId: string, search?: string): Promise<OrganizationPatientListItemDto[]> => {
+    const query = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+    const result = await request<{ success: true; data: OrganizationPatientListItemDto[] }>(`/organizations/${organizationId}/patients${query}`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+  getPatientDetail: async (accessToken: string, organizationId: string, patientProfileId: string): Promise<OrganizationPatientDetailDto> => {
+    const result = await request<{ success: true; data: OrganizationPatientDetailDto }>(`/organizations/${organizationId}/patients/${patientProfileId}`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
     return result.data;
   },
 
