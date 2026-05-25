@@ -172,9 +172,9 @@ export const AppointmentsListPage = (): ReactElement => {
         <p>Semana del {weekStartLabel} al {weekEndLabel}</p>
       </header>
 
-      <section className="nx-agenda-toolbar">
-        <label>
-          Profesional
+      <section className="nx-agenda-toolbar" aria-label="Filtros de agenda">
+        <label className="nx-agenda-toolbar__field">
+          <span>Profesional</span>
           <select value={selectedProfessionalId} onChange={(event) => setSelectedProfessionalId(event.target.value)}>
             <option value="">Todos</option>
             {professionals.map((professional) => (
@@ -185,8 +185,8 @@ export const AppointmentsListPage = (): ReactElement => {
           </select>
         </label>
 
-        <label>
-          Estado
+        <label className="nx-agenda-toolbar__field">
+          <span>Estado</span>
           <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)}>
             <option value="">Todos</option>
             {appointmentStatuses.map((status) => (
@@ -197,16 +197,16 @@ export const AppointmentsListPage = (): ReactElement => {
           </select>
         </label>
 
-        <div className="nx-agenda-toolbar__range">
-          <button type="button" onClick={() => setWeekAnchor((prev) => {
+        <div className="nx-agenda-toolbar__range" role="group" aria-label="Rango semanal">
+          <button className="nx-agenda-toolbar__ghost-btn" type="button" onClick={() => setWeekAnchor((prev) => {
             const next = new Date(prev);
             next.setDate(next.getDate() - 7);
             return next;
           })}>
             ← Semana anterior
           </button>
-          <strong>{weekStartLabel} — {weekEndLabel}</strong>
-          <button type="button" onClick={() => setWeekAnchor((prev) => {
+          <strong className="nx-agenda-toolbar__range-value">{weekStartLabel} — {weekEndLabel}</strong>
+          <button className="nx-agenda-toolbar__ghost-btn" type="button" onClick={() => setWeekAnchor((prev) => {
             const next = new Date(prev);
             next.setDate(next.getDate() + 7);
             return next;
@@ -217,15 +217,15 @@ export const AppointmentsListPage = (): ReactElement => {
 
         <div className="nx-agenda-toolbar__view">
           {viewModes.map((mode) => (
-            <button key={mode} type="button" className={mode === activeViewMode ? 'is-active' : ''} onClick={() => setActiveViewMode(mode)}>
+            <button key={mode} type="button" className={`nx-agenda-toolbar__view-btn ${mode === activeViewMode ? 'is-active' : ''}`.trim()} onClick={() => setActiveViewMode(mode)}>
               {mode}
             </button>
           ))}
         </div>
 
         <div className="nx-agenda-toolbar__actions">
-          <button type="button" onClick={() => setWeekAnchor(startOfWeek(new Date()))}>Hoy</button>
-          <Link to="/app/appointments/new" role="button" aria-disabled={!canManage} onClick={(event) => {
+          <button type="button" className="nx-agenda-toolbar__ghost-btn" onClick={() => setWeekAnchor(startOfWeek(new Date()))}>Hoy</button>
+          <Link className="nx-agenda-toolbar__primary-link" to="/app/appointments/new" role="button" aria-disabled={!canManage} onClick={(event) => {
             if (!canManage) event.preventDefault();
           }}>
             Nuevo turno
