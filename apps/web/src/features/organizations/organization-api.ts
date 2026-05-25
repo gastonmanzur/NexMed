@@ -24,13 +24,26 @@ interface ApiErrorPayload {
   };
 }
 
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly url: string,
+    public readonly rawBody: string
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
 const request = async <T>(path: string, init: RequestInit): Promise<T> => {
   const headers = new Headers(init.headers ?? {});
   if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const url = `${API_URL}${path}`;
+  const response = await fetch(url, {
     ...init,
     credentials: 'include',
     headers
@@ -48,7 +61,12 @@ const request = async <T>(path: string, init: RequestInit): Promise<T> => {
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error?.message ?? `Request failed with status ${response.status}`);
+    throw new ApiRequestError(
+      payload?.error?.message ?? `Request failed with status ${response.status}`,
+      response.status,
+      url,
+      rawBody
+    );
   }
 
   return (payload ?? ({} as T));
