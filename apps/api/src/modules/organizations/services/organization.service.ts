@@ -10,6 +10,7 @@ import type {
   OrganizationSettingsDto
 } from '@starter/shared-types';
 import { env } from '../../../config/env.js';
+import { logger } from '../../../config/logger.js';
 import { AppError } from '../../../core/errors.js';
 import { AppointmentModel } from '../../appointments/models/appointment.model.js';
 import { ProfessionalModel } from '../../professionals/models/professional.model.js';
@@ -259,7 +260,15 @@ export class OrganizationService {
 
   async listPatientsForOrganization(input: { organizationId: string; actorUserId: string; search?: string }): Promise<OrganizationPatientListItemDto[]> {
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
-    if (!membership || membership.status !== 'active') throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    if (!membership || membership.status !== 'active') {
+      logger.warn({
+        event: 'organization_patients_forbidden',
+        organizationId: input.organizationId,
+        actorUserId: input.actorUserId,
+        membershipStatus: membership?.status ?? null
+      }, 'Denied access while listing organization patients');
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
 
     const search = input.search?.trim();
     const pipeline: any[] = [
@@ -290,6 +299,15 @@ export class OrganizationService {
       { $addFields: { appointmentStats: { $ifNull: [{ $arrayElemAt: ['$appointmentStats', 0] }, { totalAppointments: 0, lastAppointmentAt: null }] } } }
     );
     const rows = await PatientOrganizationLinkModel.aggregate(pipeline);
+    logger.info({
+      event: 'organization_patients_list_debug',
+      organizationId: input.organizationId,
+      actorUserId: input.actorUserId,
+      membershipRole: membership.role,
+      membershipStatus: membership.status,
+      searchApplied: Boolean(search),
+      linksMatchedCount: rows.length
+    }, 'Organization patients list query executed');
     return rows.map((row) => ({
       patientProfileId: row.patientProfileId.toString(),
       linkedAt: row.linkedAt.toISOString(),
@@ -308,9 +326,26 @@ export class OrganizationService {
 
   async getPatientDetailForOrganization(input: { organizationId: string; actorUserId: string; patientProfileId: string }): Promise<OrganizationPatientDetailDto> {
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
-    if (!membership || membership.status !== 'active') throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    if (!membership || membership.status !== 'active') {
+      logger.warn({
+        event: 'organization_patient_detail_forbidden',
+        organizationId: input.organizationId,
+        actorUserId: input.actorUserId,
+        patientProfileId: input.patientProfileId,
+        membershipStatus: membership?.status ?? null
+      }, 'Denied access while reading organization patient detail');
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
     const link = await PatientOrganizationLinkModel.findOne({ organizationId: input.organizationId, patientProfileId: input.patientProfileId, status: { $in: ['active', 'blocked'] } }).exec();
-    if (!link) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient not linked to organization');
+    if (!link) {
+      logger.info({
+        event: 'organization_patient_detail_link_missing',
+        organizationId: input.organizationId,
+        actorUserId: input.actorUserId,
+        patientProfileId: input.patientProfileId
+      }, 'No patient link found for organization detail query');
+      throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient not linked to organization');
+    }
     const profile = await PatientProfileModel.findById(input.patientProfileId).exec();
     if (!profile) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient profile not found');
     const user = await UserModel.findById(profile.userId).exec();
