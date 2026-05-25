@@ -261,13 +261,9 @@ export class OrganizationService {
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
     if (!membership || membership.status !== 'active') throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
 
-    if (!mongoose.isValidObjectId(input.organizationId)) {
-      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'organizationId is invalid');
-    }
-    const organizationObjectId = new mongoose.Types.ObjectId(input.organizationId);
     const search = input.search?.trim();
     const pipeline: any[] = [
-      { $match: { organizationId: organizationObjectId, status: { $in: ['active', 'blocked'] } } },
+      { $match: { organizationId: input.organizationId, status: { $in: ['active', 'blocked'] } } },
       { $sort: { linkedAt: -1, createdAt: -1 } },
       { $lookup: { from: PatientProfileModel.collection.name, localField: 'patientProfileId', foreignField: '_id', as: 'profile' } },
       { $unwind: '$profile' },
@@ -313,25 +309,13 @@ export class OrganizationService {
   async getPatientDetailForOrganization(input: { organizationId: string; actorUserId: string; patientProfileId: string }): Promise<OrganizationPatientDetailDto> {
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
     if (!membership || membership.status !== 'active') throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
-    if (!mongoose.isValidObjectId(input.organizationId)) {
-      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'organizationId is invalid');
-    }
-    if (!mongoose.isValidObjectId(input.patientProfileId)) {
-      throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');
-    }
-    const organizationObjectId = new mongoose.Types.ObjectId(input.organizationId);
-    const patientProfileObjectId = new mongoose.Types.ObjectId(input.patientProfileId);
-    const link = await PatientOrganizationLinkModel.findOne({
-      organizationId: organizationObjectId,
-      patientProfileId: patientProfileObjectId,
-      status: { $in: ['active', 'blocked'] }
-    }).exec();
+    const link = await PatientOrganizationLinkModel.findOne({ organizationId: input.organizationId, patientProfileId: input.patientProfileId, status: { $in: ['active', 'blocked'] } }).exec();
     if (!link) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient not linked to organization');
-    const profile = await PatientProfileModel.findById(patientProfileObjectId).exec();
+    const profile = await PatientProfileModel.findById(input.patientProfileId).exec();
     if (!profile) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient profile not found');
     const user = await UserModel.findById(profile.userId).exec();
     const stats = await AppointmentModel.aggregate<{ totalAppointments: number; lastAppointmentAt: Date | null }>([
-      { $match: { organizationId: organizationObjectId, patientProfileId: profile._id } },
+      { $match: { organizationId: input.organizationId, patientProfileId: profile._id } },
       { $group: { _id: null, totalAppointments: { $sum: 1 }, lastAppointmentAt: { $max: '$startAt' } } }
     ]);
     return {

@@ -18,18 +18,7 @@ export const OrganizationPatientsPage = (): ReactElement => {
   const [detailError, setDetailError] = useState('');
 
   const load = async (): Promise<void> => {
-    if (!activeOrganizationId) {
-      setError('No hay una organización activa seleccionada.');
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-    if (!accessToken) {
-      setError('Sesión expirada. Volvé a iniciar sesión.');
-      setRows([]);
-      setLoading(false);
-      return;
-    }
+    if (!accessToken || !activeOrganizationId) return;
     setLoading(true); setError('');
     try { setRows(await organizationApi.listPatients(accessToken, activeOrganizationId, search)); } catch (e) { setError((e as Error).message); } finally { setLoading(false); }
   };
