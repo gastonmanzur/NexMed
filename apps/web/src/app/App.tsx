@@ -49,6 +49,7 @@ import { PatientWaitlistPage } from '../features/patient/PatientWaitlistPage';
 import { PatientWaitlistCreatePage } from '../features/patient/PatientWaitlistCreatePage';
 import { PatientFamilyMembersPage } from '../features/patient/PatientFamilyMembersPage';
 import { OrganizationReminderRulesPage } from '../features/organizations/OrganizationReminderRulesPage';
+import { OrganizationPatientsPage } from '../features/organizations/OrganizationPatientsPage';
 import { FeedbackPage } from '../features/feedback/FeedbackPage';
 import { AppShell } from '../components/AppShell';
 import { OrganizationInvitePage } from '../features/organizations/OrganizationInvitePage';
@@ -261,6 +262,14 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             {shell(<AppointmentReschedulePage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/patients"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
+            {shell(<OrganizationPatientsPage />)}
           </ProtectedRoute>
         }
       />

@@ -42,6 +42,8 @@ const updateOrganizationProfileSchema = z.object({
 const organizationIdSchema = z.object({
   organizationId: z.string().trim().min(1)
 });
+const patientPathSchema = z.object({ organizationId: z.string().trim().min(1), patientProfileId: z.string().trim().min(1) });
+const listPatientsQuerySchema = z.object({ search: z.string().trim().optional() });
 
 
 const checkoutSchema = z.object({
@@ -150,6 +152,21 @@ export const organizationController = {
       success: true,
       data: summary
     });
+  },
+  listPatients: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const query = listPatientsQuerySchema.parse(req.query);
+    const data = await service.listPatientsForOrganization({
+      organizationId,
+      actorUserId: req.auth!.userId,
+      ...(query.search ? { search: query.search } : {})
+    });
+    res.status(200).json({ success: true, data });
+  },
+  getPatientDetail: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId, patientProfileId } = patientPathSchema.parse(req.params);
+    const data = await service.getPatientDetailForOrganization({ organizationId, actorUserId: req.auth!.userId, patientProfileId });
+    res.status(200).json({ success: true, data });
   },
 
   getInviteLink: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
