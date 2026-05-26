@@ -10,6 +10,7 @@ import { AuditLogRepository } from '../repositories/audit-log.repository.js';
 import { NotificationService } from '../../notifications/services/notification.service.js';
 import { WaitlistService } from '../../waitlist/services/waitlist.service.js';
 import { ReminderService } from '../../reminders/services/reminder.service.js';
+import { PatientOrganizationLinkRepository } from '../../patient/repositories/patient-organization-link.repository.js';
 import type { AppointmentDocument } from '../models/appointment.model.js';
 
 interface ListAppointmentsInput {
@@ -92,7 +93,8 @@ export class AppointmentsService {
     private readonly auditLogs = new AuditLogRepository(),
     private readonly notifications = new NotificationService(),
     private readonly waitlist = new WaitlistService(),
-    private readonly reminders = new ReminderService()
+    private readonly reminders = new ReminderService(),
+    private readonly patientOrganizationLinks = new PatientOrganizationLinkRepository()
   ) {}
 
   async listAppointments(organizationId: string, input: ListAppointmentsInput): Promise<AppointmentDto[]> {
@@ -192,6 +194,14 @@ export class AppointmentsService {
       });
 
       const createdDto = this.toDto(created);
+      if (createdDto.patientProfileId) {
+        await this.patientOrganizationLinks.upsertActive({
+          patientProfileId: createdDto.patientProfileId,
+          organizationId,
+          status: 'active',
+          source: source === 'patient_self_service' ? 'appointment_patient_booking' : 'appointment_staff_booking'
+        });
+      }
       await this.notifications.notifyPatientFromAppointment(
         createdDto,
         'appointment_booked',
