@@ -313,6 +313,7 @@ export class OrganizationService {
       patientProfileId: row.patientProfileId.toString(),
       linkedAt: row.linkedAt.toISOString(),
       status: row.status,
+      avatarUrl: row.user?.avatar?.url ?? row.user?.googlePictureUrl ?? null,
       firstName: row.profile.firstName ?? null,
       lastName: row.profile.lastName ?? null,
       documentId: row.profile.documentId ?? null,
@@ -367,6 +368,7 @@ export class OrganizationService {
         createdAt: profile.createdAt.toISOString(), updatedAt: profile.updatedAt.toISOString()
       },
       email: user?.email ?? null,
+      avatarUrl: user?.avatar?.url ?? user?.googlePictureUrl ?? null,
       linkedAt: link.linkedAt.toISOString(),
       linkStatus: link.status,
       totalAppointments: stats[0]?.totalAppointments ?? 0,
