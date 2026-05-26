@@ -74,17 +74,12 @@ export const OrganizationPatientsPage = (): ReactElement => {
     {diagnostic ? <p role="status" className="nx-patients-diagnostic">{diagnostic}</p> : null}
     {loading ? <p className="nx-patients-status">Cargando pacientes...</p> : error ? <p className="nx-patients-status nx-patients-status--error">{error}</p> : rows.length === 0 ? <div className="nx-patients-empty"><p>No hay pacientes vinculados.</p><small>Cuando vincules pacientes al centro, aparecerán aquí.</small></div> : <div className="nx-patients-list">{rows.map((row) => {
       const patientInitials = `${row.firstName?.[0] ?? ''}${row.lastName?.[0] ?? ''}`.toUpperCase() || 'P';
-      return <button className="nx-patient-list-item" key={row.patientProfileId} type="button" onClick={() => void selectPatient(row.patientProfileId)}>
-        <span className="nx-patient-avatar">
-          {row.avatarUrl ? <img src={row.avatarUrl} alt={`Foto de ${fullName(row)}`} loading="lazy" /> : patientInitials}
-        </span>
-        <strong>{fullName(row)}</strong>
-      </button>;
+      return <button className="nx-patient-list-item" key={row.patientProfileId} type="button" onClick={() => void selectPatient(row.patientProfileId)}><span className="nx-patient-avatar">{patientInitials}</span><strong>{fullName(row)}</strong></button>;
     })}</div>}
     {selected ? <dialog className="nx-patient-modal" open><div className="nx-patient-modal__overlay" onClick={() => setSelected(null)} />
       <div className="nx-patient-modal__content">
         <button className="nx-patient-modal__close" type="button" onClick={() => setSelected(null)}>Cerrar</button>
-        <header className="nx-patient-modal__header"><span className="nx-patient-avatar nx-patient-avatar--large">{selected.avatarUrl ? <img src={selected.avatarUrl} alt={`Foto de ${fullName(selected.patientProfile)}`} loading="lazy" /> : initials}</span><h2>{fullName(selected.patientProfile)}</h2></header>
+        <header className="nx-patient-modal__header"><span className="nx-patient-avatar nx-patient-avatar--large">{initials}</span><h2>{fullName(selected.patientProfile)}</h2></header>
         {loadingDetail ? <p className="nx-patients-status">Cargando detalle...</p> : detailError ? <p className="nx-patients-status nx-patients-status--error">{detailError}</p> : <section className="nx-patient-modal__grid">
           <article className="nx-patient-block"><h3>Datos personales</h3><p><span>Documento</span>{selected.patientProfile.documentId ?? '—'}</p><p><span>Nacimiento</span>{selected.patientProfile.dateOfBirth ?? '—'}</p><p><span>Sexo / género</span>{selected.patientProfile.sex ?? '—'}</p><p><span>Teléfono</span>{selected.patientProfile.phone ?? '—'}</p><p><span>Email</span>{selected.email ?? '—'}</p><p><span>Dirección</span>{address || '—'}</p></article>
           <article className="nx-patient-block"><h3>Cobertura médica</h3><p><span>Obra social / prepaga</span>{selected.patientProfile.insuranceProvider ?? '—'}</p><p><span>N° de afiliado</span>{selected.patientProfile.insuranceMemberId ?? '—'}</p><p><span>Plan</span>{selected.patientProfile.insurancePlan ?? '—'}</p></article>

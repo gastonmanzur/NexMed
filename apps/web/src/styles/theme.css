@@ -2297,7 +2297,6 @@ body {
 .nx-patient-list-item { display: flex; align-items: center; gap: 0.7rem; width: 100%; border: 1px solid var(--border); border-radius: 14px; background: #fff; padding: 0.8rem 0.9rem; cursor: pointer; text-align: left; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
 .nx-patient-list-item:hover { transform: translateY(-1px); border-color: rgba(70, 85, 255, .35); box-shadow: 0 8px 20px rgba(16, 24, 40, .08); }
 .nx-patient-avatar { width: 34px; height: 34px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #5b6cff, #8c95ff); color: #fff; font-weight: 700; font-size: 0.82rem; }
-.nx-patient-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
 .nx-patient-avatar--large { width: 48px; height: 48px; font-size: 1rem; }
 .nx-patients-empty { margin-top: 0.5rem; border: 1px dashed var(--border); border-radius: 14px; padding: 1rem; background: rgba(249, 250, 251, .8); }
 .nx-patients-empty p { margin: 0 0 0.25rem; font-weight: 600; }
