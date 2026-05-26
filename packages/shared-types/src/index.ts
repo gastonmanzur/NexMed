@@ -333,6 +333,7 @@ export interface OrganizationPatientListItemDto {
   patientProfileId: string;
   linkedAt: string;
   status: PatientOrganizationLinkStatus;
+  avatarUrl: string | null;
   firstName: string | null;
   lastName: string | null;
   documentId: string | null;
@@ -347,6 +348,7 @@ export interface OrganizationPatientListItemDto {
 export interface OrganizationPatientDetailDto {
   patientProfile: PatientProfileDto;
   email: string | null;
+  avatarUrl: string | null;
   linkedAt: string;
   linkStatus: PatientOrganizationLinkStatus;
   totalAppointments: number;
