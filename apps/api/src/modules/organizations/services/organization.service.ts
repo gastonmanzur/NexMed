@@ -271,8 +271,9 @@ export class OrganizationService {
     }
 
     const search = input.search?.trim();
+    const organizationObjectId = new mongoose.Types.ObjectId(input.organizationId);
     const pipeline: any[] = [
-      { $match: { organizationId: input.organizationId, status: { $in: ['active', 'blocked'] } } },
+      { $match: { organizationId: organizationObjectId, status: { $in: ['active', 'blocked'] } } },
       { $sort: { linkedAt: -1, createdAt: -1 } },
       { $lookup: { from: PatientProfileModel.collection.name, localField: 'patientProfileId', foreignField: '_id', as: 'profile' } },
       { $unwind: '$profile' },
