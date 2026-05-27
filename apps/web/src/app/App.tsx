@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomePage } from '../features/home/HomePage';
-import { DemoPage } from '../features/home/DemoPage';
+import { DemoAppPage } from '../features/demo/DemoAppPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { AdminOrganizationsPage } from '../features/admin/AdminOrganizationsPage';
 import { AdminOrganizationDetailPage } from '../features/admin/AdminOrganizationDetailPage';
@@ -63,7 +63,7 @@ export const App = (): ReactElement => {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/app/demo" element={<Navigate to="/demo" replace />} />
-      <Route path="/demo" element={<DemoPage />} />
+      <Route path="/demo" element={<DemoAppPage />} />
 
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
