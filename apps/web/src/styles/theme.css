@@ -2301,11 +2301,11 @@ body {
 .nx-patients-empty { margin-top: 0.5rem; border: 1px dashed var(--border); border-radius: 14px; padding: 1rem; background: rgba(249, 250, 251, .8); }
 .nx-patients-empty p { margin: 0 0 0.25rem; font-weight: 600; }
 
-.nx-patient-modal { border: 0; padding: 0; background: transparent; max-width: 900px; width: calc(100vw - 2rem); max-height: calc(100vh - 2rem); }
-.nx-patient-modal::backdrop { background: rgba(15, 23, 42, .45); backdrop-filter: blur(2px); }
-.nx-patient-modal__overlay { display: none; }
-.nx-patient-modal__content { position: relative; background: #fff; border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 24px 60px rgba(2, 6, 23, .22); padding: 1rem; overflow: auto; max-height: calc(100vh - 2rem); }
+.nx-patient-modal { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 1rem; }
+.nx-patient-modal__overlay { position: fixed; inset: 0; z-index: 0; border: 0; padding: 0; background: rgba(15, 23, 42, .45); backdrop-filter: blur(2px); cursor: pointer; }
+.nx-patient-modal__content { position: relative; z-index: 1; width: min(900px, 100%); max-height: min(760px, calc(100dvh - 2rem)); background: #fff; border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 24px 60px rgba(2, 6, 23, .22); padding: 1rem; overflow: auto; }
 .nx-patient-modal__close { position: sticky; top: 0; float: right; border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 0.45rem 0.7rem; cursor: pointer; z-index: 2; }
+.nx-patient-modal__close:focus-visible, .nx-patient-modal__overlay:focus-visible { outline: 3px solid rgba(70, 85, 255, .35); outline-offset: 2px; }
 .nx-patient-modal__header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.8rem; padding-right: 4.8rem; }
 .nx-patient-modal__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
 .nx-patient-block { border: 1px solid var(--border); border-radius: 14px; padding: 0.8rem; background: #fff; }
@@ -2318,8 +2318,8 @@ body {
 }
 @media (max-width: 640px) {
   .nx-patient-list-item { padding: 0.72rem 0.75rem; }
-  .nx-patient-modal { width: calc(100vw - 1rem); max-height: calc(100vh - 1rem); }
-  .nx-patient-modal__content { padding: 0.8rem; max-height: calc(100vh - 1rem); }
+  .nx-patient-modal { align-items: end; padding: 0.5rem; }
+  .nx-patient-modal__content { width: 100%; max-height: calc(100dvh - 1rem); padding: 0.8rem; border-radius: 18px; }
 }
 .nx-field{display:flex;flex-direction:column;gap:.3rem}
 .nx-field input,.nx-field textarea{width:100%}
