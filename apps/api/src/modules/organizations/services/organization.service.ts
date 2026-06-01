@@ -24,6 +24,8 @@ import { OrganizationSettingsRepository } from '../repositories/organization-set
 import { OrganizationAccessLinkRepository } from '../repositories/organization-access-link.repository.js';
 import { PlanRepository } from '../../payments/repositories/plan.repository.js';
 import { OrganizationSubscriptionRepository } from '../../payments/repositories/organization-subscription.repository.js';
+import { DiscountRepository } from '../../payments/repositories/discount.repository.js';
+import { DiscountRedemptionRepository } from '../../payments/repositories/discount-redemption.repository.js';
 import { UserRepository } from '../../auth/repositories/user.repository.js';
 import { MercadoPagoProvider } from '../../payments/providers/mercadopago.provider.js';
 
@@ -73,6 +75,8 @@ export class OrganizationService {
     private readonly accessLinks = new OrganizationAccessLinkRepository(),
     private readonly plans = new PlanRepository(),
     private readonly organizationSubscriptions = new OrganizationSubscriptionRepository(),
+    private readonly discounts = new DiscountRepository(),
+    private readonly discountRedemptions = new DiscountRedemptionRepository(),
     private readonly users = new UserRepository(),
     private readonly paymentProvider = new MercadoPagoProvider()
   ) {}
@@ -652,7 +656,27 @@ export class OrganizationService {
     };
   }
 
-  async startOrganizationCheckout(input: { organizationId: string; actorUserId: string; planId: string }) {
+  async validateOrganizationDiscountForUser(input: { organizationId: string; actorUserId: string; planId: string; code: string }) {
+    const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
+    if (!membership || membership.status !== 'active' || !['owner', 'admin'].includes(membership.role)) {
+      throw new AppError('FORBIDDEN', 403, 'You do not have access to validate subscription discounts');
+    }
+
+    const plan = await this.plans.findById(input.planId);
+    if (!plan || plan.status !== 'active') {
+      throw new AppError('PLAN_NOT_FOUND', 404, 'Plan not found');
+    }
+
+    return this.validateOrganizationDiscount({
+      organizationId: input.organizationId,
+      planId: input.planId,
+      code: input.code,
+      planPrice: plan.price,
+      planCurrency: plan.currency
+    });
+  }
+
+  async startOrganizationCheckout(input: { organizationId: string; actorUserId: string; planId: string; discountCode?: string | undefined }) {
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
     if (!membership || membership.status !== 'active' || !['owner', 'admin'].includes(membership.role)) {
       throw new AppError('FORBIDDEN', 403, 'You do not have access to manage organization subscription');
@@ -668,10 +692,62 @@ export class OrganizationService {
       throw new AppError('USER_NOT_FOUND', 404, 'User not found');
     }
 
+    const discountResult = input.discountCode
+      ? await this.validateOrganizationDiscount({
+          organizationId: input.organizationId,
+          planId: input.planId,
+          code: input.discountCode,
+          planPrice: plan.price,
+          planCurrency: plan.currency
+        })
+      : null;
+
+    if (discountResult?.finalAmount === 0) {
+      const periodEnd = this.addMonths(new Date(), 1);
+      const subscription = await this.organizationSubscriptions.upsertByOrganizationId({
+        organizationId: input.organizationId,
+        planId: plan._id.toString(),
+        provider: 'internal',
+        status: 'active',
+        startedAt: new Date(),
+        expiresAt: periodEnd,
+        autoRenew: false,
+        discountId: discountResult.discountId,
+        discountCode: discountResult.code,
+        discountType: discountResult.discountType,
+        discountValue: discountResult.discountValue,
+        discountAmount: discountResult.discountAmount,
+        originalAmount: discountResult.originalAmount,
+        finalAmount: discountResult.finalAmount,
+        discountAppliedAt: new Date(),
+        discountAppliedBy: input.actorUserId
+      });
+
+      await this.recordDiscountUse({
+        discount: discountResult,
+        organizationId: input.organizationId,
+        planId: plan._id.toString(),
+        subscriptionId: subscription._id.toString(),
+        appliedBy: input.actorUserId,
+        provider: 'internal',
+        status: 'active'
+      });
+
+      return {
+        success: true,
+        requiresPayment: false,
+        subscriptionId: subscription._id.toString(),
+        subscriptionStatus: subscription.status,
+        status: subscription.status,
+        message: 'Suscripción activada con descuento del 100%',
+        redirectUrl: '/app/subscription'
+      };
+    }
+
     const checkout = await this.paymentProvider.createSubscription({
       externalReference: `org_${input.organizationId}_${randomBytes(8).toString('hex')}`,
       reason: `Suscripción ${plan.name} - NexMed`,
-      amount: plan.price,
+      amount: discountResult?.finalAmount ?? plan.price,
       currency: plan.currency,
       payerEmail: actorUser.email,
       frequency: 1,
@@ -685,10 +761,38 @@ export class OrganizationService {
       providerReference: checkout.providerOrderId,
       status: 'past_due',
       startedAt: new Date(),
-      autoRenew: true
+      autoRenew: true,
+      ...(discountResult
+        ? {
+            discountId: discountResult.discountId,
+            discountCode: discountResult.code,
+            discountType: discountResult.discountType,
+            discountValue: discountResult.discountValue,
+            discountAmount: discountResult.discountAmount,
+            originalAmount: discountResult.originalAmount,
+            finalAmount: discountResult.finalAmount,
+            discountAppliedAt: new Date(),
+            discountAppliedBy: input.actorUserId
+          }
+        : {})
     });
 
+    if (discountResult) {
+      await this.recordDiscountUse({
+        discount: discountResult,
+        organizationId: input.organizationId,
+        planId: plan._id.toString(),
+        subscriptionId: subscription._id.toString(),
+        appliedBy: input.actorUserId,
+        provider: 'mercadopago',
+        providerReference: checkout.providerOrderId,
+        status: 'checkout_created'
+      });
+    }
+
     return {
+      success: true,
+      requiresPayment: true,
       checkoutUrl: checkout.initPoint,
       url: checkout.initPoint,
       initPoint: checkout.initPoint,
@@ -770,6 +874,134 @@ export class OrganizationService {
     }
 
     throw new AppError('INVALID_ORGANIZATION_SLUG', 400, 'Invalid organization slug');
+  }
+
+
+  private async validateOrganizationDiscount(input: {
+    organizationId: string;
+    planId: string;
+    code: string;
+    planPrice: number;
+    planCurrency: string;
+  }): Promise<{
+    valid: true;
+    discountId: string;
+    code: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    originalAmount: number;
+    discountAmount: number;
+    finalAmount: number;
+    currency: string;
+    message: string;
+  }> {
+    const code = input.code.trim().toUpperCase();
+    if (!code) {
+      throw new AppError('INVALID_DISCOUNT_CODE', 400, 'El código no es válido o ya expiró');
+    }
+
+    const discount = await this.discounts.findByCode(code);
+    const now = new Date();
+    if (!discount || !discount.isActive || (discount.startsAt && discount.startsAt > now) || (discount.endsAt && discount.endsAt < now)) {
+      throw new AppError('INVALID_DISCOUNT_CODE', 400, 'El código no es válido o ya expiró');
+    }
+
+    const applicablePlanIds = discount.appliesToPlanIds?.map((planId) => planId.toString()) ?? [];
+    if (applicablePlanIds.length > 0 && !applicablePlanIds.includes(input.planId)) {
+      throw new AppError('DISCOUNT_NOT_APPLICABLE', 400, 'El código no aplica al plan seleccionado');
+    }
+
+    if (discount.currency && discount.currency.toUpperCase() !== input.planCurrency.toUpperCase()) {
+      throw new AppError('DISCOUNT_NOT_APPLICABLE', 400, 'El código no aplica a la moneda del plan seleccionado');
+    }
+
+    const currentSubscription = await this.organizationSubscriptions.findByOrganizationId(input.organizationId);
+    if (discount.onlyForNewOrganizations && currentSubscription && currentSubscription.status !== 'trial') {
+      throw new AppError('DISCOUNT_NOT_APPLICABLE', 400, 'El código solo aplica a organizaciones nuevas');
+    }
+    if (discount.onlyDuringTrial && currentSubscription?.status !== 'trial') {
+      throw new AppError('DISCOUNT_NOT_APPLICABLE', 400, 'El código solo aplica durante el período de prueba');
+    }
+
+    if (discount.maxRedemptions && discount.redemptionCount >= discount.maxRedemptions) {
+      throw new AppError('DISCOUNT_MAX_REDEMPTIONS_REACHED', 400, 'El código ya alcanzó su límite de usos');
+    }
+
+    const organizationUses = await this.discountRedemptions.countByDiscountAndOrganization(discount._id.toString(), input.organizationId);
+    if (discount.maxRedemptionsPerOrganization && organizationUses >= discount.maxRedemptionsPerOrganization) {
+      throw new AppError('DISCOUNT_ALREADY_USED', 400, 'Este código ya fue usado por tu organización');
+    }
+
+    const originalAmount = Math.max(0, input.planPrice);
+    const rawDiscountAmount = discount.discountType === 'percentage'
+      ? originalAmount * (discount.discountValue / 100)
+      : discount.discountValue;
+    const discountAmount = Math.min(originalAmount, Math.max(0, Math.round(rawDiscountAmount * 100) / 100));
+    const finalAmount = Math.max(0, Math.round((originalAmount - discountAmount) * 100) / 100);
+
+    return {
+      valid: true,
+      discountId: discount._id.toString(),
+      code: discount.code,
+      discountType: discount.discountType,
+      discountValue: discount.discountValue,
+      originalAmount,
+      discountAmount,
+      finalAmount,
+      currency: input.planCurrency,
+      message: finalAmount === 0 ? 'Descuento del 100% aplicado' : 'Código aplicado correctamente'
+    };
+  }
+
+  private async recordDiscountUse(input: {
+    discount: {
+      discountId: string;
+      code: string;
+      discountType: 'percentage' | 'fixed';
+      discountValue: number;
+      originalAmount: number;
+      discountAmount: number;
+      finalAmount: number;
+      currency: string;
+    };
+    organizationId: string;
+    planId: string;
+    subscriptionId: string;
+    appliedBy: string;
+    provider: 'mercadopago' | 'internal';
+    providerReference?: string | undefined;
+    status: 'checkout_created' | 'active';
+  }): Promise<void> {
+    const existingUse = await this.discountRedemptions.findActiveByDiscountAndOrganization(input.discount.discountId, input.organizationId);
+    if (existingUse) {
+      throw new AppError('DISCOUNT_ALREADY_USED', 409, 'Este código ya fue usado por tu organización');
+    }
+
+    await this.discountRedemptions.create({
+      discountId: input.discount.discountId,
+      discountCode: input.discount.code,
+      organizationId: input.organizationId,
+      planId: input.planId,
+      subscriptionId: input.subscriptionId,
+      appliedBy: input.appliedBy,
+      discountType: input.discount.discountType,
+      discountValue: input.discount.discountValue,
+      discountAmount: input.discount.discountAmount,
+      originalAmount: input.discount.originalAmount,
+      finalAmount: input.discount.finalAmount,
+      currency: input.discount.currency,
+      provider: input.provider,
+      providerReference: input.providerReference,
+      status: input.status,
+      appliedAt: new Date()
+    });
+    await this.discounts.incrementRedemptionCount(input.discount.discountId);
+  }
+
+  private addMonths(date: Date, months: number): Date {
+    const next = new Date(date);
+    next.setMonth(next.getMonth() + months);
+    return next;
   }
 
   private slugify(value: string): string {

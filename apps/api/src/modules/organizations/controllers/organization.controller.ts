@@ -47,7 +47,13 @@ const listPatientsQuerySchema = z.object({ search: z.string().trim().optional() 
 
 
 const checkoutSchema = z.object({
-  planId: z.string().trim().min(1)
+  planId: z.string().trim().min(1),
+  discountCode: z.string().trim().min(1).max(60).optional()
+});
+
+const discountValidateSchema = z.object({
+  planId: z.string().trim().min(1),
+  code: z.string().trim().min(1).max(60)
 });
 const subscriptionQuerySchema = z.object({
   sync: z
@@ -201,14 +207,36 @@ export const organizationController = {
     res.status(200).json({ success: true, data });
   },
 
+  validateSubscriptionDiscount: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = organizationIdSchema.parse(req.params);
+    const { planId, code } = discountValidateSchema.parse(req.body);
+
+    try {
+      const data = await service.validateOrganizationDiscountForUser({
+        organizationId,
+        actorUserId: req.auth!.userId,
+        planId,
+        code
+      });
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      if (error instanceof AppError && error.statusCode >= 400 && error.statusCode < 500) {
+        res.status(200).json({ success: true, data: { valid: false, message: error.message } });
+        return;
+      }
+      throw error;
+    }
+  },
+
   checkoutSubscription: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId } = organizationIdSchema.parse(req.params);
-    const { planId } = checkoutSchema.parse(req.body);
+    const { planId, discountCode } = checkoutSchema.parse(req.body);
 
     const data = await service.startOrganizationCheckout({
       organizationId,
       actorUserId: req.auth!.userId,
-      planId
+      planId,
+      discountCode
     });
 
     res.status(200).json({ success: true, data });

@@ -111,6 +111,12 @@ organizationsRouter.get(
   asyncHandler(organizationController.getSubscription)
 );
 organizationsRouter.post(
+  '/:organizationId/subscription/discount/validate',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(organizationController.validateSubscriptionDiscount)
+);
+organizationsRouter.post(
   '/:organizationId/subscription/checkout',
   asyncHandler(requireOrganizationMember),
   asyncHandler(requireOrganizationRole('owner', 'admin')),

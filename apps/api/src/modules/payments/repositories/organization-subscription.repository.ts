@@ -14,6 +14,15 @@ export class OrganizationSubscriptionRepository {
     startedAt?: Date;
     expiresAt?: Date;
     autoRenew?: boolean;
+    discountId?: string;
+    discountCode?: string;
+    discountType?: 'percentage' | 'fixed';
+    discountValue?: number;
+    discountAmount?: number;
+    originalAmount?: number;
+    finalAmount?: number;
+    discountAppliedAt?: Date;
+    discountAppliedBy?: string;
   }): Promise<OrganizationSubscriptionDocument> {
     return OrganizationSubscriptionModel.findOneAndUpdate(
       { organizationId: input.organizationId },
@@ -25,7 +34,16 @@ export class OrganizationSubscriptionRepository {
           status: input.status ?? 'trial',
           ...(input.startedAt !== undefined ? { startedAt: input.startedAt } : {}),
           ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
-          ...(input.autoRenew !== undefined ? { autoRenew: input.autoRenew } : {})
+          ...(input.autoRenew !== undefined ? { autoRenew: input.autoRenew } : {}),
+          ...(input.discountId !== undefined ? { discountId: input.discountId } : {}),
+          ...(input.discountCode !== undefined ? { discountCode: input.discountCode } : {}),
+          ...(input.discountType !== undefined ? { discountType: input.discountType } : {}),
+          ...(input.discountValue !== undefined ? { discountValue: input.discountValue } : {}),
+          ...(input.discountAmount !== undefined ? { discountAmount: input.discountAmount } : {}),
+          ...(input.originalAmount !== undefined ? { originalAmount: input.originalAmount } : {}),
+          ...(input.finalAmount !== undefined ? { finalAmount: input.finalAmount } : {}),
+          ...(input.discountAppliedAt !== undefined ? { discountAppliedAt: input.discountAppliedAt } : {}),
+          ...(input.discountAppliedBy !== undefined ? { discountAppliedBy: input.discountAppliedBy } : {})
         }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -38,6 +56,15 @@ export class OrganizationSubscriptionRepository {
     startedAt?: Date;
     expiresAt?: Date;
     autoRenew?: boolean;
+    discountId?: string;
+    discountCode?: string;
+    discountType?: 'percentage' | 'fixed';
+    discountValue?: number;
+    discountAmount?: number;
+    originalAmount?: number;
+    finalAmount?: number;
+    discountAppliedAt?: Date;
+    discountAppliedBy?: string;
   }): Promise<OrganizationSubscriptionDocument | null> {
     return OrganizationSubscriptionModel.findOneAndUpdate(
       { provider: 'mercadopago', providerReference: input.providerReference },
@@ -46,7 +73,16 @@ export class OrganizationSubscriptionRepository {
           status: input.status,
           ...(input.startedAt !== undefined ? { startedAt: input.startedAt } : {}),
           ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
-          ...(input.autoRenew !== undefined ? { autoRenew: input.autoRenew } : {})
+          ...(input.autoRenew !== undefined ? { autoRenew: input.autoRenew } : {}),
+          ...(input.discountId !== undefined ? { discountId: input.discountId } : {}),
+          ...(input.discountCode !== undefined ? { discountCode: input.discountCode } : {}),
+          ...(input.discountType !== undefined ? { discountType: input.discountType } : {}),
+          ...(input.discountValue !== undefined ? { discountValue: input.discountValue } : {}),
+          ...(input.discountAmount !== undefined ? { discountAmount: input.discountAmount } : {}),
+          ...(input.originalAmount !== undefined ? { originalAmount: input.originalAmount } : {}),
+          ...(input.finalAmount !== undefined ? { finalAmount: input.finalAmount } : {}),
+          ...(input.discountAppliedAt !== undefined ? { discountAppliedAt: input.discountAppliedAt } : {}),
+          ...(input.discountAppliedBy !== undefined ? { discountAppliedBy: input.discountAppliedBy } : {})
         }
       },
       { new: true }
