@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
+import { LandingVideoModal } from './LandingVideoModal';
 
 
 type LandingTheme = 'dark' | 'light';
@@ -43,7 +44,7 @@ const resolveInitialTheme = (): LandingTheme => {
   return window.localStorage.getItem(LANDING_THEME_KEY) === 'light' ? 'light' : 'dark';
 };
 
-const fallbackContent: any = { hero: { eyebrow: 'NexMed | Agenda, turnos y pacientes para centros de salud y estética', title: 'Organizá turnos, automatizá recordatorios y ordená la agenda de tu centro en un solo sistema.', subtitle: 'NexMed te ayuda a reducir trabajo manual en recepción y a sostener una atención más clara para pacientes y equipo.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Ver demo', href: '/demo', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
+const fallbackContent: any = { hero: { eyebrow: 'NexMed | Agenda, turnos y pacientes para centros de salud y estética', title: 'Organizá turnos, automatizá recordatorios y ordená la agenda de tu centro en un solo sistema.', subtitle: 'NexMed te ayuda a reducir trabajo manual en recepción y a sostener una atención más clara para pacientes y equipo.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Ver demo', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
 
 
 
@@ -75,6 +76,7 @@ export const HomePage = (): ReactElement => {
   const [theme, setTheme] = useState<LandingTheme>(resolveInitialTheme);
   const [heroVideoUnavailable, setHeroVideoUnavailable] = useState(false);
   const [content, setContent] = useState<any>(fallbackContent);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const isDarkMode = theme === 'dark';
   const whatsappUrl = useMemo(() => `https://wa.me/${content.hero?.whatsapp?.number ?? '541122626516'}?text=${encodeURIComponent(content.hero?.whatsapp?.message ?? '')}`, [content]);
 
@@ -102,6 +104,8 @@ export const HomePage = (): ReactElement => {
           <Link to="/register" className="nx-btn-tertiary">Registrarse</Link>
         </div>
       </header>
+
+      <LandingVideoModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} />
 
       <main>
         <section id="inicio" className="nx-landing__hero">
@@ -141,7 +145,7 @@ export const HomePage = (): ReactElement => {
             <p className="nx-landing__hero-proof">Pensado para consultorios, clínicas y centros de estética que hoy gestionan turnos con WhatsApp, planillas o múltiples sistemas.</p>
             <div className="nx-landing__cta-grid">
 
-              <Link className="nx-btn" to="/demo">Ver demo</Link>
+              <button type="button" className="nx-btn" onClick={() => setIsVideoModalOpen(true)}>Ver demo</button>
 
               <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
               <Link className="nx-btn-tertiary" to="/login">Ingresar</Link>
@@ -249,7 +253,7 @@ export const HomePage = (): ReactElement => {
           <h2>{content.finalCta?.title || "Solicitá una demo de NexMed y evaluá si encaja con tu centro."}</h2><p>{content.finalCta?.subtitle || "Te mostramos agenda, turnos, recordatorios, notificaciones y gestión de pacientes con el alcance real disponible hoy."}</p>
           <div className="nx-landing__cta-grid">
 
-            <Link className="nx-btn" to="/demo">Ver demo</Link>
+            <button type="button" className="nx-btn" onClick={() => setIsVideoModalOpen(true)}>Ver demo</button>
 
             <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
             <Link className="nx-btn-tertiary" to="/login">Ingresar</Link>
