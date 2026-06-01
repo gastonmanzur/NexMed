@@ -17,6 +17,18 @@ interface PlanItem {
 
 type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
 
+interface AppliedDiscount {
+  valid: true;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  originalAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  currency: string;
+  message: string;
+}
+
 export const OrganizationSubscriptionPage = (): ReactElement => {
   const { accessToken, activeOrganizationId } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -26,6 +38,12 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
   const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
   const [didRunPastDueFallbackSync, setDidRunPastDueFallbackSync] = useState(false);
   const [plans, setPlans] = useState<PlanItem[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountMessage, setDiscountMessage] = useState('');
+  const [discountError, setDiscountError] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
   const [summary, setSummary] = useState<{
     subscription: {
       id: string;
@@ -130,13 +148,74 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
     void loadData({ forceSync: true });
   }, [accessToken, activeOrganizationId, didRunPastDueFallbackSync, summary]);
 
+  const money = (amount: number, currency: string): string => new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 2
+  }).format(amount);
+
+  const resetDiscount = (): void => {
+    setDiscountCode('');
+    setAppliedDiscount(null);
+    setDiscountMessage('Código removido. El precio vuelve al valor original.');
+    setDiscountError('');
+  };
+
+  const applyDiscount = async (planId: string): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    const code = discountCode.trim();
+    if (!code) {
+      setDiscountError('Ingresá un código para validarlo.');
+      setAppliedDiscount(null);
+      return;
+    }
+
+    setSelectedPlanId(planId);
+    setDiscountLoading(true);
+    setDiscountError('');
+    setDiscountMessage('');
+    setAppliedDiscount(null);
+
+    try {
+      const result = await organizationApi.validateSubscriptionDiscount(accessToken, activeOrganizationId, planId, code);
+      if (!result.valid || !result.code || !result.discountType || result.discountValue === undefined || result.originalAmount === undefined || result.discountAmount === undefined || result.finalAmount === undefined || !result.currency) {
+        setDiscountError(result.message || 'El código no es válido o ya expiró.');
+        return;
+      }
+
+      setAppliedDiscount({
+        valid: true,
+        code: result.code,
+        discountType: result.discountType,
+        discountValue: result.discountValue,
+        originalAmount: result.originalAmount,
+        discountAmount: result.discountAmount,
+        finalAmount: result.finalAmount,
+        currency: result.currency,
+        message: result.message
+      });
+      setDiscountMessage(result.message);
+    } catch (cause) {
+      setDiscountError((cause as Error).message);
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
+
   const startCheckout = async (planId: string): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
     setError('');
     setMessage('');
     setCheckoutLoadingPlanId(planId);
     try {
-      const result = await organizationApi.checkoutSubscription(accessToken, activeOrganizationId, planId);
+      const result = await organizationApi.checkoutSubscription(accessToken, activeOrganizationId, planId, selectedPlanId === planId ? appliedDiscount?.code : undefined);
+
+      if (result.requiresPayment === false) {
+        setMessage(result.message ?? 'Suscripción activada correctamente.');
+        await loadData({ forceSync: true });
+        window.history.replaceState(null, '', result.redirectUrl ?? '/app/subscription');
+        return;
+      }
       const checkoutUrl = [result.checkoutUrl, result.url, result.initPoint]
         .find((value): value is string => typeof value === 'string' && /^https?:\/\//i.test(value.trim()));
 
@@ -251,13 +330,49 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
                   {isRecommended ? <span className="nx-badge">Recomendado</span> : null}
                   {isStarter ? <span className="nx-badge">Ideal para consultorios</span> : null}
                 </div>
-                <p className="nx-subscription-price">{plan.price} {plan.currency}<span>/mes</span></p>
+                <p className="nx-subscription-price">{money(plan.price, plan.currency)}<span>/mes</span></p>
                 <p>{plan.description ?? 'Plan para gestionar la operación de tu centro.'}</p>
                 <ul className="nx-subscription-benefits">
                   <li>Hasta {plan.maxProfessionalsActive} profesionales activos</li>
                   <li>Gestión de turnos y agenda</li>
                   <li>Soporte de suscripción</li>
                 </ul>
+                {selectedPlanId === plan.id ? (
+                  <section className="nx-discount-box" aria-label="Código de descuento">
+                    <div className="nx-discount-box__header">
+                      <strong>Código de descuento</strong>
+                      {appliedDiscount ? <span className="nx-badge">Aplicado</span> : null}
+                    </div>
+                    <div className="nx-discount-box__actions">
+                      <input
+                        type="text"
+                        value={discountCode}
+                        disabled={discountLoading || !!appliedDiscount}
+                        placeholder="Ej: CODIGO30"
+                        onChange={(event) => setDiscountCode(event.target.value.toUpperCase())}
+                      />
+                      {appliedDiscount ? (
+                        <button type="button" className="nx-btn-secondary" onClick={resetDiscount}>Quitar</button>
+                      ) : (
+                        <button type="button" className="nx-btn-secondary" disabled={discountLoading} onClick={() => void applyDiscount(plan.id)}>
+                          {discountLoading ? 'Validando...' : 'Aplicar'}
+                        </button>
+                      )}
+                    </div>
+                    {discountMessage ? <p className="nx-discount-box__success">{discountMessage}</p> : null}
+                    {discountError ? <p className="nx-discount-box__error">{discountError}</p> : null}
+                    <div className="nx-discount-summary">
+                      <span>Precio original</span><strong>{money(appliedDiscount?.originalAmount ?? plan.price, plan.currency)}</strong>
+                      <span>Descuento aplicado</span><strong>-{money(appliedDiscount?.discountAmount ?? 0, plan.currency)}</strong>
+                      <span>Total a pagar</span><strong>{money(appliedDiscount?.finalAmount ?? plan.price, plan.currency)}</strong>
+                    </div>
+                    {appliedDiscount?.finalAmount === 0 ? <p className="nx-discount-box__free">Tu suscripción se activará sin pago y sin redirección a Mercado Pago.</p> : null}
+                  </section>
+                ) : (
+                  <button type="button" className="nx-btn-secondary" onClick={() => { setSelectedPlanId(plan.id); setDiscountCode(''); setAppliedDiscount(null); setDiscountError(''); setDiscountMessage(''); }}>
+                    Tengo un código de descuento
+                  </button>
+                )}
                 <button
                   type="button"
                   className={isCurrent ? 'nx-btn-secondary' : 'nx-btn'}
@@ -265,10 +380,12 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
                   onClick={() => void startCheckout(plan.id)}
                 >
                   {checkoutLoadingPlanId === plan.id
-                    ? 'Iniciando checkout...'
-                    : isCurrent
-                      ? 'Renovar / actualizar plan'
-                      : 'Elegir este plan'}
+                    ? (appliedDiscount?.finalAmount === 0 && selectedPlanId === plan.id ? 'Activando plan...' : 'Iniciando checkout...')
+                    : appliedDiscount?.finalAmount === 0 && selectedPlanId === plan.id
+                      ? 'Activar suscripción'
+                      : isCurrent
+                        ? 'Renovar / actualizar plan'
+                        : 'Elegir este plan'}
                 </button>
               </Card>
             );

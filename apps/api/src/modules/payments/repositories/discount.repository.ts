@@ -87,4 +87,10 @@ export class DiscountRepository {
 
     return DiscountModel.findByIdAndUpdate(discountId, { $set: update }, { new: true }).lean();
   }
+
+  incrementRedemptionCount(discountId: string): Promise<DiscountDocument | null> {
+    if (!mongoose.isValidObjectId(discountId)) return Promise.resolve(null);
+    return DiscountModel.findByIdAndUpdate(discountId, { $inc: { redemptionCount: 1 } }, { new: true }).lean();
+  }
+
 }

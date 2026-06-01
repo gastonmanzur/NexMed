@@ -2473,3 +2473,55 @@ body {
     max-height: calc(94dvh - 6.4rem);
   }
 }
+
+.nx-discount-box {
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.nx-discount-box__header,
+.nx-discount-box__actions,
+.nx-discount-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.nx-discount-box__actions input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  text-transform: uppercase;
+}
+
+.nx-discount-box__success,
+.nx-discount-box__error,
+.nx-discount-box__free {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.nx-discount-box__success { color: #166534; }
+.nx-discount-box__error { color: #b91c1c; }
+.nx-discount-box__free { color: #075985; }
+
+.nx-discount-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  border-top: 1px solid var(--border);
+  padding-top: 0.65rem;
+  color: var(--text-muted);
+}
+
+.nx-discount-summary strong {
+  color: var(--text);
+}

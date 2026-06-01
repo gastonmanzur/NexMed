@@ -11,7 +11,16 @@ const organizationSubscriptionSchema = new mongoose.Schema(
     status: { type: String, enum: organizationSubscriptionStatuses, required: true, default: 'trial' },
     startedAt: { type: Date, required: false },
     expiresAt: { type: Date, required: false },
-    autoRenew: { type: Boolean, required: false, default: true }
+    autoRenew: { type: Boolean, required: false, default: true },
+    discountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Discount', required: false },
+    discountCode: { type: String, required: false, trim: true, uppercase: true },
+    discountType: { type: String, enum: ['percentage', 'fixed'], required: false },
+    discountValue: { type: Number, required: false, min: 0 },
+    discountAmount: { type: Number, required: false, min: 0 },
+    originalAmount: { type: Number, required: false, min: 0 },
+    finalAmount: { type: Number, required: false, min: 0 },
+    discountAppliedAt: { type: Date, required: false },
+    discountAppliedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }
   },
   { timestamps: true }
 );

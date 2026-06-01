@@ -310,12 +310,46 @@ export const organizationApi = {
     return result.data;
   },
 
-  checkoutSubscription: async (accessToken: string, organizationId: string, planId: string): Promise<{
+  validateSubscriptionDiscount: async (accessToken: string, organizationId: string, planId: string, code: string): Promise<{
+    valid: boolean;
+    code?: string;
+    discountType?: 'percentage' | 'fixed';
+    discountValue?: number;
+    originalAmount?: number;
+    discountAmount?: number;
+    finalAmount?: number;
+    currency?: string;
+    message: string;
+  }> => {
+    const result = await request<{ success: true; data: {
+      valid: boolean;
+      code?: string;
+      discountType?: 'percentage' | 'fixed';
+      discountValue?: number;
+      originalAmount?: number;
+      discountAmount?: number;
+      finalAmount?: number;
+      currency?: string;
+      message: string;
+    } }>(`/organizations/${organizationId}/subscription/discount/validate`, {
+      method: 'POST',
+      body: JSON.stringify({ planId, code }),
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    return result.data;
+  },
+
+  checkoutSubscription: async (accessToken: string, organizationId: string, planId: string, discountCode?: string): Promise<{
     subscriptionId: string;
     status: string;
     checkoutUrl?: string;
     url?: string;
     initPoint?: string;
+    requiresPayment?: boolean;
+    subscriptionStatus?: string;
+    message?: string;
+    redirectUrl?: string;
   }> => {
     const result = await request<{ success: true; data: {
       subscriptionId: string;
@@ -323,9 +357,13 @@ export const organizationApi = {
       checkoutUrl?: string;
       url?: string;
       initPoint?: string;
+      requiresPayment?: boolean;
+      subscriptionStatus?: string;
+      message?: string;
+      redirectUrl?: string;
     } }>(`/organizations/${organizationId}/subscription/checkout`, {
       method: 'POST',
-      body: JSON.stringify({ planId }),
+      body: JSON.stringify({ planId, ...(discountCode ? { discountCode } : {}) }),
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
