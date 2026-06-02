@@ -6,6 +6,11 @@ import { useAuth } from '../auth/AuthContext';
 import { adminApi, type AdminSubscriptionItem, type CommercialStatus } from './admin-api';
 
 const statuses: CommercialStatus[] = ['trial', 'active', 'past_due', 'suspended', 'canceled'];
+const money = (amount: number, currency: string | null): string => new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency: currency ?? 'ARS',
+  maximumFractionDigits: 2
+}).format(amount);
 
 const statusClass = (status: string): string => {
   if (status === 'past_due' || status === 'suspended') return 'nx-badge nx-badge--danger';
@@ -80,7 +85,7 @@ export const AdminSubscriptionsPage = (): ReactElement => {
                   <td>{item.organizationName}</td>
                   <td>{item.planName ?? '-'}</td>
                   <td><span className={statusClass(item.status)}>{item.status}</span></td>
-                  <td>{item.monthlyAmount !== null ? `${item.monthlyAmount} ${item.currency ?? ''}` : '-'}</td>
+                  <td>{item.monthlyAmount !== null ? money(item.monthlyAmount, item.currency) : '-'}</td>
                   <td>{item.startedAt ? new Date(item.startedAt).toLocaleDateString('es-AR') : '-'}</td>
                   <td>{item.renewalOrExpiryAt ? new Date(item.renewalOrExpiryAt).toLocaleDateString('es-AR') : '-'}</td>
                   <td>{item.provider}</td>

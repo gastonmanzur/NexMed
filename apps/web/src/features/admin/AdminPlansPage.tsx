@@ -4,7 +4,12 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { adminApi, type AdminPlanItem } from './admin-api';
 
-const money = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const money = (amount: number, currency: 'USD' | 'ARS'): string => new Intl.NumberFormat('es-AR', {
+  style: 'currency',
+  currency,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
+}).format(amount);
 
 export const AdminPlansPage = (): ReactElement => {
   const { accessToken } = useAuth();
@@ -16,8 +21,8 @@ export const AdminPlansPage = (): ReactElement => {
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
-  const [monthlyPrice, setMonthlyPrice] = useState('');
-  const [currency, setCurrency] = useState('ARS');
+  const [displayPriceUsd, setDisplayPriceUsd] = useState('');
+  const [billingPriceArs, setBillingPriceArs] = useState('');
   const [maxProfessionals, setMaxProfessionals] = useState('3');
   const [description, setDescription] = useState('');
   const [isRecommended, setIsRecommended] = useState(false);
@@ -28,8 +33,8 @@ export const AdminPlansPage = (): ReactElement => {
     setEditingId(null);
     setName('');
     setSlug('');
-    setMonthlyPrice('');
-    setCurrency('ARS');
+    setDisplayPriceUsd('');
+    setBillingPriceArs('');
     setMaxProfessionals('3');
     setDescription('');
     setIsRecommended(false);
@@ -62,8 +67,8 @@ export const AdminPlansPage = (): ReactElement => {
       const payload = {
         name,
         slug,
-        monthlyPrice: Number(monthlyPrice),
-        currency,
+        displayPriceUsd: Number(displayPriceUsd),
+        billingPriceArs: Number(billingPriceArs),
         maxProfessionals: Number(maxProfessionals),
         isRecommended
       };
@@ -90,8 +95,8 @@ export const AdminPlansPage = (): ReactElement => {
     setEditingId(item.id);
     setName(item.name);
     setSlug(item.slug);
-    setMonthlyPrice(String(item.monthlyPrice));
-    setCurrency(item.currency);
+    setDisplayPriceUsd(String(item.displayPriceUsd));
+    setBillingPriceArs(String(item.billingPriceArs));
     setMaxProfessionals(String(item.maxProfessionals));
     setDescription(item.description ?? '');
     setIsRecommended(item.isRecommended);
@@ -125,7 +130,7 @@ export const AdminPlansPage = (): ReactElement => {
 
   return (
     <main className="nx-page">
-      <Card title="Planes" subtitle="Gestioná precios, límites y recomendación comercial.">
+      <Card title="Planes" subtitle="Gestioná el precio comercial visible en USD y el monto real de cobro en ARS para Mercado Pago.">
         <form className="nx-form-grid nx-form-grid--cols-3" onSubmit={(event) => void onSubmit(event)}>
           <label className="nx-field">
             Nombre
@@ -136,12 +141,12 @@ export const AdminPlansPage = (): ReactElement => {
             <input value={slug} onChange={(event) => setSlug(event.target.value.toLowerCase().replace(/\s+/g, '-'))} required />
           </label>
           <label className="nx-field">
-            Precio mensual
-            <input type="number" min="0" value={monthlyPrice} onChange={(event) => setMonthlyPrice(event.target.value)} required />
+            Precio visible mensual (USD)
+            <input type="number" min="0" step="0.01" value={displayPriceUsd} onChange={(event) => setDisplayPriceUsd(event.target.value)} required />
           </label>
           <label className="nx-field">
-            Moneda
-            <input value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} required />
+            Precio real de cobro mensual (ARS)
+            <input type="number" min="0" step="0.01" value={billingPriceArs} onChange={(event) => setBillingPriceArs(event.target.value)} required />
           </label>
           <label className="nx-field">
             Límite de profesionales
@@ -170,8 +175,8 @@ export const AdminPlansPage = (): ReactElement => {
             <thead>
               <tr>
                 <th>Nombre</th>
-                <th>Precio mensual</th>
-                <th>Moneda</th>
+                <th>Precio visible</th>
+                <th>Cobro Mercado Pago</th>
                 <th>Límite profesionales</th>
                 <th>Estado</th>
                 <th>Recomendado</th>
@@ -182,8 +187,8 @@ export const AdminPlansPage = (): ReactElement => {
               {rows.map((item) => (
                 <tr key={item.id}>
                   <td>{item.name}</td>
-                  <td>{money.format(item.monthlyPrice)}</td>
-                  <td>{item.currency}</td>
+                  <td>{money(item.displayPriceUsd, item.displayCurrency)}</td>
+                  <td>{money(item.billingPriceArs, item.billingCurrency)}</td>
                   <td>{item.maxProfessionals}</td>
                   <td><span className={item.isActive ? 'nx-badge' : 'nx-badge nx-badge--danger'}>{item.isActive ? 'Activo' : 'Inactivo'}</span></td>
                   <td>{item.isRecommended ? <span className="nx-badge">Sí</span> : '-'}</td>

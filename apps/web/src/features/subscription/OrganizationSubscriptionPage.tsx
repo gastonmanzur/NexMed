@@ -8,6 +8,10 @@ interface PlanItem {
   id: string;
   code: string;
   name: string;
+  displayPriceUsd: number;
+  billingPriceArs: number;
+  displayCurrency: 'USD';
+  billingCurrency: 'ARS';
   price: number;
   currency: string;
   maxProfessionalsActive: number;
@@ -148,7 +152,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
     void loadData({ forceSync: true });
   }, [accessToken, activeOrganizationId, didRunPastDueFallbackSync, summary]);
 
-  const money = (amount: number, currency: string): string => new Intl.NumberFormat('es-AR', {
+  const money = (amount: number, currency: string): string => new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'es-AR', {
     style: 'currency',
     currency,
     maximumFractionDigits: 2
@@ -330,7 +334,8 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
                   {isRecommended ? <span className="nx-badge">Recomendado</span> : null}
                   {isStarter ? <span className="nx-badge">Ideal para consultorios</span> : null}
                 </div>
-                <p className="nx-subscription-price">{money(plan.price, plan.currency)}<span>/mes</span></p>
+                <p className="nx-subscription-price">{money(plan.displayPriceUsd, plan.displayCurrency)}<span>/mes</span></p>
+                <p>El precio comercial se muestra en USD. El cobro real en Mercado Pago se procesa en ARS por {money(plan.billingPriceArs, plan.billingCurrency)} / mes.</p>
                 <p>{plan.description ?? 'Plan para gestionar la operación de tu centro.'}</p>
                 <ul className="nx-subscription-benefits">
                   <li>Hasta {plan.maxProfessionalsActive} profesionales activos</li>
@@ -362,9 +367,9 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
                     {discountMessage ? <p className="nx-discount-box__success">{discountMessage}</p> : null}
                     {discountError ? <p className="nx-discount-box__error">{discountError}</p> : null}
                     <div className="nx-discount-summary">
-                      <span>Precio original</span><strong>{money(appliedDiscount?.originalAmount ?? plan.price, plan.currency)}</strong>
-                      <span>Descuento aplicado</span><strong>-{money(appliedDiscount?.discountAmount ?? 0, plan.currency)}</strong>
-                      <span>Total a pagar</span><strong>{money(appliedDiscount?.finalAmount ?? plan.price, plan.currency)}</strong>
+                      <span>Precio original de cobro</span><strong>{money(appliedDiscount?.originalAmount ?? plan.billingPriceArs, appliedDiscount?.currency ?? plan.billingCurrency)}</strong>
+                      <span>Descuento aplicado</span><strong>-{money(appliedDiscount?.discountAmount ?? 0, appliedDiscount?.currency ?? plan.billingCurrency)}</strong>
+                      <span>Total a pagar en Mercado Pago</span><strong>{money(appliedDiscount?.finalAmount ?? plan.billingPriceArs, appliedDiscount?.currency ?? plan.billingCurrency)}</strong>
                     </div>
                     {appliedDiscount?.finalAmount === 0 ? <p className="nx-discount-box__free">Tu suscripción se activará sin pago y sin redirección a Mercado Pago.</p> : null}
                   </section>
