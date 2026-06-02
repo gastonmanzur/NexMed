@@ -562,6 +562,10 @@ export class OrganizationService {
     id: string;
     code: string;
     name: string;
+    displayPriceUsd: number;
+    billingPriceArs: number;
+    displayCurrency: 'USD';
+    billingCurrency: 'ARS';
     price: number;
     currency: string;
     maxProfessionalsActive: number;
@@ -575,8 +579,12 @@ export class OrganizationService {
       id: plan._id.toString(),
       code: plan.code,
       name: plan.name,
-      price: plan.price,
-      currency: plan.currency,
+      displayPriceUsd: plan.displayPriceUsd ?? 0,
+      billingPriceArs: plan.billingPriceArs ?? plan.price,
+      displayCurrency: plan.displayCurrency ?? 'USD',
+      billingCurrency: plan.billingCurrency ?? plan.currency ?? 'ARS',
+      price: plan.displayPriceUsd ?? 0,
+      currency: plan.displayCurrency ?? 'USD',
       maxProfessionalsActive: plan.maxProfessionalsActive,
       status: plan.status,
       description: plan.description ?? null
@@ -644,8 +652,12 @@ export class OrganizationService {
         id: plan._id.toString(),
         code: plan.code,
         name: plan.name,
-        price: plan.price,
-        currency: plan.currency,
+        displayPriceUsd: plan.displayPriceUsd ?? 0,
+        billingPriceArs: plan.billingPriceArs ?? plan.price,
+        displayCurrency: plan.displayCurrency ?? 'USD',
+        billingCurrency: plan.billingCurrency ?? plan.currency ?? 'ARS',
+        price: plan.displayPriceUsd ?? 0,
+        currency: plan.displayCurrency ?? 'USD',
         maxProfessionalsActive: plan.maxProfessionalsActive,
         status: plan.status,
         description: plan.description ?? null
@@ -671,8 +683,8 @@ export class OrganizationService {
       organizationId: input.organizationId,
       planId: input.planId,
       code: input.code,
-      planPrice: plan.price,
-      planCurrency: plan.currency
+      planPrice: plan.billingPriceArs ?? plan.price,
+      planCurrency: plan.billingCurrency ?? plan.currency ?? 'ARS'
     });
   }
 
@@ -697,8 +709,8 @@ export class OrganizationService {
           organizationId: input.organizationId,
           planId: input.planId,
           code: input.discountCode,
-          planPrice: plan.price,
-          planCurrency: plan.currency
+          planPrice: plan.billingPriceArs ?? plan.price,
+          planCurrency: plan.billingCurrency ?? plan.currency ?? 'ARS'
         })
       : null;
 
@@ -747,8 +759,8 @@ export class OrganizationService {
     const checkout = await this.paymentProvider.createSubscription({
       externalReference: `org_${input.organizationId}_${randomBytes(8).toString('hex')}`,
       reason: `Suscripción ${plan.name} - NexMed`,
-      amount: discountResult?.finalAmount ?? plan.price,
-      currency: plan.currency,
+      amount: discountResult?.finalAmount ?? plan.billingPriceArs ?? plan.price,
+      currency: plan.billingCurrency ?? plan.currency ?? 'ARS',
       payerEmail: actorUser.email,
       frequency: 1,
       frequencyType: 'months'

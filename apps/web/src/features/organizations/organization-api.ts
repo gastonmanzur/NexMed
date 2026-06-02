@@ -237,6 +237,10 @@ export const organizationApi = {
     id: string;
     code: string;
     name: string;
+    displayPriceUsd: number;
+    billingPriceArs: number;
+    displayCurrency: 'USD';
+    billingCurrency: 'ARS';
     price: number;
     currency: string;
     maxProfessionalsActive: number;
@@ -247,6 +251,10 @@ export const organizationApi = {
       id: string;
       code: string;
       name: string;
+      displayPriceUsd: number;
+      billingPriceArs: number;
+      displayCurrency: 'USD';
+      billingCurrency: 'ARS';
       price: number;
       currency: string;
       maxProfessionalsActive: number;
@@ -273,6 +281,10 @@ export const organizationApi = {
       id: string;
       code: string;
       name: string;
+      displayPriceUsd: number;
+      billingPriceArs: number;
+      displayCurrency: 'USD';
+      billingCurrency: 'ARS';
       price: number;
       currency: string;
       maxProfessionalsActive: number;
@@ -295,6 +307,10 @@ export const organizationApi = {
         id: string;
         code: string;
         name: string;
+        displayPriceUsd: number;
+        billingPriceArs: number;
+        displayCurrency: 'USD';
+        billingCurrency: 'ARS';
         price: number;
         currency: string;
         maxProfessionalsActive: number;

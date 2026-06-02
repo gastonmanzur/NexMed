@@ -5,6 +5,12 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { adminApi, type AdminOrganizationDetail } from './admin-api';
 
+const money = (amount: number, currency: string): string => new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'es-AR', {
+  style: 'currency',
+  currency,
+  maximumFractionDigits: 2
+}).format(amount);
+
 const commercialBadge = (status: string): string => {
   if (status === 'past_due' || status === 'suspended') return 'nx-badge nx-badge--danger';
   return 'nx-badge';
@@ -71,11 +77,12 @@ export const AdminOrganizationDetailPage = (): ReactElement => {
           <Card title="3) Suscripción actual">
             <div className="nx-table-wrap">
               <table className="nx-table">
-                <thead><tr><th>Plan</th><th>Monto</th><th>Estado</th><th>Inicio</th><th>Vencimiento</th><th>Provider Ref</th></tr></thead>
+                <thead><tr><th>Plan</th><th>Precio visible</th><th>Cobro MP</th><th>Estado</th><th>Inicio</th><th>Vencimiento</th><th>Provider Ref</th></tr></thead>
                 <tbody>
                   <tr>
                     <td>{data.subscription?.plan?.name ?? '-'}</td>
-                    <td>{data.subscription?.plan ? `${data.subscription.plan.price} ${data.subscription.plan.currency}` : '-'}</td>
+                    <td>{data.subscription?.plan ? money(data.subscription.plan.displayPriceUsd, data.subscription.plan.displayCurrency) : '-'}</td>
+                    <td>{data.subscription?.plan ? money(data.subscription.plan.billingPriceArs, data.subscription.plan.billingCurrency) : '-'}</td>
                     <td>{data.subscription ? <span className={commercialBadge(data.subscription.status)}>{data.subscription.status}</span> : '-'}</td>
                     <td>{data.subscription?.startedAt ? new Date(data.subscription.startedAt).toLocaleDateString('es-AR') : '-'}</td>
                     <td>{data.subscription?.expiresAt ? new Date(data.subscription.expiresAt).toLocaleDateString('es-AR') : '-'}</td>

@@ -35,8 +35,12 @@ export class AdminService {
     _id: mongoose.Types.ObjectId;
     code: string;
     name: string;
-    price: number;
-    currency: string;
+    price?: number;
+    currency?: string;
+    displayPriceUsd?: number;
+    billingPriceArs?: number;
+    displayCurrency?: 'USD';
+    billingCurrency?: 'ARS';
     maxProfessionalsActive: number;
     description?: string | null;
     status: 'active' | 'inactive';
@@ -44,12 +48,19 @@ export class AdminService {
     createdAt: Date;
     updatedAt: Date;
   }) {
+    const billingPriceArs = plan.billingPriceArs ?? plan.price ?? 0;
+    const displayPriceUsd = plan.displayPriceUsd ?? 0;
+
     return {
       id: plan._id.toString(),
       name: plan.name,
       slug: plan.code,
-      monthlyPrice: plan.price,
-      currency: plan.currency,
+      displayPriceUsd,
+      billingPriceArs,
+      displayCurrency: plan.displayCurrency ?? 'USD',
+      billingCurrency: plan.billingCurrency ?? 'ARS',
+      monthlyPrice: billingPriceArs,
+      currency: plan.billingCurrency ?? plan.currency ?? 'ARS',
       maxProfessionals: plan.maxProfessionalsActive,
       description: plan.description ?? null,
       isActive: plan.status === 'active',
@@ -147,7 +158,7 @@ export class AdminService {
     const planIds = Array.from(new Set(activeSubscriptions.map((item) => item.planId.toString())));
     const plans = await PlanModel.find({ _id: { $in: planIds } }).lean();
     const plansById = new Map(plans.map((item) => [item._id.toString(), item]));
-    const estimatedMonthlyRevenue = activeSubscriptions.reduce((acc, item) => acc + (plansById.get(item.planId.toString())?.price ?? 0), 0);
+    const estimatedMonthlyRevenue = activeSubscriptions.reduce((acc, item) => acc + (plansById.get(item.planId.toString())?.billingPriceArs ?? plansById.get(item.planId.toString())?.price ?? 0), 0);
 
     const recentOrganizationIds = recentOrganizations.map((item) => item._id);
     const recentSubscriptions = await OrganizationSubscriptionModel.find({ organizationId: { $in: recentOrganizationIds } }).lean();
@@ -347,8 +358,12 @@ export class AdminService {
                   id: plan._id.toString(),
                   code: plan.code,
                   name: plan.name,
-                  price: plan.price,
-                  currency: plan.currency,
+                  displayPriceUsd: plan.displayPriceUsd ?? 0,
+                  billingPriceArs: plan.billingPriceArs ?? plan.price,
+                  displayCurrency: plan.displayCurrency ?? 'USD',
+                  billingCurrency: plan.billingCurrency ?? plan.currency ?? 'ARS',
+                  price: plan.displayPriceUsd ?? 0,
+                  currency: plan.displayCurrency ?? 'USD',
                   maxProfessionalsActive: plan.maxProfessionalsActive
                 }
               : null
@@ -589,8 +604,8 @@ export class AdminService {
         status: subscription.status,
         planId: subscription.planId.toString(),
         planName: plansById.get(subscription.planId.toString())?.name ?? null,
-        monthlyAmount: plansById.get(subscription.planId.toString())?.price ?? null,
-        currency: plansById.get(subscription.planId.toString())?.currency ?? null,
+        monthlyAmount: plansById.get(subscription.planId.toString())?.billingPriceArs ?? plansById.get(subscription.planId.toString())?.price ?? null,
+        currency: plansById.get(subscription.planId.toString())?.billingCurrency ?? plansById.get(subscription.planId.toString())?.currency ?? null,
         provider: subscription.provider,
         startedAt: subscription.startedAt ? subscription.startedAt.toISOString() : null,
         renewalOrExpiryAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null,
@@ -609,15 +624,15 @@ export class AdminService {
   }
 
   async listPlans() {
-    const plans = await PlanModel.find().sort({ price: 1, createdAt: 1 }).lean();
+    const plans = await PlanModel.find().sort({ billingPriceArs: 1, price: 1, createdAt: 1 }).lean();
     return plans.map((plan) => this.toPlanAdminDto(plan));
   }
 
   async createPlan(input: {
     name: string;
     slug: string;
-    monthlyPrice: number;
-    currency: string;
+    displayPriceUsd: number;
+    billingPriceArs: number;
     maxProfessionals: number;
     description?: string | undefined;
     isActive?: boolean | undefined;
@@ -636,8 +651,12 @@ export class AdminService {
     const created = await PlanModel.create({
       code: normalizedSlug,
       name: input.name.trim(),
-      price: input.monthlyPrice,
-      currency: input.currency.trim().toUpperCase(),
+      displayPriceUsd: input.displayPriceUsd,
+      billingPriceArs: input.billingPriceArs,
+      displayCurrency: 'USD',
+      billingCurrency: 'ARS',
+      price: input.billingPriceArs,
+      currency: 'ARS',
       maxProfessionalsActive: input.maxProfessionals,
       description: input.description?.trim() || undefined,
       status: input.isActive === false ? 'inactive' : 'active',
@@ -652,8 +671,8 @@ export class AdminService {
     input: Partial<{
       name: string;
       slug: string;
-      monthlyPrice: number;
-      currency: string;
+      displayPriceUsd: number;
+      billingPriceArs: number;
       maxProfessionals: number;
       description: string | null;
       isActive: boolean;
@@ -681,8 +700,14 @@ export class AdminService {
       }
       update.code = normalizedSlug;
     }
-    if (input.monthlyPrice !== undefined) update.price = input.monthlyPrice;
-    if (input.currency !== undefined) update.currency = input.currency.trim().toUpperCase();
+    if (input.displayPriceUsd !== undefined) update.displayPriceUsd = input.displayPriceUsd;
+    if (input.billingPriceArs !== undefined) {
+      update.billingPriceArs = input.billingPriceArs;
+      update.price = input.billingPriceArs;
+    }
+    update.displayCurrency = 'USD';
+    update.billingCurrency = 'ARS';
+    update.currency = 'ARS';
     if (input.maxProfessionals !== undefined) update.maxProfessionalsActive = input.maxProfessionals;
     if (input.description !== undefined) update.description = input.description?.trim() || null;
     if (input.isActive !== undefined) update.status = input.isActive ? 'active' : 'inactive';

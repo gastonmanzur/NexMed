@@ -95,6 +95,10 @@ export interface AdminOrganizationDetail {
       id: string;
       code: string;
       name: string;
+      displayPriceUsd: number;
+      billingPriceArs: number;
+      displayCurrency: 'USD';
+      billingCurrency: 'ARS';
       price: number;
       currency: string;
       maxProfessionalsActive: number;
@@ -142,6 +146,10 @@ export interface AdminPlanItem {
   id: string;
   name: string;
   slug: string;
+  displayPriceUsd: number;
+  billingPriceArs: number;
+  displayCurrency: 'USD';
+  billingCurrency: 'ARS';
   monthlyPrice: number;
   currency: string;
   maxProfessionals: number;
@@ -220,8 +228,10 @@ export const adminApi = {
     input: {
       name: string;
       slug: string;
-      monthlyPrice: number;
-      currency: string;
+      displayPriceUsd: number;
+      billingPriceArs: number;
+      displayCurrency?: 'USD';
+      billingCurrency?: 'ARS';
       maxProfessionals: number;
       description?: string;
       isActive?: boolean;
@@ -242,8 +252,10 @@ export const adminApi = {
     input: Partial<{
       name: string;
       slug: string;
-      monthlyPrice: number;
-      currency: string;
+      displayPriceUsd: number;
+      billingPriceArs: number;
+      displayCurrency?: 'USD';
+      billingCurrency?: 'ARS';
       maxProfessionals: number;
       description: string | null;
       isActive: boolean;

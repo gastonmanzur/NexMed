@@ -83,8 +83,10 @@ const updateOrganizationStatusSchema = z.object({
 const planCreateSchema = z.object({
   name: z.string().trim().min(1).max(120),
   slug: z.string().trim().min(2).max(80).regex(/^[a-z0-9-]+$/),
-  monthlyPrice: z.number().min(0),
-  currency: z.string().trim().min(3).max(10),
+  displayPriceUsd: z.number().min(0),
+  billingPriceArs: z.number().min(0),
+  displayCurrency: z.literal('USD').optional(),
+  billingCurrency: z.literal('ARS').optional(),
   maxProfessionals: z.number().int().min(1),
   description: z.string().trim().max(500).optional(),
   isActive: z.boolean().optional(),
@@ -350,8 +352,8 @@ export class AdminController {
     const data = await this.service.updatePlan(planId, {
       ...(body.name !== undefined ? { name: body.name } : {}),
       ...(body.slug !== undefined ? { slug: body.slug } : {}),
-      ...(body.monthlyPrice !== undefined ? { monthlyPrice: body.monthlyPrice } : {}),
-      ...(body.currency !== undefined ? { currency: body.currency } : {}),
+      ...(body.displayPriceUsd !== undefined ? { displayPriceUsd: body.displayPriceUsd } : {}),
+      ...(body.billingPriceArs !== undefined ? { billingPriceArs: body.billingPriceArs } : {}),
       ...(body.maxProfessionals !== undefined ? { maxProfessionals: body.maxProfessionals } : {}),
       ...(body.description !== undefined ? { description: body.description ?? null } : {}),
       ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
