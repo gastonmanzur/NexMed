@@ -1,13 +1,6 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, type ReactElement } from 'react';
 
-const MOBILE_VIDEO_SRC = '/media/landing/comercial_vertical.mp4';
-const DESKTOP_VIDEO_SRC = '/media/landing/comercial_horizontal.mp4';
-const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
-
-const getPreferredVideoSrc = (): string => {
-  if (typeof window === 'undefined') return DESKTOP_VIDEO_SRC;
-  return window.matchMedia(MOBILE_MEDIA_QUERY).matches ? MOBILE_VIDEO_SRC : DESKTOP_VIDEO_SRC;
-};
+const DEMO_VIDEO_SRC = '/media/landing/comercial_horizontal.mp4';
 
 type LandingVideoModalProps = {
   isOpen: boolean;
@@ -16,20 +9,6 @@ type LandingVideoModalProps = {
 
 export const LandingVideoModal = ({ isOpen, onClose }: LandingVideoModalProps): ReactElement | null => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [videoSrc, setVideoSrc] = useState(getPreferredVideoSrc);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-
-    const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
-    const updateVideoSource = () => setVideoSrc(mediaQuery.matches ? MOBILE_VIDEO_SRC : DESKTOP_VIDEO_SRC);
-
-    updateVideoSource();
-    mediaQuery.addEventListener('change', updateVideoSource);
-
-    return () => mediaQuery.removeEventListener('change', updateVideoSource);
-  }, []);
-
   const stopVideoPlayback = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -60,7 +39,7 @@ export const LandingVideoModal = ({ isOpen, onClose }: LandingVideoModalProps): 
     }
 
     return () => stopVideoPlayback();
-  }, [isOpen, stopVideoPlayback, videoSrc]);
+  }, [isOpen, stopVideoPlayback]);
 
   useEffect(() => {
     if (!isOpen || typeof window === 'undefined') return undefined;
@@ -86,8 +65,6 @@ export const LandingVideoModal = ({ isOpen, onClose }: LandingVideoModalProps): 
 
   if (!isOpen) return null;
 
-  const isMobileVideo = videoSrc === MOBILE_VIDEO_SRC;
-
   return (
     <div className="nx-landing-video-modal" role="dialog" aria-modal="true" aria-labelledby="landing-video-title">
       <button
@@ -106,15 +83,15 @@ export const LandingVideoModal = ({ isOpen, onClose }: LandingVideoModalProps): 
             ×
           </button>
         </div>
-        <div className={`nx-landing-video-modal__frame ${isMobileVideo ? 'nx-landing-video-modal__frame--vertical' : 'nx-landing-video-modal__frame--horizontal'}`}>
+        <div className="nx-landing-video-modal__frame nx-landing-video-modal__frame--horizontal">
           <video
             ref={videoRef}
             className="nx-landing-video-modal__video"
             controls
             playsInline
             preload="metadata"
-            src={videoSrc}
-            aria-label={isMobileVideo ? 'Video publicitario vertical de NexMed' : 'Video publicitario horizontal de NexMed'}
+            src={DEMO_VIDEO_SRC}
+            aria-label="Video publicitario horizontal de NexMed"
           />
         </div>
       </div>
