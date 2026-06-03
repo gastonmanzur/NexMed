@@ -28,6 +28,8 @@ const listQuerySchema = z.object({
   to: z.string().datetime().optional()
 });
 
+const durationMultiplierSchema = z.union([z.literal(1), z.literal(2)]);
+
 const createSchema = z.object({
   professionalId: z.string().trim().min(1),
   specialtyId: z.string().trim().min(1).optional(),
@@ -37,6 +39,7 @@ const createSchema = z.object({
   patientPhone: z.string().trim().min(1).optional(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime().optional(),
+  durationMultiplier: durationMultiplierSchema.optional(),
   notes: z.string().trim().max(1000).optional()
 });
 
@@ -49,6 +52,7 @@ const rescheduleSchema = z.object({
   newSpecialtyId: z.string().trim().min(1).optional(),
   newStartAt: z.string().datetime(),
   newEndAt: z.string().datetime().optional(),
+  durationMultiplier: durationMultiplierSchema.optional(),
   reason: z.string().trim().max(500).optional()
 });
 

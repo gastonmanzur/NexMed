@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import type {
   AppointmentDto,
-  AppointmentStatus,
+  AppointmentDurationMultiplier, AppointmentStatus,
   CalculatedAvailabilityDto,
   JoinOrganizationPreviewDto,
   OrganizationDto,
@@ -416,6 +416,7 @@ export class PatientService {
       specialtyId?: string;
       startAt: string;
       endAt?: string;
+      durationMultiplier?: AppointmentDurationMultiplier;
       notes?: string;
       beneficiaryType?: 'self' | 'family_member';
       familyMemberId?: string;
@@ -466,6 +467,7 @@ export class PatientService {
       ...(profile.phone ? { patientPhone: profile.phone } : {}),
       startAt: input.startAt,
       ...(input.endAt ? { endAt: input.endAt } : {}),
+      ...(input.durationMultiplier ? { durationMultiplier: input.durationMultiplier } : {}),
       ...(input.notes ? { notes: normalizeOptionalText(input.notes) } : {}),
       beneficiaryType,
       ...(familyMemberId ? { familyMemberId } : {}),

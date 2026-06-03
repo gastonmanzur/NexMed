@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import type { AppointmentBeneficiaryType, AppointmentDto, AppointmentStatus, AppointmentSource } from '@starter/shared-types';
+import type { AppointmentBeneficiaryType, AppointmentDto, AppointmentDurationMultiplier, AppointmentStatus, AppointmentSource } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { AvailabilityService } from '../../availability/services/availability.service.js';
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
@@ -34,6 +34,7 @@ interface CreateAppointmentInput {
   patientPhone?: string | undefined;
   startAt: string;
   endAt?: string | undefined;
+  durationMultiplier?: AppointmentDurationMultiplier | undefined;
   notes?: string | undefined;
   source: AppointmentSource;
   beneficiaryType?: AppointmentBeneficiaryType | undefined;
@@ -51,6 +52,7 @@ interface RescheduleAppointmentInput {
   newSpecialtyId?: string | undefined;
   newStartAt: string;
   newEndAt?: string | undefined;
+  durationMultiplier?: AppointmentDurationMultiplier | undefined;
   reason?: string | undefined;
 }
 
@@ -154,7 +156,8 @@ export class AppointmentsService {
       organizationId,
       normalized.professionalId,
       normalized.startAt,
-      normalized.endAt
+      normalized.endAt,
+      normalized.durationMultiplier
     );
 
     try {
@@ -168,6 +171,7 @@ export class AppointmentsService {
         ...(normalized.patientPhone ? { patientPhone: normalized.patientPhone } : {}),
         startAt: normalized.startAt,
         endAt: normalized.endAt,
+        durationMultiplier: normalized.durationMultiplier,
         status: 'booked',
         source,
         ...(normalized.notes ? { notes: normalized.notes } : {}),
@@ -189,6 +193,7 @@ export class AppointmentsService {
           professionalId: created.professionalId.toString(),
           startAt: created.startAt.toISOString(),
           endAt: created.endAt.toISOString(),
+          durationMultiplier: created.durationMultiplier ?? 1,
           source: created.source
         }
       });
@@ -384,6 +389,7 @@ export class AppointmentsService {
       patientPhone: original.patientPhone ?? undefined,
       startAt: input.newStartAt,
       endAt: input.newEndAt,
+      durationMultiplier: input.durationMultiplier ?? original.durationMultiplier,
       notes: original.notes ?? undefined,
       source,
       beneficiaryType: original.beneficiaryType,
@@ -392,7 +398,7 @@ export class AppointmentsService {
       beneficiaryRelationship: original.beneficiaryRelationship ?? undefined
     });
 
-    await this.assertSlotAvailable(organizationId, normalized.professionalId, normalized.startAt, normalized.endAt);
+    await this.assertSlotAvailable(organizationId, normalized.professionalId, normalized.startAt, normalized.endAt, normalized.durationMultiplier);
 
     let replacement: AppointmentDocument;
     try {
@@ -406,6 +412,7 @@ export class AppointmentsService {
         ...(normalized.patientPhone ? { patientPhone: normalized.patientPhone } : {}),
         startAt: normalized.startAt,
         endAt: normalized.endAt,
+        durationMultiplier: normalized.durationMultiplier,
         status: 'booked',
         source,
         ...(normalized.notes ? { notes: normalized.notes } : {}),
@@ -510,6 +517,7 @@ export class AppointmentsService {
     patientPhone?: string | undefined;
     startAt: Date;
     endAt: Date;
+    durationMultiplier: AppointmentDurationMultiplier;
     notes?: string | undefined;
     source: AppointmentSource;
     beneficiaryType: AppointmentBeneficiaryType;
@@ -532,7 +540,14 @@ export class AppointmentsService {
     }
 
     const startAt = parseIsoDate(input.startAt, 'startAt');
-    const endAt = input.endAt ? parseIsoDate(input.endAt, 'endAt') : await this.inferEndAt(organizationId, input.professionalId, startAt);
+    const durationMultiplier = input.durationMultiplier ?? 1;
+    if (durationMultiplier !== 1 && durationMultiplier !== 2) {
+      throw new AppError('INVALID_DURATION_MULTIPLIER', 400, 'durationMultiplier must be 1 or 2');
+    }
+
+    const endAt = input.endAt
+      ? parseIsoDate(input.endAt, 'endAt')
+      : await this.inferEndAt(organizationId, input.professionalId, startAt, durationMultiplier);
 
     if (startAt >= endAt) {
       throw new AppError('INVALID_DATE_RANGE', 400, 'startAt must be before endAt');
@@ -590,6 +605,7 @@ export class AppointmentsService {
       ...(patientPhone ? { patientPhone } : {}),
       startAt,
       endAt,
+      durationMultiplier,
       ...(notes ? { notes } : {}),
       source: input.source,
       beneficiaryType,
@@ -599,21 +615,14 @@ export class AppointmentsService {
     };
   }
 
-  private async inferEndAt(organizationId: string, professionalId: string, startAt: Date): Promise<Date> {
-    const date = extractDate(startAt);
-    const availability = await this.availabilityService.getCalculatedAvailability(organizationId, professionalId, {
-      startDate: date,
-      endDate: date
-    });
-
-    const isoStart = `${date}T${extractTime(startAt)}:00`;
-    const matched = availability.days.flatMap((day) => day.slots).find((slot) => slot.startsAtIso === isoStart);
-
-    if (!matched) {
-      throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Requested slot is not available');
-    }
-
-    return parseIsoDate(matched.endsAtIso, 'endAt');
+  private async inferEndAt(
+    organizationId: string,
+    professionalId: string,
+    startAt: Date,
+    durationMultiplier: AppointmentDurationMultiplier
+  ): Promise<Date> {
+    const { endAt } = await this.resolveAvailabilityRange(organizationId, professionalId, startAt, durationMultiplier);
+    return endAt;
   }
 
   private async assertSlotAvailable(
@@ -621,8 +630,30 @@ export class AppointmentsService {
     professionalId: string,
     startAt: Date,
     endAt: Date,
+    durationMultiplier: AppointmentDurationMultiplier,
     ignoreAppointmentId?: string
   ): Promise<void> {
+    const resolved = await this.resolveAvailabilityRange(organizationId, professionalId, startAt, durationMultiplier);
+
+    if (resolved.endAt.getTime() !== endAt.getTime()) {
+      const message = durationMultiplier === 2
+        ? 'Este horario no permite turno doble porque no hay disponibilidad suficiente.'
+        : 'Requested slot is not available';
+      throw new AppError('SLOT_NOT_AVAILABLE', 409, message);
+    }
+
+    const overlaps = await this.appointments.findBookedOverlappingRange(organizationId, professionalId, startAt, endAt, ignoreAppointmentId);
+    if (overlaps.length > 0) {
+      throw new AppError('APPOINTMENT_OVERLAP', 409, 'Requested slot overlaps with another active appointment');
+    }
+  }
+
+  private async resolveAvailabilityRange(
+    organizationId: string,
+    professionalId: string,
+    startAt: Date,
+    durationMultiplier: AppointmentDurationMultiplier
+  ): Promise<{ endAt: Date }> {
     const date = extractDate(startAt);
     const availability = await this.availabilityService.getCalculatedAvailability(organizationId, professionalId, {
       startDate: date,
@@ -630,20 +661,23 @@ export class AppointmentsService {
     });
 
     const isoStart = `${date}T${extractTime(startAt)}:00`;
-    const isoEnd = `${date}T${extractTime(endAt)}:00`;
+    const slots = availability.days.flatMap((day) => day.slots);
+    const firstSlot = slots.find((slot) => slot.startsAtIso === isoStart);
 
-    const slotFound = availability.days
-      .flatMap((day) => day.slots)
-      .some((slot) => slot.startsAtIso === isoStart && slot.endsAtIso === isoEnd);
-
-    if (!slotFound) {
+    if (!firstSlot) {
       throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Requested slot is not available');
     }
 
-    const overlaps = await this.appointments.findBookedOverlappingRange(organizationId, professionalId, startAt, endAt, ignoreAppointmentId);
-    if (overlaps.length > 0) {
-      throw new AppError('APPOINTMENT_OVERLAP', 409, 'Requested slot overlaps with another active appointment');
+    if (durationMultiplier === 1) {
+      return { endAt: parseIsoDate(firstSlot.endsAtIso, 'endAt') };
     }
+
+    const secondSlot = slots.find((slot) => slot.startsAtIso === firstSlot.endsAtIso);
+    if (!secondSlot) {
+      throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Este horario no permite turno doble porque no hay disponibilidad suficiente.');
+    }
+
+    return { endAt: parseIsoDate(secondSlot.endsAtIso, 'endAt') };
   }
 
   private toDto(document: AppointmentDocument): AppointmentDto {
@@ -658,6 +692,7 @@ export class AppointmentsService {
       patientPhone: document.patientPhone ?? null,
       startAt: document.startAt.toISOString(),
       endAt: document.endAt.toISOString(),
+      durationMultiplier: document.durationMultiplier === 2 ? 2 : 1,
       status: document.status,
       source: document.source,
       notes: document.notes ?? null,

@@ -25,6 +25,12 @@ const startOfWeek = (date: Date): Date => {
 const formatDayLabel = (date: Date): string => date.toLocaleDateString('es-AR', { weekday: 'short' });
 const formatDayNumber = (date: Date): string => date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 const formatHour = (value: string): string => new Date(value).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+const toLocalDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 const durationMinutes = (startAt: string, endAt: string): number => Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
 
 const statusTone = (status: AppointmentStatus): string => {
@@ -121,25 +127,22 @@ export const AppointmentsListPage = (): ReactElement => {
     void load();
   }, [accessToken, activeOrganizationId, selectedProfessionalId, selectedStatus, weekAnchor]);
 
-  if (!user) return <Navigate to="/login" replace />;
-  if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
-
   const byDay = useMemo(
     () =>
       weekDays.map((day) => {
-        const key = day.toISOString().slice(0, 10);
+        const key = toLocalDateKey(day);
         return appointments
-          .filter((item) => item.startAt.slice(0, 10) === key)
+          .filter((item) => toLocalDateKey(new Date(item.startAt)) === key)
           .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
       }),
     [appointments, weekDays]
   );
 
-  const todayIsoKey = new Date().toISOString().slice(0, 10);
+  const todayIsoKey = toLocalDateKey(new Date());
   const todayAppointments = useMemo(
     () =>
       appointments
-        .filter((item) => item.startAt.slice(0, 10) === todayIsoKey)
+        .filter((item) => toLocalDateKey(new Date(item.startAt)) === todayIsoKey)
         .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
     [appointments, todayIsoKey]
   );
@@ -164,6 +167,9 @@ export const AppointmentsListPage = (): ReactElement => {
 
     return <span className="nx-prof-avatar">{initials}</span>;
   };
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
 
   return (
     <main className="nx-agenda-page">
@@ -239,12 +245,15 @@ export const AppointmentsListPage = (): ReactElement => {
         <article className="nx-agenda-grid-card">
           <header className="nx-agenda-grid-head">
             <span>Horario</span>
-            {weekDays.map((day) => (
-              <div key={day.toISOString()}>
-                <p>{formatDayLabel(day)}</p>
-                <strong>{formatDayNumber(day)}</strong>
-              </div>
-            ))}
+            {weekDays.map((day) => {
+              const isToday = toLocalDateKey(day) === todayIsoKey;
+              return (
+                <div key={day.toISOString()} className={isToday ? 'is-today' : undefined}>
+                  <p>{formatDayLabel(day)} {isToday ? <span>Hoy</span> : null}</p>
+                  <strong>{formatDayNumber(day)}</strong>
+                </div>
+              );
+            })}
           </header>
 
           <div className="nx-agenda-grid-body" aria-busy={loading}>
@@ -253,22 +262,29 @@ export const AppointmentsListPage = (): ReactElement => {
                 <span className="nx-agenda-time">{`${slotHour.toString().padStart(2, '0')}:00`}</span>
                 {weekDays.map((day, dayIndex) => {
                   const entries = (byDay[dayIndex] ?? []).filter((appointment) => new Date(appointment.startAt).getHours() === slotHour);
+                  const isToday = toLocalDateKey(day) === todayIsoKey;
                   return (
-                    <div className="nx-agenda-cell" key={`${day.toISOString()}-${slotHour}`}>
-                      {entries.map((appointment) => (
-                        <Link to={`/app/appointments/${appointment.id}`} key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)}`}>
+                    <div className={`nx-agenda-cell ${isToday ? 'is-today' : ''}`.trim()} key={`${day.toISOString()}-${slotHour}`}>
+                      {entries.map((appointment) => {
+                        const isDouble = appointment.durationMultiplier === 2;
+                        return (
+                        <Link to={`/app/appointments/${appointment.id}`} key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)} ${isDouble ? 'nx-agenda-event--double' : ''}`.trim()}>
                           <div className="nx-agenda-event__head">
                             <strong>{appointment.patientName}</strong>
                             <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
                           </div>
-                          <span className="nx-agenda-event__meta">{formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min</span>
+                          <span className="nx-agenda-event__meta">
+                            {formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min
+                            {isDouble ? <b>Turno doble</b> : null}
+                          </span>
                           <small>
                             {professionalsById.get(appointment.professionalId)?.displayName ?? 'Profesional no asignado'}
                             {' · '}
                             {(appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) : null) ?? 'Especialidad'}
                           </small>
                         </Link>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}

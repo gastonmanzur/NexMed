@@ -23,6 +23,7 @@ const appointmentSchema = new mongoose.Schema(
     patientPhone: { type: String, required: false, trim: true, default: null },
     startAt: { type: Date, required: true, index: true },
     endAt: { type: Date, required: true, index: true },
+    durationMultiplier: { type: Number, enum: [1, 2], required: true, default: 1, index: true },
     status: { type: String, enum: appointmentStatuses, default: 'booked', index: true },
     source: { type: String, enum: appointmentSources, required: true, index: true },
     notes: { type: String, required: false, trim: true, default: null },
