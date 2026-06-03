@@ -1,4 +1,4 @@
-import type { AppointmentDto, AppointmentStatus } from '@starter/shared-types';
+import type { AppointmentDto, AppointmentDurationMultiplier, AppointmentStatus } from '@starter/shared-types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
 
@@ -89,6 +89,7 @@ export const appointmentsApi = {
       patientPhone?: string;
       startAt: string;
       endAt?: string;
+      durationMultiplier?: AppointmentDurationMultiplier;
       notes?: string;
     }
   ): Promise<AppointmentDto> => {
@@ -125,6 +126,7 @@ export const appointmentsApi = {
       newSpecialtyId?: string;
       newStartAt: string;
       newEndAt?: string;
+      durationMultiplier?: AppointmentDurationMultiplier;
       reason?: string;
     }
   ): Promise<{ original: AppointmentDto; replacement: AppointmentDto }> => {

@@ -12,6 +12,7 @@ interface CreateAppointmentInput {
   patientPhone?: string | null;
   startAt: Date;
   endAt: Date;
+  durationMultiplier: AppointmentDocument['durationMultiplier'];
   status: AppointmentStatus;
   source: AppointmentDocument['source'];
   notes?: string | null;

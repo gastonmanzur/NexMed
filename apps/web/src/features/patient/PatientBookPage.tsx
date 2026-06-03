@@ -1,13 +1,18 @@
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { PatientFamilyMemberDto } from '@starter/shared-types';
+import type { AppointmentDurationMultiplier, PatientFamilyMemberDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { patientApi } from './patient-api';
 
 const today = new Date().toISOString().slice(0, 10);
 const nextWeek = new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10);
+
+type BookableSlot = { startsAtIso: string; endsAtIso: string; startTime: string; endTime: string };
+
+const slotDurationMinutes = (slot: BookableSlot): number =>
+  Math.max(0, Math.round((new Date(slot.endsAtIso).getTime() - new Date(slot.startsAtIso).getTime()) / 60000));
 
 export const PatientBookPage = (): ReactElement => {
   const { organizationId = '' } = useParams();
@@ -22,9 +27,8 @@ export const PatientBookPage = (): ReactElement => {
   const [familyMembers, setFamilyMembers] = useState<PatientFamilyMemberDto[]>([]);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(nextWeek);
-  const [slots, setSlots] = useState<
-    Array<{ startsAtIso: string; endsAtIso: string; startTime: string; endTime: string }>
-  >([]);
+  const [slots, setSlots] = useState<BookableSlot[]>([]);
+  const [durationMultiplier, setDurationMultiplier] = useState<AppointmentDurationMultiplier>(1);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -56,6 +60,10 @@ export const PatientBookPage = (): ReactElement => {
       })
       .catch((cause) => setError((cause as Error).message));
   }, [accessToken, organizationId]);
+
+  const slotsByStart = useMemo(() => new Map(slots.map((slot) => [slot.startsAtIso, slot])), [slots]);
+
+  const getDoubleEndSlot = (slot: BookableSlot): BookableSlot | undefined => slotsByStart.get(slot.endsAtIso);
 
   const selectedProfessionalName = useMemo(
     () => professionals.find((item) => item.id === professionalId)?.displayName ?? '-',
@@ -128,6 +136,31 @@ export const PatientBookPage = (): ReactElement => {
           </label>
         </div>
 
+        <section className="nx-book-duration" aria-labelledby="appointment-duration-title">
+          <div>
+            <h3 id="appointment-duration-title">Duración del turno</h3>
+            <p>Elegí turno simple o doble antes de confirmar. El doble requiere dos bloques consecutivos libres.</p>
+          </div>
+          <div className="nx-book-duration__options" role="radiogroup" aria-label="Duración del turno">
+            {[
+              { value: 1 as const, title: 'Turno simple', detail: 'Ocupa el bloque normal disponible.' },
+              { value: 2 as const, title: 'Turno doble', detail: 'Ocupa dos bloques consecutivos.' }
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`nx-book-duration__option ${durationMultiplier === option.value ? 'is-selected' : ''}`.trim()}
+                role="radio"
+                aria-checked={durationMultiplier === option.value}
+                onClick={() => setDurationMultiplier(option.value)}
+              >
+                <strong>{option.title}</strong>
+                <span>{option.detail}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <div className="nx-book-actions">
           <button
             type="button"
@@ -162,7 +195,14 @@ export const PatientBookPage = (): ReactElement => {
         {message ? <p style={{ color: 'var(--success)' }}>{message}</p> : null}
 
         <ul className="nx-doctor-list">
-          {slots.map((slot) => (
+          {slots.map((slot) => {
+            const doubleEndSlot = getDoubleEndSlot(slot);
+            const canBookSelectedDuration = durationMultiplier === 1 || Boolean(doubleEndSlot);
+            const selectedEndAt = durationMultiplier === 2 && doubleEndSlot ? doubleEndSlot.endsAtIso : slot.endsAtIso;
+            const selectedEndTime = durationMultiplier === 2 && doubleEndSlot ? doubleEndSlot.endTime : slot.endTime;
+            const estimatedMinutes = slotDurationMinutes(slot) * durationMultiplier;
+
+            return (
             <li key={slot.startsAtIso} className="nx-doctor-card">
               <div className="nx-doctor-card__top">
                 <span className="nx-doctor-card__avatar" aria-hidden="true">
@@ -171,24 +211,32 @@ export const PatientBookPage = (): ReactElement => {
                 <div>
                   <p className="nx-doctor-card__name">{selectedProfessionalName}</p>
                   <span className="nx-badge">
-                    {slot.startTime}–{slot.endTime}
+                    {slot.startTime}–{selectedEndTime}
                   </span>
                 </div>
               </div>
 
               <p className="nx-doctor-card__description">
-                {slot.startsAtIso.slice(0, 16).replace('T', ' ')} · Duración estimada: {slot.startTime}–{slot.endTime}
+                {slot.startsAtIso.slice(0, 16).replace('T', ' ')} · Duración estimada: {estimatedMinutes} min
               </p>
 
               <div className="nx-doctor-card__meta">
                 <span>Confirmación inmediata</span>
                 <span>Reserva online</span>
+                <span>{durationMultiplier === 2 ? 'Turno doble' : 'Turno simple'}</span>
               </div>
+
+              {!canBookSelectedDuration ? (
+                <p className="nx-book-slot-warning">
+                  Este horario no permite turno doble porque no hay disponibilidad suficiente.
+                </p>
+              ) : null}
 
               <div className="nx-doctor-card__actions">
                 <button
                   type="button"
                   className="nx-btn"
+                  disabled={!canBookSelectedDuration}
                   onClick={async () => {
                     if (!accessToken) {
                       return;
@@ -204,22 +252,26 @@ export const PatientBookPage = (): ReactElement => {
                         professionalId,
                         ...(specialtyId ? { specialtyId } : {}),
                         startAt: slot.startsAtIso,
-                        endAt: slot.endsAtIso,
+                        endAt: selectedEndAt,
+                        durationMultiplier,
                         beneficiaryType,
                         ...(beneficiaryType === 'family_member' ? { familyMemberId } : {})
                       });
                       setMessage('Turno reservado con éxito.');
-                      setSlots((prev) => prev.filter((current) => current.startsAtIso !== slot.startsAtIso));
+                      setSlots((prev) =>
+                        prev.filter((current) => current.startsAtIso !== slot.startsAtIso && current.startsAtIso !== slot.endsAtIso)
+                      );
                     } catch (cause) {
                       setError((cause as Error).message);
                     }
                   }}
                 >
-                  Reserva Turno
+                  {durationMultiplier === 2 ? 'Reservar turno doble' : 'Reservar turno simple'}
                 </button>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       </Card>
     </main>

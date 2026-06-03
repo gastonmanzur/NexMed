@@ -44,11 +44,14 @@ const updateMeSchema = z.object({
   acceptsWhatsAppCommunications: z.boolean().optional()
 });
 
+const durationMultiplierSchema = z.union([z.literal(1), z.literal(2)]);
+
 const createAppointmentSchema = z.object({
   professionalId: z.string().trim().min(1),
   specialtyId: z.string().trim().min(1).optional(),
   startAt: z.string().trim().min(1),
   endAt: z.string().trim().min(1).optional(),
+  durationMultiplier: durationMultiplierSchema.optional(),
   notes: z.string().trim().max(500).optional(),
   beneficiaryType: z.enum(['self', 'family_member']).optional(),
   familyMemberId: z.string().trim().min(1).optional()
@@ -145,6 +148,7 @@ export const patientController = {
       startAt: input.startAt,
       ...(input.specialtyId !== undefined ? { specialtyId: input.specialtyId } : {}),
       ...(input.endAt !== undefined ? { endAt: input.endAt } : {}),
+      ...(input.durationMultiplier !== undefined ? { durationMultiplier: input.durationMultiplier } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(input.beneficiaryType !== undefined ? { beneficiaryType: input.beneficiaryType } : {}),
       ...(input.familyMemberId !== undefined ? { familyMemberId: input.familyMemberId } : {})

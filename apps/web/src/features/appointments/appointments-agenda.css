@@ -350,3 +350,50 @@
   .nx-agenda-row { grid-template-columns: 72px repeat(7, minmax(155px, 1fr)); }
   .nx-agenda-sidepanel { grid-template-columns: 1fr; }
 }
+
+.nx-agenda-grid-head > div.is-today {
+  background: linear-gradient(180deg, #ecfdf5 0%, #dcfce7 100%);
+  border-right-color: #bbf7d0;
+  box-shadow: inset 0 3px 0 #86efac;
+}
+
+.nx-agenda-grid-head > div.is-today p,
+.nx-agenda-grid-head > div.is-today strong {
+  color: #166534;
+}
+
+.nx-agenda-grid-head > div.is-today p span {
+  display: inline-flex;
+  margin-left: 0.32rem;
+  padding: 0.08rem 0.36rem;
+  border-radius: 999px;
+  background: #bbf7d0;
+  color: #14532d;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.nx-agenda-cell.is-today {
+  background: #f0fdf4;
+  border-right-color: #bbf7d0;
+  box-shadow: inset 3px 0 0 rgba(134, 239, 172, 0.55);
+}
+
+.nx-agenda-event--double {
+  border-width: 2px;
+  min-height: 74px;
+}
+
+.nx-agenda-event__meta b {
+  display: inline-flex;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.14);
+  color: #075985;
+  font-size: 0.62rem;
+  font-weight: 800;
+  white-space: nowrap;
+}

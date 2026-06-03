@@ -226,6 +226,7 @@ export interface CalculatedAvailabilityDto {
 export type AppointmentStatus = 'booked' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
 export type AppointmentSource = 'staff_manual' | 'admin_manual' | 'patient_self_service';
 export type AppointmentBeneficiaryType = 'self' | 'family_member';
+export type AppointmentDurationMultiplier = 1 | 2;
 
 export interface AppointmentDto {
   id: string;
@@ -238,6 +239,7 @@ export interface AppointmentDto {
   patientPhone: string | null;
   startAt: string;
   endAt: string;
+  durationMultiplier: AppointmentDurationMultiplier;
   status: AppointmentStatus;
   source: AppointmentSource;
   notes: string | null;
