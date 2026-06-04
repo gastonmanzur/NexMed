@@ -20,6 +20,7 @@ import { OrganizationSettingsRepository } from '../../organizations/repositories
 import { OrganizationAccessLinkRepository } from '../../organizations/repositories/organization-access-link.repository.js';
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
 import { SpecialtyRepository } from '../../professionals/repositories/specialty.repository.js';
+import { ProfessionalSpecialtyRepository } from '../../professionals/repositories/professional-specialty.repository.js';
 import { PatientOrganizationLinkRepository } from '../repositories/patient-organization-link.repository.js';
 import { PatientFamilyMemberRepository } from '../repositories/patient-family-member.repository.js';
 import { PatientProfileRepository } from '../repositories/patient-profile.repository.js';
@@ -59,6 +60,7 @@ export class PatientService {
     private readonly availability = new AvailabilityService(),
     private readonly professionals = new ProfessionalRepository(),
     private readonly specialties = new SpecialtyRepository(),
+    private readonly professionalSpecialties = new ProfessionalSpecialtyRepository(),
     private readonly userEvents = new UserEventRepository(),
     private readonly familyMembers = new PatientFamilyMemberRepository()
   ) {}
@@ -378,18 +380,25 @@ export class PatientService {
   async getAvailabilityForPatient(
     userId: string,
     organizationId: string,
-    input: { professionalId: string; startDate: string; endDate: string }
+    input: { professionalId: string; specialtyId: string; startDate: string; endDate: string }
   ): Promise<CalculatedAvailabilityDto> {
     await this.assertActiveLink(userId, organizationId);
+    if (!isValidObjectId(input.professionalId)) {
+      throw new AppError('INVALID_PROFESSIONAL_ID', 400, 'professionalId is invalid');
+    }
+    if (!isValidObjectId(input.specialtyId)) {
+      throw new AppError('INVALID_SPECIALTY_ID', 400, 'specialtyId is invalid');
+    }
     return this.availability.getCalculatedAvailability(organizationId, input.professionalId, {
       startDate: input.startDate,
-      endDate: input.endDate
+      endDate: input.endDate,
+      specialtyId: input.specialtyId
     });
   }
 
   async getOrganizationCatalog(userId: string, organizationId: string): Promise<{
-    professionals: Array<{ id: string; displayName: string }>;
-    specialties: Array<{ id: string; name: string }>;
+    professionals: Array<{ id: string; displayName: string; specialtyIds: string[] }>;
+    specialties: Array<{ id: string; name: string; professionalIds: string[] }>;
   }> {
     await this.assertActiveLink(userId, organizationId);
 
@@ -398,13 +407,38 @@ export class PatientService {
       this.specialties.findByOrganization(organizationId)
     ]);
 
+    const activeProfessionals = professionals.filter((item) => item.status === 'active');
+    const activeSpecialties = specialties.filter((item) => item.status === 'active');
+    const activeProfessionalIds = new Set(activeProfessionals.map((item) => item._id.toString()));
+    const activeSpecialtyIds = new Set(activeSpecialties.map((item) => item._id.toString()));
+    const mappings = activeProfessionals.length > 0
+      ? await this.professionalSpecialties.findByProfessionalIds(organizationId, [...activeProfessionalIds])
+      : [];
+
+    const specialtyIdsByProfessional = new Map<string, string[]>();
+    const professionalIdsBySpecialty = new Map<string, string[]>();
+
+    for (const mapping of mappings) {
+      const professionalId = mapping.professionalId.toString();
+      const specialtyId = mapping.specialtyId.toString();
+      if (!activeProfessionalIds.has(professionalId) || !activeSpecialtyIds.has(specialtyId)) continue;
+      specialtyIdsByProfessional.set(professionalId, [...(specialtyIdsByProfessional.get(professionalId) ?? []), specialtyId]);
+      professionalIdsBySpecialty.set(specialtyId, [...(professionalIdsBySpecialty.get(specialtyId) ?? []), professionalId]);
+    }
+
     return {
-      professionals: professionals
-        .filter((item) => item.status === 'active')
-        .map((item) => ({ id: item._id.toString(), displayName: item.displayName ?? `${item.firstName} ${item.lastName}`.trim() })),
-      specialties: specialties
-        .filter((item) => item.status === 'active')
-        .map((item) => ({ id: item._id.toString(), name: item.name }))
+      professionals: activeProfessionals.map((item) => {
+        const id = item._id.toString();
+        return {
+          id,
+          displayName: item.displayName ?? `${item.firstName} ${item.lastName}`.trim(),
+          specialtyIds: specialtyIdsByProfessional.get(id) ?? []
+        };
+      }),
+      specialties: activeSpecialties.map((item) => {
+        const id = item._id.toString();
+        return { id, name: item.name, professionalIds: professionalIdsBySpecialty.get(id) ?? [] };
+      })
     };
   }
 
@@ -413,7 +447,7 @@ export class PatientService {
     organizationId: string,
     input: {
       professionalId: string;
-      specialtyId?: string;
+      specialtyId: string;
       startAt: string;
       endAt?: string;
       durationMultiplier?: AppointmentDurationMultiplier;
@@ -427,16 +461,30 @@ export class PatientService {
     const user = await this.users.findById(userId);
     if (!user) throw new AppError('USER_NOT_FOUND', 404, 'User not found');
 
-    if (input.specialtyId) {
-      const specialty = await this.specialties.findByIdInOrganization(organizationId, input.specialtyId);
-      if (!specialty) {
-        throw new AppError('SPECIALTY_NOT_FOUND', 404, 'Specialty not found');
-      }
+    if (!isValidObjectId(input.professionalId)) {
+      throw new AppError('INVALID_PROFESSIONAL_ID', 400, 'professionalId is invalid');
+    }
+    if (!isValidObjectId(input.specialtyId)) {
+      throw new AppError('INVALID_SPECIALTY_ID', 400, 'specialtyId is invalid');
+    }
+
+    const specialty = await this.specialties.findByIdInOrganization(organizationId, input.specialtyId);
+    if (!specialty || specialty.status !== 'active') {
+      throw new AppError('SPECIALTY_NOT_FOUND', 404, 'Specialty not found');
     }
 
     const professional = await this.professionals.findByIdInOrganization(organizationId, input.professionalId);
     if (!professional || professional.status !== 'active') {
       throw new AppError('PROFESSIONAL_NOT_FOUND', 404, 'Professional not found');
+    }
+
+    const isValidCombination = await this.professionalSpecialties.existsForProfessionalAndSpecialty(
+      organizationId,
+      input.professionalId,
+      input.specialtyId
+    );
+    if (!isValidCombination) {
+      throw new AppError('INVALID_SPECIALTY_ASSOCIATION', 400, 'El profesional seleccionado no atiende la especialidad elegida.');
     }
 
     let patientName = `${profile.firstName ?? user.firstName} ${profile.lastName ?? user.lastName}`.trim();
@@ -460,7 +508,7 @@ export class PatientService {
 
     const appointment = await this.appointmentsService.createAppointment(organizationId, userId, 'patient', {
       professionalId: input.professionalId,
-      ...(input.specialtyId ? { specialtyId: input.specialtyId } : {}),
+      specialtyId: input.specialtyId,
       patientProfileId,
       patientName,
       patientEmail: user.email,

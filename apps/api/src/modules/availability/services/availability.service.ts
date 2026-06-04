@@ -8,6 +8,8 @@ import type {
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
+import { SpecialtyRepository } from '../../professionals/repositories/specialty.repository.js';
+import { ProfessionalSpecialtyRepository } from '../../professionals/repositories/professional-specialty.repository.js';
 import { OrganizationSettingsRepository } from '../../organizations/repositories/organization-settings.repository.js';
 import { AvailabilityRuleRepository } from '../repositories/availability-rule.repository.js';
 import { AvailabilityExceptionRepository } from '../repositories/availability-exception.repository.js';
@@ -120,7 +122,9 @@ export class AvailabilityService {
     private readonly exceptions = new AvailabilityExceptionRepository(),
     private readonly professionals = new ProfessionalRepository(),
     private readonly organizationSettings = new OrganizationSettingsRepository(),
-    private readonly appointments = new AppointmentRepository()
+    private readonly appointments = new AppointmentRepository(),
+    private readonly specialties = new SpecialtyRepository(),
+    private readonly professionalSpecialties = new ProfessionalSpecialtyRepository()
   ) {}
 
   async listRules(organizationId: string, professionalId: string): Promise<AvailabilityRuleDto[]> {
@@ -248,9 +252,10 @@ export class AvailabilityService {
   async getCalculatedAvailability(
     organizationId: string,
     professionalId: string,
-    input: { startDate: string; endDate: string }
+    input: { startDate: string; endDate: string; specialtyId?: string | undefined }
   ): Promise<CalculatedAvailabilityDto> {
     const professional = await this.assertProfessionalBelongsToOrganization(organizationId, professionalId);
+    await this.assertSpecialtyCanBeAttendedByProfessional(organizationId, professionalId, input.specialtyId);
     const validatedRange = this.validateDateRange(input.startDate, input.endDate);
 
     const timezone = await this.resolveOrganizationTimezone(organizationId);
@@ -363,6 +368,36 @@ export class AvailabilityService {
     }
 
     return professional;
+  }
+
+
+  private async assertSpecialtyCanBeAttendedByProfessional(
+    organizationId: string,
+    professionalId: string,
+    specialtyId?: string
+  ): Promise<void> {
+    if (!specialtyId) {
+      return;
+    }
+
+    const specialty = await this.specialties.findByIdInOrganization(organizationId, specialtyId);
+    if (!specialty || specialty.status !== 'active') {
+      throw new AppError('SPECIALTY_NOT_FOUND', 404, 'Specialty not found');
+    }
+
+    const isValidCombination = await this.professionalSpecialties.existsForProfessionalAndSpecialty(
+      organizationId,
+      professionalId,
+      specialtyId
+    );
+
+    if (!isValidCombination) {
+      throw new AppError(
+        'INVALID_SPECIALTY_ASSOCIATION',
+        400,
+        'El profesional seleccionado no atiende la especialidad elegida.'
+      );
+    }
   }
 
   private async resolveOrganizationTimezone(organizationId: string): Promise<string> {

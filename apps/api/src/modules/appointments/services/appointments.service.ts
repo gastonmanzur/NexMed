@@ -569,7 +569,7 @@ export class AppointmentsService {
       const hasSpecialty = professionalSpecialties.some((item) => item.specialtyId.toString() === specialtyId);
 
       if (!hasSpecialty) {
-        throw new AppError('INVALID_SPECIALTY_ASSOCIATION', 400, 'Specialty is not associated to the professional');
+        throw new AppError('INVALID_SPECIALTY_ASSOCIATION', 400, 'El profesional seleccionado no atiende la especialidad elegida.');
       }
     }
 

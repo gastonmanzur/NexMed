@@ -1413,6 +1413,40 @@ body {
 
 .nx-book-shell { border-radius: 24px; }
 
+.nx-book-help {
+  margin: -0.25rem 0 1rem;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.nx-book-status {
+  margin: 0.75rem 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.nx-book-status--info {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.nx-book-status--warning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.nx-book-field-message {
+  color: #9a3412;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .nx-book-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.9rem;

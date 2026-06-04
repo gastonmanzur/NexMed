@@ -10,6 +10,7 @@ const joinSchema = z.object({ tokenOrSlug: z.string().trim().min(1) });
 const organizationParamsSchema = z.object({ organizationId: z.string().trim().min(1) });
 const availabilityQuerySchema = z.object({
   professionalId: z.string().trim().min(1),
+  specialtyId: z.string().trim().min(1),
   startDate: z.string().trim().min(1),
   endDate: z.string().trim().min(1)
 });
@@ -48,7 +49,7 @@ const durationMultiplierSchema = z.union([z.literal(1), z.literal(2)]);
 
 const createAppointmentSchema = z.object({
   professionalId: z.string().trim().min(1),
-  specialtyId: z.string().trim().min(1).optional(),
+  specialtyId: z.string().trim().min(1),
   startAt: z.string().trim().min(1),
   endAt: z.string().trim().min(1).optional(),
   durationMultiplier: durationMultiplierSchema.optional(),
@@ -146,7 +147,7 @@ export const patientController = {
     const data = await service.createSelfServiceAppointment(req.auth!.userId, organizationId, {
       professionalId: input.professionalId,
       startAt: input.startAt,
-      ...(input.specialtyId !== undefined ? { specialtyId: input.specialtyId } : {}),
+      specialtyId: input.specialtyId,
       ...(input.endAt !== undefined ? { endAt: input.endAt } : {}),
       ...(input.durationMultiplier !== undefined ? { durationMultiplier: input.durationMultiplier } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
