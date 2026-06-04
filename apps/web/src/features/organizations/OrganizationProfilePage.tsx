@@ -5,6 +5,7 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { organizationApi } from './organization-api';
 import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
+import { getGoogleMapsDirectionsUrl, getOrganizationAddressText } from '../patient/OrganizationLocationCard';
 
 interface FormState {
   name: string;
@@ -14,7 +15,13 @@ interface FormState {
   phone: string;
   address: string;
   city: string;
+  province: string;
+  postalCode: string;
   country: string;
+  latitude: string;
+  longitude: string;
+  locationLabel: string;
+  locationPublic: boolean;
   description: string;
   timezone: string;
   locale: string;
@@ -31,7 +38,13 @@ const emptyForm = (): FormState => ({
   phone: '',
   address: '',
   city: '',
+  province: '',
+  postalCode: '',
   country: '',
+  latitude: '',
+  longitude: '',
+  locationLabel: '',
+  locationPublic: false,
   description: '',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   locale: 'es-AR',
@@ -46,7 +59,13 @@ const buildFormFromOrganization = (organization: NonNullable<ReturnType<typeof u
   phone: organization.phone ?? '',
   address: organization.address ?? '',
   city: organization.city ?? '',
+  province: organization.province ?? '',
+  postalCode: organization.postalCode ?? '',
   country: organization.country ?? '',
+  latitude: organization.latitude?.toString() ?? '',
+  longitude: organization.longitude?.toString() ?? '',
+  locationLabel: organization.locationLabel ?? '',
+  locationPublic: organization.locationPublic,
   description: organization.description ?? '',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   locale: 'es-AR',
@@ -109,7 +128,13 @@ export const OrganizationProfilePage = (): ReactElement => {
           phone: profile.organization.phone ?? '',
           address: profile.organization.address ?? '',
           city: profile.organization.city ?? '',
+          province: profile.organization.province ?? '',
+          postalCode: profile.organization.postalCode ?? '',
           country: profile.organization.country ?? '',
+          latitude: profile.organization.latitude?.toString() ?? '',
+          longitude: profile.organization.longitude?.toString() ?? '',
+          locationLabel: profile.organization.locationLabel ?? '',
+          locationPublic: profile.organization.locationPublic,
           description: profile.organization.description ?? '',
           timezone: profile.settings?.timezone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
           locale: profile.settings?.locale ?? 'es-AR',
@@ -125,7 +150,13 @@ export const OrganizationProfilePage = (): ReactElement => {
           activeOrganization.phone !== profile.organization.phone ||
           activeOrganization.address !== profile.organization.address ||
           activeOrganization.city !== profile.organization.city ||
+          activeOrganization.province !== profile.organization.province ||
+          activeOrganization.postalCode !== profile.organization.postalCode ||
           activeOrganization.country !== profile.organization.country ||
+          activeOrganization.latitude !== profile.organization.latitude ||
+          activeOrganization.longitude !== profile.organization.longitude ||
+          activeOrganization.locationLabel !== profile.organization.locationLabel ||
+          activeOrganization.locationPublic !== profile.organization.locationPublic ||
           activeOrganization.description !== profile.organization.description ||
           activeOrganization.logoUrl !== profile.organization.logoUrl ||
           activeOrganization.status !== profile.organization.status ||
@@ -347,6 +378,56 @@ export const OrganizationProfilePage = (): ReactElement => {
             </div>
           </section>
 
+          <section className="nx-org-profile__section nx-org-profile__section--location">
+            <div className="nx-org-profile__section-header">
+              <h3>Ubicación del centro</h3>
+              <p>Esta ubicación se mostrará a los pacientes para que puedan llegar al centro mediante Google Maps.</p>
+            </div>
+            <div className="nx-form-grid nx-org-profile__grid nx-org-profile__grid--two">
+              <label className="nx-field">
+                Provincia
+                <input value={form.province} onChange={(event) => setForm((prev) => ({ ...prev, province: event.target.value }))} />
+              </label>
+              <label className="nx-field">
+                Código postal
+                <input value={form.postalCode} onChange={(event) => setForm((prev) => ({ ...prev, postalCode: event.target.value }))} />
+              </label>
+              <label className="nx-field nx-org-profile__field--full">
+                Referencia o indicación adicional
+                <input value={form.locationLabel} onChange={(event) => setForm((prev) => ({ ...prev, locationLabel: event.target.value }))} placeholder="Consultorio 2 — Primer piso" />
+              </label>
+              <label className="nx-field">
+                Latitud
+                <input inputMode="decimal" value={form.latitude} onChange={(event) => setForm((prev) => ({ ...prev, latitude: event.target.value }))} placeholder="-34.6037" />
+              </label>
+              <label className="nx-field">
+                Longitud
+                <input inputMode="decimal" value={form.longitude} onChange={(event) => setForm((prev) => ({ ...prev, longitude: event.target.value }))} placeholder="-58.3816" />
+              </label>
+            </div>
+            <label className="nx-toggle-row">
+              <input type="checkbox" checked={form.locationPublic} onChange={(event) => setForm((prev) => ({ ...prev, locationPublic: event.target.checked }))} />
+              <span>Mostrar la ubicación a pacientes en reservas y turnos.</span>
+            </label>
+            <div className="nx-location-preview">
+              <strong>Vista previa</strong>
+              <span>{getOrganizationAddressText({ ...activeOrganization, address: form.address || null, city: form.city || null, province: form.province || null, postalCode: form.postalCode || null, country: form.country || null, latitude: Number(form.latitude), longitude: Number(form.longitude), locationLabel: form.locationLabel || null, locationPublic: form.locationPublic }) || 'Completá dirección o coordenadas para habilitar el botón.'}</span>
+              <div className="nx-location-preview__actions">
+                <button type="button" className="nx-btn-secondary" onClick={() => {
+                  if (!navigator.geolocation) { setError('Tu navegador no permite geolocalización.'); return; }
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => setForm((prev) => ({ ...prev, latitude: position.coords.latitude.toFixed(6), longitude: position.coords.longitude.toFixed(6) })),
+                    () => setError('No se pudo obtener tu ubicación actual.')
+                  );
+                }}>Usar mi ubicación actual</button>
+                {(() => {
+                  const url = getGoogleMapsDirectionsUrl({ ...activeOrganization, address: form.address || null, city: form.city || null, province: form.province || null, postalCode: form.postalCode || null, country: form.country || null, latitude: form.latitude.trim() ? Number(form.latitude) : null, longitude: form.longitude.trim() ? Number(form.longitude) : null, locationLabel: form.locationLabel || null, locationPublic: true });
+                  return url ? <a className="nx-btn-secondary" href={url} target="_blank" rel="noopener noreferrer">Abrir ubicación en Google Maps</a> : null;
+                })()}
+              </div>
+            </div>
+          </section>
+
           <section className="nx-org-profile__section">
             <div className="nx-org-profile__section-header">
               <h3>Configuración general</h3>
@@ -390,10 +471,16 @@ export const OrganizationProfilePage = (): ReactElement => {
                   city: form.city,
                   country: form.country,
                   timezone: form.timezone,
+                  locationPublic: form.locationPublic,
                   ...(form.displayName.trim() ? { displayName: form.displayName.trim() } : {}),
                   ...(form.contactEmail.trim() ? { contactEmail: form.contactEmail.trim() } : {}),
                   ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
                   ...(form.address.trim() ? { address: form.address.trim() } : {}),
+                  ...(form.province.trim() ? { province: form.province.trim() } : {}),
+                  ...(form.postalCode.trim() ? { postalCode: form.postalCode.trim() } : {}),
+                  ...(form.latitude.trim() ? { latitude: Number(form.latitude) } : {}),
+                  ...(form.longitude.trim() ? { longitude: Number(form.longitude) } : {}),
+                  ...(form.locationLabel.trim() ? { locationLabel: form.locationLabel.trim() } : {}),
                   ...(form.description.trim() ? { description: form.description.trim() } : {}),
                   ...(form.locale.trim() ? { locale: form.locale.trim() } : {}),
                   ...(form.currency.trim() ? { currency: form.currency.trim() } : {})

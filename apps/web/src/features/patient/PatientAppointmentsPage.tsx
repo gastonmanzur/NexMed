@@ -5,6 +5,7 @@ import type { AppointmentDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { patientApi } from './patient-api';
+import { OrganizationLocationCard } from './OrganizationLocationCard';
 import { ConfirmActionButton } from '../../components/ConfirmActionButton';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
@@ -98,6 +99,7 @@ export const PatientAppointmentsPage = (): ReactElement => {
                           : ''}
                       </p>
                       <p className="nx-appointment-item__status">Estado: {item.status}</p>
+                      <OrganizationLocationCard organization={item.organization} compact />
                     </div>
                     <div className="nx-appointment-item__actions">
                       <ConfirmActionButton
@@ -139,6 +141,7 @@ export const PatientAppointmentsPage = (): ReactElement => {
                         : ''}
                     </p>
                     <p className="nx-appointment-item__status">Estado: {item.status}</p>
+                    <OrganizationLocationCard organization={item.organization} compact />
                   </li>
                 ))}
               </ul>

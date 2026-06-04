@@ -9,7 +9,13 @@ interface CreateOrganizationInput {
   phone?: string | undefined;
   address?: string | undefined;
   city?: string | undefined;
+  province?: string | undefined;
+  postalCode?: string | undefined;
   country?: string | undefined;
+  latitude?: number | null | undefined;
+  longitude?: number | null | undefined;
+  locationLabel?: string | undefined;
+  locationPublic?: boolean | undefined;
   description?: string | undefined;
   logoUrl?: string | undefined;
   onboardingCompleted?: boolean | undefined;
@@ -24,7 +30,13 @@ interface UpdateOrganizationInput {
   phone?: string | undefined;
   address?: string | undefined;
   city?: string | undefined;
+  province?: string | undefined;
+  postalCode?: string | undefined;
   country?: string | undefined;
+  latitude?: number | null | undefined;
+  longitude?: number | null | undefined;
+  locationLabel?: string | undefined;
+  locationPublic?: boolean | undefined;
   description?: string | undefined;
   logoUrl?: string | undefined;
   status?: 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked' | undefined;
