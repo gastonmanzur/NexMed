@@ -48,7 +48,13 @@ export interface OrganizationDto {
   phone: string | null;
   address: string | null;
   city: string | null;
+  province: string | null;
+  postalCode: string | null;
   country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationLabel: string | null;
+  locationPublic: boolean;
   description: string | null;
   logoUrl: string | null;
   status: OrganizationStatus;
@@ -256,6 +262,7 @@ export interface AppointmentDto {
   rescheduledToAppointmentId: string | null;
   createdAt: string;
   updatedAt: string;
+  organization?: OrganizationDto | null;
 }
 
 export interface PatientFamilyMemberDto {

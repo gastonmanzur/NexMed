@@ -117,7 +117,13 @@ export const organizationApi = {
       phone?: string;
       address?: string;
       city: string;
+      province?: string;
+      postalCode?: string;
       country: string;
+      latitude?: number;
+      longitude?: number;
+      locationLabel?: string;
+      locationPublic?: boolean;
       description?: string;
       logoUrl?: string;
       timezone: string;

@@ -1,10 +1,11 @@
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import type { AppointmentDurationMultiplier, PatientFamilyMemberDto } from '@starter/shared-types';
+import type { AppointmentDto, AppointmentDurationMultiplier, PatientFamilyMemberDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { patientApi } from './patient-api';
+import { OrganizationLocationCard } from './OrganizationLocationCard';
 
 const today = new Date().toISOString().slice(0, 10);
 const nextWeek = new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10);
@@ -30,6 +31,7 @@ export const PatientBookPage = (): ReactElement => {
   const [slots, setSlots] = useState<BookableSlot[]>([]);
   const [durationMultiplier, setDurationMultiplier] = useState<AppointmentDurationMultiplier>(1);
   const [message, setMessage] = useState('');
+  const [confirmedAppointment, setConfirmedAppointment] = useState<AppointmentDto | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -193,6 +195,9 @@ export const PatientBookPage = (): ReactElement => {
 
         {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
         {message ? <p style={{ color: 'var(--success)' }}>{message}</p> : null}
+        {confirmedAppointment?.organization ? (
+          <OrganizationLocationCard organization={confirmedAppointment.organization} />
+        ) : null}
 
         <ul className="nx-doctor-list">
           {slots.map((slot) => {
@@ -248,7 +253,7 @@ export const PatientBookPage = (): ReactElement => {
                         setError('Seleccioná un familiar activo antes de reservar.');
                         return;
                       }
-                      await patientApi.createAppointment(accessToken, organizationId, {
+                      const appointment = await patientApi.createAppointment(accessToken, organizationId, {
                         professionalId,
                         ...(specialtyId ? { specialtyId } : {}),
                         startAt: slot.startsAtIso,
@@ -258,6 +263,7 @@ export const PatientBookPage = (): ReactElement => {
                         ...(beneficiaryType === 'family_member' ? { familyMemberId } : {})
                       });
                       setMessage('Turno reservado con éxito.');
+                      setConfirmedAppointment(appointment);
                       setSlots((prev) =>
                         prev.filter((current) => current.startsAtIso !== slot.startsAtIso && current.startsAtIso !== slot.endsAtIso)
                       );

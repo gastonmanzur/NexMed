@@ -8,6 +8,16 @@ import { OrganizationService } from '../services/organization.service.js';
 import { OrganizationLogoService } from '../services/organization-logo.service.js';
 
 const organizationTypeSchema = z.enum(['clinic', 'office', 'esthetic_center', 'professional_cabinet', 'other']);
+const optionalTrimmedString = (max: number) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().trim().min(1).max(max).optional()
+  );
+const optionalCoordinate = (min: number, max: number) =>
+  z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().finite().min(min).max(max).optional()
+  );
 
 const createOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(160),
@@ -25,9 +35,15 @@ const updateOrganizationProfileSchema = z.object({
   type: organizationTypeSchema,
   contactEmail: z.string().trim().email().optional(),
   phone: z.string().trim().min(3).max(40).optional(),
-  address: z.string().trim().min(1).max(200).optional(),
+  address: optionalTrimmedString(200),
   city: z.string().trim().min(1).max(120),
+  province: optionalTrimmedString(120),
+  postalCode: optionalTrimmedString(30),
   country: z.string().trim().min(1).max(120),
+  latitude: optionalCoordinate(-90, 90),
+  longitude: optionalCoordinate(-180, 180),
+  locationLabel: optionalTrimmedString(200),
+  locationPublic: z.boolean().optional(),
   description: z.string().trim().max(500).optional(),
   logoUrl: z.string().trim().url().optional(),
   timezone: z.string().trim().min(1).max(80),

@@ -483,7 +483,7 @@ export class PatientService {
       body: `Turno para ${new Date(appointment.startAt).toLocaleString('es-AR', { hour12: false })}`
     });
 
-    return appointment;
+    return this.attachOrganizationToAppointment(appointment);
   }
 
   async listPatientAppointments(userId: string, input: { status?: AppointmentStatus; organizationId?: string }): Promise<{
@@ -501,16 +501,19 @@ export class PatientService {
       ...(input.organizationId ? { organizationId: input.organizationId } : {})
     });
 
+    const enrichedRows = await this.attachOrganizationsToAppointments(rows);
+
     const now = Date.now();
-    const upcoming = rows.filter((item) => item.startAt && new Date(item.startAt).getTime() >= now && item.status === 'booked');
-    const history = rows.filter((item) => !upcoming.some((next) => next.id === item.id));
+    const upcoming = enrichedRows.filter((item) => item.startAt && new Date(item.startAt).getTime() >= now && item.status === 'booked');
+    const history = enrichedRows.filter((item) => !upcoming.some((next) => next.id === item.id));
 
     return { upcoming, history };
   }
 
   async getPatientAppointment(userId: string, appointmentId: string): Promise<AppointmentDto> {
     const profile = await this.ensurePatientProfile(userId);
-    return this.appointmentsService.getAppointmentForPatient(profile._id.toString(), appointmentId);
+    const appointment = await this.appointmentsService.getAppointmentForPatient(profile._id.toString(), appointmentId);
+    return this.attachOrganizationToAppointment(appointment);
   }
 
   async cancelPatientAppointment(userId: string, appointmentId: string, reason?: string): Promise<AppointmentDto> {
@@ -576,6 +579,26 @@ export class PatientService {
 
   async markUserEventsRead(userId: string): Promise<void> {
     await this.userEvents.markAllRead(userId);
+  }
+
+
+  private async attachOrganizationsToAppointments(appointments: AppointmentDto[]): Promise<AppointmentDto[]> {
+    const organizationIds = [...new Set(appointments.map((appointment) => appointment.organizationId))];
+    const organizations = organizationIds.length > 0 ? await this.organizations.findByIds(organizationIds) : [];
+    const organizationById = new Map(organizations.map((organization) => [organization._id.toString(), this.toOrganizationDto(organization)]));
+
+    return appointments.map((appointment) => ({
+      ...appointment,
+      organization: organizationById.get(appointment.organizationId) ?? null
+    }));
+  }
+
+  private async attachOrganizationToAppointment(appointment: AppointmentDto): Promise<AppointmentDto> {
+    const organization = await this.organizations.findById(appointment.organizationId);
+    return {
+      ...appointment,
+      organization: organization ? this.toOrganizationDto(organization) : null
+    };
   }
 
   private async assertPatientPolicyAllows(appointment: AppointmentDto, action: 'cancel' | 'reschedule'): Promise<void> {
@@ -691,7 +714,13 @@ export class PatientService {
     phone?: string | null;
     address?: string | null;
     city?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
     country?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    locationLabel?: string | null;
+    locationPublic?: boolean | null;
     description?: string | null;
     logoUrl?: string | null;
     status: OrganizationDto['status'];
@@ -710,7 +739,13 @@ export class PatientService {
       phone: organization.phone ?? null,
       address: organization.address ?? null,
       city: organization.city ?? null,
+      province: organization.province ?? null,
+      postalCode: organization.postalCode ?? null,
       country: organization.country ?? null,
+      latitude: typeof organization.latitude === 'number' ? organization.latitude : null,
+      longitude: typeof organization.longitude === 'number' ? organization.longitude : null,
+      locationLabel: organization.locationLabel ?? null,
+      locationPublic: organization.locationPublic ?? false,
       description: organization.description ?? null,
       logoUrl: organization.logoUrl ?? null,
       status: organization.status,

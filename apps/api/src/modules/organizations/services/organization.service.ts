@@ -36,7 +36,13 @@ interface CreateOrganizationInput {
   phone?: string | undefined;
   address?: string | undefined;
   city?: string | undefined;
+  province?: string | undefined;
+  postalCode?: string | undefined;
   country?: string | undefined;
+  latitude?: number | undefined;
+  longitude?: number | undefined;
+  locationLabel?: string | undefined;
+  locationPublic?: boolean | undefined;
 }
 
 interface UpdateOrganizationProfileInput {
@@ -47,7 +53,13 @@ interface UpdateOrganizationProfileInput {
   phone?: string | undefined;
   address?: string | undefined;
   city: string;
+  province?: string | undefined;
+  postalCode?: string | undefined;
   country: string;
+  latitude?: number | undefined;
+  longitude?: number | undefined;
+  locationLabel?: string | undefined;
+  locationPublic?: boolean | undefined;
   description?: string | undefined;
   logoUrl?: string | undefined;
   timezone: string;
@@ -403,7 +415,13 @@ export class OrganizationService {
       phone: this.normalizePhone(input.data.phone),
       address: this.normalizeOptionalText(input.data.address),
       city: input.data.city.trim(),
+      province: this.normalizeOptionalText(input.data.province),
+      postalCode: this.normalizeOptionalText(input.data.postalCode),
       country: input.data.country.trim(),
+      latitude: this.normalizeCoordinate(input.data.latitude, -90, 90),
+      longitude: this.normalizeCoordinate(input.data.longitude, -180, 180),
+      locationLabel: this.normalizeOptionalText(input.data.locationLabel),
+      locationPublic: input.data.locationPublic ?? false,
       description: this.normalizeOptionalText(input.data.description),
       logoUrl: this.normalizeOptionalText(input.data.logoUrl),
       timezone: input.data.timezone.trim(),
@@ -460,7 +478,13 @@ export class OrganizationService {
       phone: normalizedInput.phone,
       address: normalizedInput.address,
       city: normalizedInput.city,
+      province: normalizedInput.province,
+      postalCode: normalizedInput.postalCode,
       country: normalizedInput.country,
+      latitude: normalizedInput.latitude,
+      longitude: normalizedInput.longitude,
+      locationLabel: normalizedInput.locationLabel,
+      locationPublic: normalizedInput.locationPublic,
       description: normalizedInput.description,
       logoUrl: normalizedInput.logoUrl,
       onboardingCompleted: onboardingPreview.onboardingCompleted,
@@ -1046,6 +1070,16 @@ export class OrganizationService {
     return normalized && normalized.length > 0 ? normalized : undefined;
   }
 
+  private normalizeCoordinate(value: number | undefined, min: number, max: number): number | null {
+    if (value === undefined) {
+      return null;
+    }
+    if (!Number.isFinite(value) || value < min || value > max) {
+      throw new AppError('INVALID_COORDINATE', 400, 'Invalid organization coordinates');
+    }
+    return value;
+  }
+
   private toOrganizationDto(org: {
     _id: { toString(): string };
     name: string;
@@ -1056,7 +1090,13 @@ export class OrganizationService {
     phone?: string | null;
     address?: string | null;
     city?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
     country?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    locationLabel?: string | null;
+    locationPublic?: boolean | null;
     description?: string | null;
     logoUrl?: string | null;
     status: OrganizationDto['status'];
@@ -1075,7 +1115,13 @@ export class OrganizationService {
       phone: org.phone ?? null,
       address: org.address ?? null,
       city: org.city ?? null,
+      province: org.province ?? null,
+      postalCode: org.postalCode ?? null,
       country: org.country ?? null,
+      latitude: typeof org.latitude === 'number' ? org.latitude : null,
+      longitude: typeof org.longitude === 'number' ? org.longitude : null,
+      locationLabel: org.locationLabel ?? null,
+      locationPublic: org.locationPublic ?? false,
       description: org.description ?? null,
       logoUrl: org.logoUrl ?? null,
       status: org.status,
