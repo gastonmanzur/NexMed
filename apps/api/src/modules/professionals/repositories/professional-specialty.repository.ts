@@ -13,6 +13,11 @@ export class ProfessionalSpecialtyRepository {
     return ProfessionalSpecialtyModel.find({ organizationId, professionalId }).exec();
   }
 
+  async existsForProfessionalAndSpecialty(organizationId: string, professionalId: string, specialtyId: string): Promise<boolean> {
+    const count = await ProfessionalSpecialtyModel.countDocuments({ organizationId, professionalId, specialtyId }).limit(1).exec();
+    return count > 0;
+  }
+
   async replaceForProfessional(organizationId: string, professionalId: string, specialtyIds: string[]): Promise<void> {
     await ProfessionalSpecialtyModel.deleteMany({ organizationId, professionalId }).exec();
 
