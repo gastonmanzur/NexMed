@@ -7,15 +7,29 @@ import { useAuth } from '../auth/AuthContext';
 import { patientApi } from './patient-api';
 import { OrganizationLocationCard } from './OrganizationLocationCard';
 
-const today = new Date().toISOString().slice(0, 10);
-const nextWeek = new Date(Date.now() + 6 * 86400000).toISOString().slice(0, 10);
+const ARGENTINA_TIMEZONE = 'America/Argentina/Buenos_Aires';
+
+const formatDateInArgentina = (date: Date): string =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: ARGENTINA_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date);
+
+const today = formatDateInArgentina(new Date());
+const nextWeek = formatDateInArgentina(new Date(Date.now() + 6 * 86400000));
 
 type BookableSlot = { startsAtIso: string; endsAtIso: string; startTime: string; endTime: string };
 type CatalogProfessional = { id: string; displayName: string; specialtyIds: string[] };
 type CatalogSpecialty = { id: string; name: string; professionalIds: string[] };
 
+const parseSlotInstant = (value: string): Date => new Date(`${value}Z`);
+
 const slotDurationMinutes = (slot: BookableSlot): number =>
-  Math.max(0, Math.round((new Date(slot.endsAtIso).getTime() - new Date(slot.startsAtIso).getTime()) / 60000));
+  Math.max(0, Math.round((parseSlotInstant(slot.endsAtIso).getTime() - parseSlotInstant(slot.startsAtIso).getTime()) / 60000));
+
+const isFutureSlot = (slot: BookableSlot, now: Date): boolean => parseSlotInstant(slot.startsAtIso).getTime() > now.getTime();
 
 export const PatientBookPage = (): ReactElement => {
   const { organizationId = '' } = useParams();
@@ -38,6 +52,13 @@ export const PatientBookPage = (): ReactElement => {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [selectionNotice, setSelectionNotice] = useState('');
+  const [availabilitySearched, setAvailabilitySearched] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!accessToken) {
@@ -108,6 +129,7 @@ export const PatientBookPage = (): ReactElement => {
     setSlots([]);
     setConfirmedAppointment(null);
     setMessage('');
+    setAvailabilitySearched(false);
   };
 
   const handleProfessionalChange = (nextProfessionalId: string): void => {
@@ -290,13 +312,17 @@ export const PatientBookPage = (): ReactElement => {
               try {
                 setError('');
                 setAvailabilityLoading(true);
+                setAvailabilitySearched(false);
                 const availability = await patientApi.getAvailability(accessToken!, organizationId, {
                   professionalId,
                   specialtyId,
                   startDate,
                   endDate
                 });
-                setSlots(availability.days.flatMap((day) => day.slots));
+                const currentNow = new Date();
+                setNow(currentNow);
+                setSlots(availability.days.flatMap((day) => day.slots).filter((slot) => isFutureSlot(slot, currentNow)));
+                setAvailabilitySearched(true);
               } catch (cause) {
                 setError((cause as Error).message);
               } finally {
@@ -318,13 +344,16 @@ export const PatientBookPage = (): ReactElement => {
           <OrganizationLocationCard organization={confirmedAppointment.organization} />
         ) : null}
         {!availabilityLoading && canSearchAvailability && slots.length === 0 ? (
-          <p className="nx-book-status">Buscá disponibilidad para ver horarios compatibles.</p>
+          <p className="nx-book-status">
+            {availabilitySearched ? 'No quedan horarios disponibles para hoy o el rango seleccionado. Elegí otra fecha.' : 'Buscá disponibilidad para ver horarios compatibles.'}
+          </p>
         ) : null}
 
         <ul className="nx-doctor-list">
-          {slots.map((slot) => {
+          {slots.filter((slot) => isFutureSlot(slot, now)).map((slot) => {
             const doubleEndSlot = getDoubleEndSlot(slot);
-            const canBookSelectedDuration = durationMultiplier === 1 || Boolean(doubleEndSlot);
+            const slotStillFuture = isFutureSlot(slot, now);
+            const canBookSelectedDuration = slotStillFuture && (durationMultiplier === 1 || Boolean(doubleEndSlot));
             const selectedEndAt = durationMultiplier === 2 && doubleEndSlot ? doubleEndSlot.endsAtIso : slot.endsAtIso;
             const selectedEndTime = durationMultiplier === 2 && doubleEndSlot ? doubleEndSlot.endTime : slot.endTime;
             const estimatedMinutes = slotDurationMinutes(slot) * durationMultiplier;
@@ -363,7 +392,7 @@ export const PatientBookPage = (): ReactElement => {
                   <button
                     type="button"
                     className="nx-btn"
-                    disabled={!canBookSelectedDuration || !isValidCombination}
+                    disabled={!slotStillFuture || !canBookSelectedDuration || !isValidCombination}
                     onClick={async () => {
                       if (!accessToken) {
                         return;
@@ -373,6 +402,11 @@ export const PatientBookPage = (): ReactElement => {
                         setError('');
                         if (!isValidCombination) {
                           setError('Seleccioná un profesional y una especialidad compatibles antes de reservar.');
+                          return;
+                        }
+                        if (!isFutureSlot(slot, new Date())) {
+                          setError('No se puede reservar un turno en un horario que ya pasó.');
+                          setSlots((prev) => prev.filter((current) => current.startsAtIso !== slot.startsAtIso));
                           return;
                         }
                         if (beneficiaryType === 'family_member' && !familyMemberId) {
