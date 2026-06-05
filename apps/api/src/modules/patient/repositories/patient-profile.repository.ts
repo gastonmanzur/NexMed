@@ -32,6 +32,10 @@ export class PatientProfileRepository {
     return PatientProfileModel.findOne({ userId, isPrimaryProfile: true }).exec();
   }
 
+  async findPrimaryCandidateByUserId(userId: string): Promise<PatientProfileDocument | null> {
+    return PatientProfileModel.findOne({ userId }).sort({ isPrimaryProfile: -1, createdAt: 1 }).exec();
+  }
+
   async findById(id: string): Promise<PatientProfileDocument | null> {
     return PatientProfileModel.findById(id).exec();
   }
@@ -52,6 +56,10 @@ export class PatientProfileRepository {
 
   async updateByUserId(userId: string, update: Record<string, unknown>): Promise<PatientProfileDocument | null> {
     return PatientProfileModel.findOneAndUpdate({ userId, isPrimaryProfile: true }, { $set: update }, { new: true }).exec();
+  }
+
+  async updateById(id: string, update: Record<string, unknown>): Promise<PatientProfileDocument | null> {
+    return PatientProfileModel.findByIdAndUpdate(id, { $set: update }, { new: true }).exec();
   }
 
   async updateByIdForOwner(id: string, ownerUserId: string, update: Record<string, unknown>): Promise<PatientProfileDocument | null> {

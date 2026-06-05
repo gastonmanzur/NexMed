@@ -13,6 +13,21 @@ import { patientApi } from '../patient/patient-api';
 
 const viewStyle = { maxWidth: 560, margin: '2rem auto', padding: '1rem' };
 const authSurfaceStyle = { maxWidth: 480 };
+const ACCOUNT_INTENT_STORAGE_KEY = 'nexmed.accountIntent';
+type AccountIntent = 'patient' | 'organization';
+
+const readAccountIntent = (): AccountIntent | null => {
+  const value = localStorage.getItem(ACCOUNT_INTENT_STORAGE_KEY);
+  return value === 'patient' || value === 'organization' ? value : null;
+};
+
+const writeAccountIntent = (intent: AccountIntent): void => {
+  localStorage.setItem(ACCOUNT_INTENT_STORAGE_KEY, intent);
+};
+
+const clearAccountIntent = (): void => {
+  localStorage.removeItem(ACCOUNT_INTENT_STORAGE_KEY);
+};
 
 const getGoogleLoginErrorMessage = (cause: unknown): string => {
   const error = cause as FirebaseError;
@@ -89,6 +104,7 @@ export const RegisterPage = (): ReactElement => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [accountIntent, setAccountIntent] = useState<AccountIntent>('organization');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -121,6 +137,16 @@ export const RegisterPage = (): ReactElement => {
           </label>
         </div>
 
+        <div className="nx-form-grid">
+          <label className="nx-field">
+            <span>Tipo de cuenta</span>
+            <select value={accountIntent} onChange={(event) => setAccountIntent(event.target.value as AccountIntent)}>
+              <option value="organization">Centro / consultorio</option>
+              <option value="patient">Paciente</option>
+            </select>
+          </label>
+        </div>
+
         <div className="nx-auth-actions">
           <button
             type="button"
@@ -142,6 +168,7 @@ export const RegisterPage = (): ReactElement => {
                   password,
                 });
 
+                writeAccountIntent(accountIntent);
                 setSession(session);
                 navigate('/post-login');
               } catch (cause) {
@@ -162,6 +189,7 @@ export const RegisterPage = (): ReactElement => {
               try {
                 setLoading(true);
                 setError('');
+                writeAccountIntent(accountIntent);
                 await loginWithGoogle();
               } catch (cause) {
                 setError(getGoogleLoginErrorMessage(cause));
@@ -270,6 +298,7 @@ export const PostLoginResolverPage = (): ReactElement => {
     user,
     organizations,
     memberships,
+    patientProfile,
     activeOrganizationId,
     accessToken,
   } = useAuth();
@@ -277,6 +306,7 @@ export const PostLoginResolverPage = (): ReactElement => {
   const [bootstrapResolved, setBootstrapResolved] = useState(false);
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
+  const [accountIntent, setAccountIntent] = useState<AccountIntent | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -287,6 +317,7 @@ export const PostLoginResolverPage = (): ReactElement => {
           setBootstrapResolved(true);
           setHasPatientOrganizations(false);
           setJoinResolutionFailed(false);
+          setAccountIntent(null);
         }
         return;
       }
@@ -295,6 +326,7 @@ export const PostLoginResolverPage = (): ReactElement => {
         setBootstrapResolved(false);
         setHasPatientOrganizations(false);
         setJoinResolutionFailed(false);
+        setAccountIntent(readAccountIntent());
       }
 
       const pendingJoin = readJoinIntent();
@@ -306,27 +338,19 @@ export const PostLoginResolverPage = (): ReactElement => {
         if (pendingJoin) {
           await patientApi.resolveJoin(accessToken, pendingJoin);
           joinResolved = true;
+          patientOrganizationsDetected = true;
         }
       } catch {
         joinResolved = false;
       }
 
-      try {
-        const patientMe = await patientApi.getMe(accessToken);
-        patientOrganizationsDetected = (patientMe.organizations?.length ?? 0) > 0;
-      } catch {
-        patientOrganizationsDetected = false;
-      }
-
       if (!cancelled) {
         setHasPatientOrganizations(patientOrganizationsDetected);
-        setJoinResolutionFailed(
-          Boolean(pendingJoin) && !joinResolved && !patientOrganizationsDetected
-        );
+        setJoinResolutionFailed(Boolean(pendingJoin) && !joinResolved);
         setBootstrapResolved(true);
       }
 
-      if (!pendingJoin || joinResolved || patientOrganizationsDetected) {
+      if (!pendingJoin || joinResolved) {
         clearJoinIntent();
       }
     };
@@ -351,6 +375,7 @@ export const PostLoginResolverPage = (): ReactElement => {
   }
 
   if (user.globalRole === 'super_admin') {
+    clearAccountIntent();
     return <Navigate to="/admin" replace />;
   }
 
@@ -363,31 +388,56 @@ export const PostLoginResolverPage = (): ReactElement => {
     );
   }
 
-  const resolvedOrganizationId = activeOrganizationId ?? organizations[0]?.id ?? null;
-
+  const centerMembershipRoles = new Set(['owner', 'admin', 'staff', 'manager']);
+  const activeCenterMemberships = memberships.filter(
+    (membership) =>
+      membership.status === 'active' &&
+      centerMembershipRoles.has(membership.role)
+  );
+  const activePatientMemberships = memberships.filter(
+    (membership) => membership.status === 'active' && membership.role === 'patient'
+  );
+  const resolvedOrganizationId = activeOrganizationId ?? activeCenterMemberships[0]?.organizationId ?? organizations[0]?.id ?? null;
   const activeOrganization = organizations.find(
     (organization) => organization.id === resolvedOrganizationId
   );
-
-  const activeMembership = memberships.find(
-    (membership) =>
-      membership.organizationId === resolvedOrganizationId &&
-      membership.status === 'active'
-  );
-
+  const hasExistingPatientProfile = Boolean(patientProfile?.isPrimaryProfile);
   const shouldGoToPatient =
-    activeMembership?.role === 'patient' ||
-    (organizations.length === 0 && hasPatientOrganizations);
+    activePatientMemberships.length > 0 ||
+    hasPatientOrganizations ||
+    (activeCenterMemberships.length === 0 && (hasExistingPatientProfile || accountIntent === 'patient'));
+  const routeReason = shouldGoToPatient
+    ? 'patient-role-or-profile'
+    : activeCenterMemberships.length > 0
+      ? 'active-center-membership'
+      : accountIntent === 'organization'
+        ? 'organization-registration-intent'
+        : 'no-memberships-fallback-organization-onboarding';
 
-  if (shouldGoToPatient) {
-    return <Navigate to="/patient/organizations" replace />;
+  if (import.meta.env.DEV) {
+    console.debug('[PostLoginResolver]', {
+      role: user.role,
+      globalRole: user.globalRole,
+      membershipsLength: memberships.length,
+      activeOrganizationId,
+      routeReason,
+      hasExistingPatientProfile,
+      accountIntent
+    });
   }
 
-  if (organizations.length === 0 && !hasPatientOrganizations) {
+  if (shouldGoToPatient) {
+    clearAccountIntent();
+    return <Navigate to="/patient" replace />;
+  }
+
+  if (activeCenterMemberships.length === 0) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  if (!activeOrganizationId && organizations.length > 1) {
+  clearAccountIntent();
+
+  if (!activeOrganizationId && activeCenterMemberships.length > 1) {
     return <Navigate to="/select-organization" replace />;
   }
 

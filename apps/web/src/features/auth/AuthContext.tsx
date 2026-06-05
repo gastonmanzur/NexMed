@@ -4,6 +4,7 @@ import type {
   OrganizationDto,
   OrganizationMembershipDto,
   OrganizationStatus,
+  PatientProfileDto,
 } from '@starter/shared-types';
 import type { ReactElement, ReactNode } from 'react';
 import {
@@ -21,12 +22,14 @@ const ACTIVE_ORGANIZATION_STORAGE_KEY = 'nexmed.activeOrganizationId';
 const resolveSuggestedActiveOrganizationId = (
   context: Pick<AuthSessionContextDto, 'organizations' | 'memberships'>
 ): string | null => {
-  const activeMemberships = context.memberships.filter(
-    (membership) => membership.status === 'active'
+  const centerMembershipRoles = new Set(['owner', 'admin', 'staff', 'manager']);
+  const activeCenterMemberships = context.memberships.filter(
+    (membership) =>
+      membership.status === 'active' && centerMembershipRoles.has(membership.role)
   );
 
-  return activeMemberships.length === 1
-    ? (activeMemberships[0]?.organizationId ?? null)
+  return activeCenterMemberships.length === 1
+    ? (activeCenterMemberships[0]?.organizationId ?? null)
     : null;
 };
 
@@ -35,6 +38,7 @@ interface AuthState {
   accessToken: string | null;
   organizations: OrganizationDto[];
   memberships: OrganizationMembershipDto[];
+  patientProfile: PatientProfileDto | null;
   activeOrganizationId: string | null;
   activeOrganizationSummary: OrganizationDto | null;
   onboardingCompleted: boolean;
@@ -63,6 +67,7 @@ export const AuthProvider = ({
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationDto[]>([]);
   const [memberships, setMemberships] = useState<OrganizationMembershipDto[]>([]);
+  const [patientProfile, setPatientProfile] = useState<PatientProfileDto | null>(null);
   const [activeOrganizationId, setActiveOrganizationIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -122,6 +127,7 @@ export const AuthProvider = ({
         const session = await authApi.refresh();
 
         setUser(session.user);
+        setPatientProfile(session.patientProfile);
         setAccessToken(session.accessToken);
         applyOrganizationsContext({
           organizations: session.organizations,
@@ -133,6 +139,7 @@ export const AuthProvider = ({
         setAccessToken(null);
         setOrganizations([]);
         setMemberships([]);
+        setPatientProfile(null);
         setActiveOrganizationId(null);
       } finally {
         setLoading(false);
@@ -144,6 +151,7 @@ export const AuthProvider = ({
     (session: { accessToken: string } & AuthSessionContextDto) => {
       setAccessToken(session.accessToken);
       setUser(session.user);
+      setPatientProfile(session.patientProfile);
       applyOrganizationsContext({
         organizations: session.organizations,
         memberships: session.memberships,
@@ -164,6 +172,7 @@ export const AuthProvider = ({
     setUser(null);
     setOrganizations([]);
     setMemberships([]);
+    setPatientProfile(null);
     setActiveOrganizationId(null);
   }, [setActiveOrganizationId]);
 
@@ -185,6 +194,7 @@ export const AuthProvider = ({
 
     const context = await authApi.me(accessToken);
 
+    setPatientProfile(context.patientProfile);
     applyOrganizationsContext({
       organizations: context.organizations,
       memberships: context.memberships,
@@ -209,6 +219,7 @@ export const AuthProvider = ({
       accessToken,
       organizations,
       memberships,
+      patientProfile,
       activeOrganizationId,
       activeOrganizationSummary,
       onboardingCompleted: activeOrganizationSummary?.onboardingCompleted ?? false,
@@ -226,6 +237,7 @@ export const AuthProvider = ({
       accessToken,
       organizations,
       memberships,
+      patientProfile,
       activeOrganizationId,
       activeOrganizationSummary,
       loading,
