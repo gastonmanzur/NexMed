@@ -357,6 +357,14 @@ export const App = (): ReactElement => {
         }
       />
       <Route
+        path="/patient"
+        element={(
+          <ProtectedRoute>
+            <Navigate to="/patient/organizations" replace />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
         path="/patient/organizations"
         element={(
           <ProtectedRoute>

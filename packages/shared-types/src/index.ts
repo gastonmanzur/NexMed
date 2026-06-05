@@ -107,6 +107,7 @@ export interface AuthSessionContextDto {
   organizations: OrganizationDto[];
   memberships: OrganizationMembershipDto[];
   activeOrganizationId: string | null;
+  patientProfile: PatientProfileDto | null;
 }
 
 export type PushPlatform = 'web' | 'android' | 'ios';

@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import type { AuthSessionContextDto, AuthUserDto, UserRole } from '@starter/shared-types';
+import type { AuthSessionContextDto, AuthUserDto, PatientProfileDto, UserRole } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { env } from '../../../config/env.js';
 import { ActionTokenRepository } from '../repositories/action-token.repository.js';
@@ -9,6 +9,8 @@ import { GoogleAuthService } from './google-auth.service.js';
 import { MailService } from './mail.service.js';
 import { TokenService } from './token.service.js';
 import { OrganizationService } from '../../organizations/services/organization.service.js';
+import { PatientProfileRepository } from '../../patient/repositories/patient-profile.repository.js';
+import type { PatientProfileDocument } from '../../patient/models/patient-profile.model.js';
 
 interface AuthResult {
   accessToken: string;
@@ -25,7 +27,8 @@ export class AuthService {
     private readonly tokenService = new TokenService(),
     private readonly mailService = new MailService(),
     private readonly googleAuth = new GoogleAuthService(),
-    private readonly organizationService = new OrganizationService()
+    private readonly organizationService = new OrganizationService(),
+    private readonly patientProfiles = new PatientProfileRepository()
   ) {}
 
   async registerLocal(
@@ -233,9 +236,13 @@ export class AuthService {
     } catch {
       orgContext = { organizations: [], memberships: [] };
     }
-    const activeMemberships = orgContext.memberships.filter((membership) => membership.status === 'active');
-    const activeOrganizationId = activeMemberships.length === 1 ? (activeMemberships[0]?.organizationId ?? null) : null;
+    const centerMembershipRoles = new Set(['owner', 'admin', 'staff', 'manager']);
+    const activeCenterMemberships = orgContext.memberships.filter(
+      (membership) => membership.status === 'active' && centerMembershipRoles.has(membership.role)
+    );
+    const activeOrganizationId = activeCenterMemberships.length === 1 ? (activeCenterMemberships[0]?.organizationId ?? null) : null;
     const globalRole = (user.globalRole ?? 'user') as 'super_admin' | 'user';
+    const patientProfile = await this.findExistingPatientProfile(user._id.toString());
 
     return {
       user: {
@@ -252,7 +259,63 @@ export class AuthService {
       },
       organizations: orgContext.organizations,
       memberships: orgContext.memberships,
-      activeOrganizationId
+      activeOrganizationId,
+      patientProfile: patientProfile ? this.toPatientProfileDto(patientProfile) : null
+    };
+  }
+
+
+  private async findExistingPatientProfile(userId: string): Promise<PatientProfileDocument | null> {
+    const profile = await this.patientProfiles.findPrimaryCandidateByUserId(userId);
+    if (!profile) return null;
+
+    if (!profile.ownerUserId || profile.isPrimaryProfile !== true) {
+      const repaired = await this.patientProfiles.updateById(
+        profile._id.toString(),
+        { ownerUserId: userId, isPrimaryProfile: true, relationshipToOwner: null }
+      );
+      return repaired ?? profile;
+    }
+
+    return profile;
+  }
+
+  private toPatientProfileDto(profile: PatientProfileDocument): PatientProfileDto {
+    return {
+      id: profile._id.toString(),
+      userId: profile.userId ? profile.userId.toString() : null,
+      ownerUserId: profile.ownerUserId ? profile.ownerUserId.toString() : (profile.userId ? profile.userId.toString() : ''),
+      relationshipToOwner: profile.relationshipToOwner ?? null,
+      isPrimaryProfile: profile.isPrimaryProfile ?? true,
+      firstName: profile.firstName ?? null,
+      lastName: profile.lastName ?? null,
+      phone: profile.phone ?? null,
+      dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString().slice(0, 10) : null,
+      documentId: profile.documentId ?? null,
+      sex: profile.sex ?? null,
+      nationality: profile.nationality ?? null,
+      address: profile.address ?? null,
+      city: profile.city ?? null,
+      province: profile.province ?? null,
+      emergencyContactName: profile.emergencyContactName ?? null,
+      emergencyContactPhone: profile.emergencyContactPhone ?? null,
+      emergencyContactRelationship: profile.emergencyContactRelationship ?? null,
+      insuranceProvider: profile.insuranceProvider ?? null,
+      insuranceMemberId: profile.insuranceMemberId ?? null,
+      insurancePlan: profile.insurancePlan ?? null,
+      bloodType: profile.bloodType ?? null,
+      allergies: profile.allergies ?? null,
+      regularMedication: profile.regularMedication ?? null,
+      preexistingConditions: profile.preexistingConditions ?? null,
+      previousSurgeries: profile.previousSurgeries ?? null,
+      medicalNotes: profile.medicalNotes ?? null,
+      contactPreference: profile.contactPreference ?? null,
+      acceptsNotifications: profile.acceptsNotifications ?? false,
+      acceptsReminders: profile.acceptsReminders ?? false,
+      acceptsEmailCommunications: profile.acceptsEmailCommunications ?? false,
+      acceptsWhatsAppCommunications: profile.acceptsWhatsAppCommunications ?? false,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString()
     };
   }
 
