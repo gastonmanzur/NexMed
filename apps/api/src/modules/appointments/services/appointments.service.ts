@@ -85,6 +85,12 @@ const parseIsoDate = (value: string, fieldName: string): Date => {
 const extractDate = (date: Date): string => date.toISOString().slice(0, 10);
 const extractTime = (date: Date): string => date.toISOString().slice(11, 16);
 
+const assertStartsInFuture = (startAt: Date): void => {
+  if (startAt.getTime() <= Date.now()) {
+    throw new AppError('APPOINTMENT_START_IN_PAST', 400, 'No se puede reservar un turno en un horario que ya pasó.');
+  }
+};
+
 export class AppointmentsService {
   constructor(
     private readonly appointments = new AppointmentRepository(),
@@ -563,6 +569,8 @@ export class AppointmentsService {
     }
 
     const startAt = parseIsoDate(input.startAt, 'startAt');
+    assertStartsInFuture(startAt);
+
     const durationMultiplier = input.durationMultiplier ?? 1;
     if (durationMultiplier !== 1 && durationMultiplier !== 2) {
       throw new AppError('INVALID_DURATION_MULTIPLIER', 400, 'durationMultiplier must be 1 or 2');

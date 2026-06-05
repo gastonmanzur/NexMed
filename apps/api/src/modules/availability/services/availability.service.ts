@@ -116,6 +116,8 @@ const compareDateStrings = (left: string, right: string): number => {
   return left < right ? -1 : 1;
 };
 
+const parseSlotInstant = (value: string): Date => new Date(`${value}Z`);
+
 export class AvailabilityService {
   constructor(
     private readonly rules = new AvailabilityRuleRepository(),
@@ -278,6 +280,8 @@ export class AvailabilityService {
       new Date(`${validatedRange.endDate}T23:59:59.999Z`)
     );
 
+    const now = new Date();
+
     const exceptionsByDate = new Map<string, AvailabilityExceptionDocument[]>();
     for (const exception of activeExceptions) {
       const current = exceptionsByDate.get(exception.date) ?? [];
@@ -314,8 +318,12 @@ export class AvailabilityService {
           return false;
         }
 
-        const slotStartAt = new Date(`${slot.startsAtIso}Z`);
-        const slotEndAt = new Date(`${slot.endsAtIso}Z`);
+        const slotStartAt = parseSlotInstant(slot.startsAtIso);
+        if (slotStartAt.getTime() <= now.getTime()) {
+          return false;
+        }
+
+        const slotEndAt = parseSlotInstant(slot.endsAtIso);
 
         const blockedByBookedAppointment = bookedAppointments.some((appointment) =>
           minutesOverlap(
