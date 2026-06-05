@@ -48,6 +48,33 @@ const hoursUntil = (iso: string): number => {
   return (date.getTime() - Date.now()) / 3600000;
 };
 
+interface FamilyMemberWriteInput {
+  firstName?: string;
+  lastName?: string;
+  relationship?: string;
+  dateOfBirth?: string;
+  documentId?: string;
+  phone?: string;
+  email?: string;
+  sex?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
+  insuranceProvider?: string;
+  insuranceMemberId?: string;
+  insurancePlan?: string;
+  bloodType?: string;
+  allergies?: string;
+  regularMedication?: string;
+  preexistingConditions?: string;
+  medicalNotes?: string;
+  notes?: string;
+  isActive?: boolean;
+}
+
 export class PatientService {
   constructor(
     private readonly users = new UserRepository(),
@@ -91,13 +118,22 @@ export class PatientService {
 
   async ensurePatientProfile(userId: string): Promise<PatientProfileDocument> {
     const existing = await this.patientProfiles.findByUserId(userId);
-    if (existing) return existing;
+    if (existing) {
+      if (!existing.ownerUserId || existing.isPrimaryProfile !== true) {
+        const repaired = await this.patientProfiles.updateByUserId(userId, { ownerUserId: userId, isPrimaryProfile: true, relationshipToOwner: null });
+        if (repaired) return repaired;
+      }
+      return existing;
+    }
 
     const user = await this.users.findById(userId);
     if (!user) throw new AppError('USER_NOT_FOUND', 404, 'User not found');
 
     return this.patientProfiles.create({
       userId,
+      ownerUserId: userId,
+      isPrimaryProfile: true,
+      relationshipToOwner: null,
       firstName: user.firstName,
       lastName: user.lastName
     });
@@ -253,35 +289,82 @@ export class PatientService {
 
   async listFamilyMembers(userId: string): Promise<PatientFamilyMemberDto[]> {
     const rows = await this.familyMembers.listByOwnerUser(userId);
-    return rows.map((row) => this.toFamilyMemberDto(row));
+    const repaired = await Promise.all(rows.map((row) => this.ensureFamilyMemberProfile(userId, row)));
+    return repaired.map((row) => this.toFamilyMemberDto(row));
+  }
+
+  async getFamilyMember(userId: string, familyMemberId: string): Promise<PatientFamilyMemberDto> {
+    if (!isValidObjectId(familyMemberId)) {
+      throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
+    }
+    const row = await this.familyMembers.findByIdForOwner(familyMemberId, userId);
+    if (!row) throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
+    return this.toFamilyMemberDto(await this.ensureFamilyMemberProfile(userId, row));
   }
 
   async createFamilyMember(
     userId: string,
-    input: {
-      firstName: string;
-      lastName: string;
-      relationship: string;
-      dateOfBirth: string;
-      documentId: string;
-      phone?: string | undefined;
-      notes?: string | undefined;
-      isActive?: boolean | undefined;
-    }
+    input: FamilyMemberWriteInput
   ): Promise<PatientFamilyMemberDto> {
-    if (!isValidDateOnly(input.dateOfBirth)) {
+    if (!input.dateOfBirth || !isValidDateOnly(input.dateOfBirth)) {
       throw new AppError('INVALID_DATE_OF_BIRTH', 400, 'dateOfBirth must be YYYY-MM-DD');
     }
 
+    const normalized = this.normalizeFamilyMemberInput(input, true);
+    const dateOfBirth = new Date(`${input.dateOfBirth}T00:00:00.000Z`);
+    const profile = await this.patientProfiles.create({
+      userId: null,
+      ownerUserId: userId,
+      isPrimaryProfile: false,
+      relationshipToOwner: normalized.relationship ?? null,
+      firstName: normalized.firstName ?? null,
+      lastName: normalized.lastName ?? null,
+      dateOfBirth,
+      documentId: normalized.documentId ?? null,
+      phone: normalized.phone ?? null,
+      sex: normalized.sex ?? null,
+      address: normalized.address ?? null,
+      city: normalized.city ?? null,
+      province: normalized.province ?? null,
+      emergencyContactName: normalized.emergencyContactName ?? null,
+      emergencyContactPhone: normalized.emergencyContactPhone ?? null,
+      emergencyContactRelationship: normalized.emergencyContactRelationship ?? null,
+      insuranceProvider: normalized.insuranceProvider ?? null,
+      insuranceMemberId: normalized.insuranceMemberId ?? null,
+      insurancePlan: normalized.insurancePlan ?? null,
+      bloodType: normalized.bloodType ?? null,
+      allergies: normalized.allergies ?? null,
+      regularMedication: normalized.regularMedication ?? null,
+      preexistingConditions: normalized.preexistingConditions ?? null,
+      medicalNotes: normalized.medicalNotes ?? null
+    });
+
     const created = await this.familyMembers.create({
       ownerUserId: userId,
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
-      relationship: input.relationship.trim(),
-      dateOfBirth: new Date(`${input.dateOfBirth}T00:00:00.000Z`),
-      documentId: input.documentId.trim(),
-      ...(input.phone !== undefined ? { phone: normalizePhone(input.phone) ?? null } : {}),
-      ...(input.notes !== undefined ? { notes: normalizeOptionalText(input.notes) ?? null } : {}),
+      patientProfileId: profile._id.toString(),
+      firstName: normalized.firstName!,
+      lastName: normalized.lastName!,
+      relationship: normalized.relationship!,
+      dateOfBirth,
+      documentId: normalized.documentId!,
+      phone: normalized.phone ?? null,
+      email: normalized.email ?? null,
+      sex: normalized.sex ?? null,
+      address: normalized.address ?? null,
+      city: normalized.city ?? null,
+      province: normalized.province ?? null,
+      emergencyContactName: normalized.emergencyContactName ?? null,
+      emergencyContactPhone: normalized.emergencyContactPhone ?? null,
+      emergencyContactRelationship: normalized.emergencyContactRelationship ?? null,
+      insuranceProvider: normalized.insuranceProvider ?? null,
+      insuranceMemberId: normalized.insuranceMemberId ?? null,
+      insurancePlan: normalized.insurancePlan ?? null,
+      bloodType: normalized.bloodType ?? null,
+      allergies: normalized.allergies ?? null,
+      regularMedication: normalized.regularMedication ?? null,
+      preexistingConditions: normalized.preexistingConditions ?? null,
+      medicalNotes: normalized.medicalNotes ?? null,
+      notes: normalized.notes ?? null,
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
     });
 
@@ -291,30 +374,17 @@ export class PatientService {
   async updateFamilyMember(
     userId: string,
     familyMemberId: string,
-    input: {
-      firstName?: string | undefined;
-      lastName?: string | undefined;
-      relationship?: string | undefined;
-      dateOfBirth?: string | undefined;
-      documentId?: string | undefined;
-      phone?: string | undefined;
-      notes?: string | undefined;
-      isActive?: boolean | undefined;
-    }
+    input: Partial<FamilyMemberWriteInput>
   ): Promise<PatientFamilyMemberDto> {
     if (!isValidObjectId(familyMemberId)) {
       throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
     }
 
-    const update: Record<string, unknown> = {
-      ...(input.firstName !== undefined ? { firstName: input.firstName.trim() } : {}),
-      ...(input.lastName !== undefined ? { lastName: input.lastName.trim() } : {}),
-      ...(input.relationship !== undefined ? { relationship: input.relationship.trim() } : {}),
-      ...(input.documentId !== undefined ? { documentId: input.documentId.trim() } : {}),
-      ...(input.phone !== undefined ? { phone: normalizePhone(input.phone) ?? null } : {}),
-      ...(input.notes !== undefined ? { notes: normalizeOptionalText(input.notes) ?? null } : {}),
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
-    };
+    const existing = await this.familyMembers.findByIdForOwner(familyMemberId, userId);
+    if (!existing) throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
+
+    const normalized = this.normalizeFamilyMemberInput(input, false);
+    const update: Record<string, unknown> = { ...normalized };
 
     if (input.dateOfBirth !== undefined) {
       if (!isValidDateOnly(input.dateOfBirth)) {
@@ -323,10 +393,34 @@ export class PatientService {
       update.dateOfBirth = new Date(`${input.dateOfBirth}T00:00:00.000Z`);
     }
 
+    if (input.isActive !== undefined) update.isActive = input.isActive;
+
     const updated = await this.familyMembers.updateByIdForOwner(familyMemberId, userId, update);
-    if (!updated) {
-      throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
-    }
+    if (!updated) throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
+
+    await this.patientProfiles.updateByIdForOwner(updated.patientProfileId.toString(), userId, {
+      ...(updated.firstName !== undefined ? { firstName: updated.firstName } : {}),
+      ...(updated.lastName !== undefined ? { lastName: updated.lastName } : {}),
+      ...(updated.relationship !== undefined ? { relationshipToOwner: updated.relationship } : {}),
+      ...(updated.dateOfBirth !== undefined ? { dateOfBirth: updated.dateOfBirth } : {}),
+      ...(updated.documentId !== undefined ? { documentId: updated.documentId } : {}),
+      phone: updated.phone ?? null,
+      sex: updated.sex ?? null,
+      address: updated.address ?? null,
+      city: updated.city ?? null,
+      province: updated.province ?? null,
+      emergencyContactName: updated.emergencyContactName ?? null,
+      emergencyContactPhone: updated.emergencyContactPhone ?? null,
+      emergencyContactRelationship: updated.emergencyContactRelationship ?? null,
+      insuranceProvider: updated.insuranceProvider ?? null,
+      insuranceMemberId: updated.insuranceMemberId ?? null,
+      insurancePlan: updated.insurancePlan ?? null,
+      bloodType: updated.bloodType ?? null,
+      allergies: updated.allergies ?? null,
+      regularMedication: updated.regularMedication ?? null,
+      preexistingConditions: updated.preexistingConditions ?? null,
+      medicalNotes: updated.medicalNotes ?? null
+    });
 
     return this.toFamilyMemberDto(updated);
   }
@@ -336,10 +430,8 @@ export class PatientService {
       throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
     }
 
-    const deleted = await this.familyMembers.deleteByIdForOwner(familyMemberId, userId);
-    if (!deleted) {
-      throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
-    }
+    const updated = await this.familyMembers.updateByIdForOwner(familyMemberId, userId, { isActive: false });
+    if (!updated) throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
   }
 
   async listPatientOrganizations(userId: string): Promise<PatientOrganizationSummaryDto[]> {
@@ -454,9 +546,10 @@ export class PatientService {
       notes?: string;
       beneficiaryType?: 'self' | 'family_member';
       familyMemberId?: string;
+      patientProfileId?: string;
     }
   ): Promise<AppointmentDto> {
-    const { patientProfileId } = await this.assertActiveLink(userId, organizationId);
+    const { patientProfileId: primaryPatientProfileId } = await this.assertActiveLink(userId, organizationId);
     const profile = await this.ensurePatientProfile(userId);
     const user = await this.users.findById(userId);
     if (!user) throw new AppError('USER_NOT_FOUND', 404, 'User not found');
@@ -487,12 +580,34 @@ export class PatientService {
       throw new AppError('INVALID_SPECIALTY_ASSOCIATION', 400, 'El profesional seleccionado no atiende la especialidad elegida.');
     }
 
+    let patientProfileId = primaryPatientProfileId;
     let patientName = `${profile.firstName ?? user.firstName} ${profile.lastName ?? user.lastName}`.trim();
+    let patientPhone = profile.phone ?? undefined;
+    let patientEmail = user.email;
     let beneficiaryType: 'self' | 'family_member' = 'self';
     let familyMemberId: string | undefined;
     let beneficiaryRelationship: string | undefined;
 
-    if (input.beneficiaryType === 'family_member') {
+    if (input.patientProfileId && input.patientProfileId !== primaryPatientProfileId) {
+      if (!isValidObjectId(input.patientProfileId)) {
+        throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');
+      }
+      const familyMember = await this.familyMembers.findByProfileForOwner(input.patientProfileId, userId);
+      if (!familyMember || !familyMember.isActive) {
+        throw new AppError('PATIENT_PROFILE_FORBIDDEN', 403, 'El perfil paciente no pertenece a tu cuenta');
+      }
+      const familyProfile = await this.patientProfiles.findByIdForOwner(input.patientProfileId, userId);
+      if (!familyProfile || familyProfile.isPrimaryProfile) {
+        throw new AppError('PATIENT_PROFILE_NOT_FOUND', 404, 'Patient profile not found');
+      }
+      patientProfileId = familyProfile._id.toString();
+      patientName = `${familyProfile.firstName ?? familyMember.firstName} ${familyProfile.lastName ?? familyMember.lastName}`.trim();
+      patientPhone = familyProfile.phone ?? familyMember.phone ?? undefined;
+      patientEmail = familyMember.email ?? user.email;
+      beneficiaryType = 'family_member';
+      familyMemberId = familyMember._id.toString();
+      beneficiaryRelationship = familyMember.relationship;
+    } else if (input.beneficiaryType === 'family_member') {
       if (!input.familyMemberId || !isValidObjectId(input.familyMemberId)) {
         throw new AppError('INVALID_FAMILY_MEMBER_ID', 400, 'familyMemberId is invalid');
       }
@@ -500,7 +615,12 @@ export class PatientService {
       if (!familyMember || !familyMember.isActive) {
         throw new AppError('FAMILY_MEMBER_NOT_FOUND', 404, 'Family member not found');
       }
-      patientName = `${familyMember.firstName} ${familyMember.lastName}`.trim();
+      const familyProfile = await this.patientProfiles.findByIdForOwner(familyMember.patientProfileId.toString(), userId);
+      if (!familyProfile) throw new AppError('PATIENT_PROFILE_NOT_FOUND', 404, 'Patient profile not found');
+      patientProfileId = familyProfile._id.toString();
+      patientName = `${familyProfile.firstName ?? familyMember.firstName} ${familyProfile.lastName ?? familyMember.lastName}`.trim();
+      patientPhone = familyProfile.phone ?? familyMember.phone ?? undefined;
+      patientEmail = familyMember.email ?? user.email;
       beneficiaryType = 'family_member';
       familyMemberId = familyMember._id.toString();
       beneficiaryRelationship = familyMember.relationship;
@@ -511,8 +631,8 @@ export class PatientService {
       specialtyId: input.specialtyId,
       patientProfileId,
       patientName,
-      patientEmail: user.email,
-      ...(profile.phone ? { patientPhone: profile.phone } : {}),
+      patientEmail,
+      ...(patientPhone ? { patientPhone } : {}),
       startAt: input.startAt,
       ...(input.endAt ? { endAt: input.endAt } : {}),
       ...(input.durationMultiplier ? { durationMultiplier: input.durationMultiplier } : {}),
@@ -538,13 +658,13 @@ export class PatientService {
     upcoming: AppointmentDto[];
     history: AppointmentDto[];
   }> {
-    const profile = await this.ensurePatientProfile(userId);
+    const profileIds = await this.getManagedPatientProfileIds(userId);
 
     if (input.organizationId) {
-      await this.assertActiveLink(userId, input.organizationId);
+      await this.assertAnyManagedProfileLinked(userId, input.organizationId);
     }
 
-    const rows = await this.appointmentsService.listPatientAppointments(profile._id.toString(), {
+    const rows = await this.appointmentsService.listPatientAppointmentsForProfiles(profileIds, {
       ...(input.status ? { status: input.status } : {}),
       ...(input.organizationId ? { organizationId: input.organizationId } : {})
     });
@@ -559,17 +679,17 @@ export class PatientService {
   }
 
   async getPatientAppointment(userId: string, appointmentId: string): Promise<AppointmentDto> {
-    const profile = await this.ensurePatientProfile(userId);
-    const appointment = await this.appointmentsService.getAppointmentForPatient(profile._id.toString(), appointmentId);
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    const appointment = await this.appointmentsService.getAppointmentForPatientProfiles(profileIds, appointmentId);
     return this.attachOrganizationToAppointment(appointment);
   }
 
   async cancelPatientAppointment(userId: string, appointmentId: string, reason?: string): Promise<AppointmentDto> {
-    const profile = await this.ensurePatientProfile(userId);
-    const appointment = await this.appointmentsService.getAppointmentForPatient(profile._id.toString(), appointmentId);
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    const appointment = await this.appointmentsService.getAppointmentForPatientProfiles(profileIds, appointmentId);
     await this.assertPatientPolicyAllows(appointment, 'cancel');
 
-    const updated = await this.appointmentsService.cancelAppointmentAsPatient(profile._id.toString(), appointmentId, userId, reason);
+    const updated = await this.appointmentsService.cancelAppointmentAsPatient(appointment.patientProfileId!, appointmentId, userId, reason);
 
     await this.userEvents.create({
       userId,
@@ -587,8 +707,8 @@ export class PatientService {
     appointmentId: string,
     input: { newProfessionalId?: string; newSpecialtyId?: string; newStartAt: string; newEndAt?: string; reason?: string }
   ): Promise<{ original: AppointmentDto; replacement: AppointmentDto }> {
-    const profile = await this.ensurePatientProfile(userId);
-    const appointment = await this.appointmentsService.getAppointmentForPatient(profile._id.toString(), appointmentId);
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    const appointment = await this.appointmentsService.getAppointmentForPatientProfiles(profileIds, appointmentId);
     await this.assertPatientPolicyAllows(appointment, 'reschedule');
 
     const result = await this.appointmentsService.rescheduleAppointment(
@@ -629,6 +749,98 @@ export class PatientService {
     await this.userEvents.markAllRead(userId);
   }
 
+
+
+  private async getManagedPatientProfileIds(userId: string): Promise<string[]> {
+    await this.ensurePatientProfile(userId);
+    const profiles = await this.patientProfiles.listByOwner(userId);
+    return [...new Set(profiles.map((profile) => profile._id.toString()))];
+  }
+
+  private async assertAnyManagedProfileLinked(userId: string, organizationId: string): Promise<void> {
+    if (!isValidObjectId(organizationId)) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'organizationId is invalid');
+    }
+
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    for (const patientProfileId of profileIds) {
+      const link = await this.links.findByPatientAndOrganization(patientProfileId, organizationId);
+      if (link?.status === 'active') return;
+    }
+
+    throw new AppError('FORBIDDEN', 403, 'No tenés vínculo activo con este centro');
+  }
+
+  private normalizeFamilyMemberInput(input: Partial<FamilyMemberWriteInput>, requireRequired: boolean): Record<string, string | undefined> {
+    const normalized = {
+      ...(input.firstName !== undefined ? { firstName: normalizeOptionalText(input.firstName) } : {}),
+      ...(input.lastName !== undefined ? { lastName: normalizeOptionalText(input.lastName) } : {}),
+      ...(input.relationship !== undefined ? { relationship: normalizeOptionalText(input.relationship) } : {}),
+      ...(input.documentId !== undefined ? { documentId: normalizeOptionalText(input.documentId)?.replace(/\s+/g, '') } : {}),
+      ...(input.phone !== undefined ? { phone: normalizePhone(input.phone) } : {}),
+      ...(input.email !== undefined ? { email: normalizeOptionalText(input.email)?.toLowerCase() } : {}),
+      ...(input.sex !== undefined ? { sex: normalizeOptionalText(input.sex) } : {}),
+      ...(input.address !== undefined ? { address: normalizeOptionalText(input.address) } : {}),
+      ...(input.city !== undefined ? { city: normalizeOptionalText(input.city) } : {}),
+      ...(input.province !== undefined ? { province: normalizeOptionalText(input.province) } : {}),
+      ...(input.emergencyContactName !== undefined ? { emergencyContactName: normalizeOptionalText(input.emergencyContactName) } : {}),
+      ...(input.emergencyContactPhone !== undefined ? { emergencyContactPhone: normalizePhone(input.emergencyContactPhone) } : {}),
+      ...(input.emergencyContactRelationship !== undefined ? { emergencyContactRelationship: normalizeOptionalText(input.emergencyContactRelationship) } : {}),
+      ...(input.insuranceProvider !== undefined ? { insuranceProvider: normalizeOptionalText(input.insuranceProvider) } : {}),
+      ...(input.insuranceMemberId !== undefined ? { insuranceMemberId: normalizeOptionalText(input.insuranceMemberId) } : {}),
+      ...(input.insurancePlan !== undefined ? { insurancePlan: normalizeOptionalText(input.insurancePlan) } : {}),
+      ...(input.bloodType !== undefined ? { bloodType: normalizeOptionalText(input.bloodType) } : {}),
+      ...(input.allergies !== undefined ? { allergies: normalizeOptionalText(input.allergies) } : {}),
+      ...(input.regularMedication !== undefined ? { regularMedication: normalizeOptionalText(input.regularMedication) } : {}),
+      ...(input.preexistingConditions !== undefined ? { preexistingConditions: normalizeOptionalText(input.preexistingConditions) } : {}),
+      ...(input.medicalNotes !== undefined ? { medicalNotes: normalizeOptionalText(input.medicalNotes) } : {}),
+      ...(input.notes !== undefined ? { notes: normalizeOptionalText(input.notes) } : {})
+    };
+
+    if (requireRequired && (!normalized.firstName || !normalized.lastName || !normalized.relationship || !normalized.documentId)) {
+      throw new AppError('FAMILY_MEMBER_REQUIRED_FIELDS', 400, 'Completá nombre, apellido, relación y documento del familiar');
+    }
+
+    return normalized;
+  }
+
+  private async ensureFamilyMemberProfile(userId: string, member: PatientFamilyMemberDocument): Promise<PatientFamilyMemberDocument> {
+    const currentProfileId = member.patientProfileId?.toString();
+    if (currentProfileId) {
+      const existingProfile = await this.patientProfiles.findByIdForOwner(currentProfileId, userId);
+      if (existingProfile) return member;
+    }
+
+    const profile = await this.patientProfiles.create({
+      userId: null,
+      ownerUserId: userId,
+      isPrimaryProfile: false,
+      relationshipToOwner: member.relationship,
+      firstName: member.firstName,
+      lastName: member.lastName,
+      phone: member.phone ?? null,
+      dateOfBirth: member.dateOfBirth,
+      documentId: member.documentId,
+      sex: member.sex ?? null,
+      address: member.address ?? null,
+      city: member.city ?? null,
+      province: member.province ?? null,
+      emergencyContactName: member.emergencyContactName ?? null,
+      emergencyContactPhone: member.emergencyContactPhone ?? null,
+      emergencyContactRelationship: member.emergencyContactRelationship ?? null,
+      insuranceProvider: member.insuranceProvider ?? null,
+      insuranceMemberId: member.insuranceMemberId ?? null,
+      insurancePlan: member.insurancePlan ?? null,
+      bloodType: member.bloodType ?? null,
+      allergies: member.allergies ?? null,
+      regularMedication: member.regularMedication ?? null,
+      preexistingConditions: member.preexistingConditions ?? null,
+      medicalNotes: member.medicalNotes ?? null
+    });
+
+    const repaired = await this.familyMembers.updateByIdForOwner(member._id.toString(), userId, { patientProfileId: profile._id });
+    return repaired ?? member;
+  }
 
   private async attachOrganizationsToAppointments(appointments: AppointmentDto[]): Promise<AppointmentDto[]> {
     const organizationIds = [...new Set(appointments.map((appointment) => appointment.organizationId))];
@@ -702,7 +914,10 @@ export class PatientService {
   private toPatientProfileDto(profile: PatientProfileDocument): PatientProfileDto {
     return {
       id: profile._id.toString(),
-      userId: profile.userId.toString(),
+      userId: profile.userId ? profile.userId.toString() : null,
+      ownerUserId: profile.ownerUserId ? profile.ownerUserId.toString() : (profile.userId ? profile.userId.toString() : ''),
+      relationshipToOwner: profile.relationshipToOwner ?? null,
+      isPrimaryProfile: profile.isPrimaryProfile ?? true,
       firstName: profile.firstName ?? null,
       lastName: profile.lastName ?? null,
       phone: profile.phone ?? null,
@@ -739,12 +954,29 @@ export class PatientService {
     return {
       id: member._id.toString(),
       ownerUserId: member.ownerUserId.toString(),
+      patientProfileId: member.patientProfileId.toString(),
       firstName: member.firstName,
       lastName: member.lastName,
       relationship: member.relationship,
       dateOfBirth: member.dateOfBirth.toISOString().slice(0, 10),
       documentId: member.documentId,
       phone: member.phone ?? null,
+      email: member.email ?? null,
+      sex: member.sex ?? null,
+      address: member.address ?? null,
+      city: member.city ?? null,
+      province: member.province ?? null,
+      emergencyContactName: member.emergencyContactName ?? null,
+      emergencyContactPhone: member.emergencyContactPhone ?? null,
+      emergencyContactRelationship: member.emergencyContactRelationship ?? null,
+      insuranceProvider: member.insuranceProvider ?? null,
+      insuranceMemberId: member.insuranceMemberId ?? null,
+      insurancePlan: member.insurancePlan ?? null,
+      bloodType: member.bloodType ?? null,
+      allergies: member.allergies ?? null,
+      regularMedication: member.regularMedication ?? null,
+      preexistingConditions: member.preexistingConditions ?? null,
+      medicalNotes: member.medicalNotes ?? null,
       notes: member.notes ?? null,
       isActive: member.isActive,
       createdAt: member.createdAt.toISOString(),

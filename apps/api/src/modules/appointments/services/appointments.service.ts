@@ -294,6 +294,29 @@ export class AppointmentsService {
     return rows.map((item) => this.toDto(item));
   }
 
+  async listPatientAppointmentsForProfiles(patientProfileIds: string[], input: ListPatientAppointmentsInput): Promise<AppointmentDto[]> {
+    if (patientProfileIds.length === 0 || patientProfileIds.some((id) => !isValidObjectId(id))) {
+      throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');
+    }
+    if (input.organizationId && !isValidObjectId(input.organizationId)) {
+      throw new AppError('INVALID_ORGANIZATION_ID', 400, 'organizationId is invalid');
+    }
+    const rows = await this.appointments.listByPatientProfiles(patientProfileIds, input);
+    return rows.map((item) => this.toDto(item));
+  }
+
+  async getAppointmentForPatientProfiles(patientProfileIds: string[], appointmentId: string): Promise<AppointmentDto> {
+    if (patientProfileIds.length === 0 || patientProfileIds.some((id) => !isValidObjectId(id))) {
+      throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');
+    }
+    if (!isValidObjectId(appointmentId)) {
+      throw new AppError('INVALID_APPOINTMENT_ID', 400, 'appointmentId is invalid');
+    }
+    const appointment = await this.appointments.findByIdForPatientProfiles(appointmentId, patientProfileIds);
+    if (!appointment) throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    return this.toDto(appointment);
+  }
+
   async getAppointmentForPatient(patientProfileId: string, appointmentId: string): Promise<AppointmentDto> {
     if (!isValidObjectId(patientProfileId)) {
       throw new AppError('INVALID_PATIENT_PROFILE_ID', 400, 'patientProfileId is invalid');

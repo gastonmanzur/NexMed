@@ -294,7 +294,9 @@ export class OrganizationService {
       { $lookup: { from: PatientProfileModel.collection.name, localField: 'patientProfileId', foreignField: '_id', as: 'profile' } },
       { $unwind: '$profile' },
       { $lookup: { from: UserModel.collection.name, localField: 'profile.userId', foreignField: '_id', as: 'user' } },
-      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: UserModel.collection.name, localField: 'profile.ownerUserId', foreignField: '_id', as: 'ownerUser' } },
+      { $unwind: { path: '$ownerUser', preserveNullAndEmptyArrays: true } }
     ];
     if (search) {
       pipeline.push({
@@ -338,7 +340,10 @@ export class OrganizationService {
       insuranceProvider: row.profile.insuranceProvider ?? null,
       insuranceMemberId: row.profile.insuranceMemberId ?? null,
       totalAppointments: Number(row.appointmentStats.totalAppointments ?? 0),
-      lastAppointmentAt: row.appointmentStats.lastAppointmentAt ? new Date(row.appointmentStats.lastAppointmentAt).toISOString() : null
+      lastAppointmentAt: row.appointmentStats.lastAppointmentAt ? new Date(row.appointmentStats.lastAppointmentAt).toISOString() : null,
+      relationshipToOwner: row.profile.relationshipToOwner ?? null,
+      isPrimaryProfile: row.profile.isPrimaryProfile ?? true,
+      ownerName: row.profile.isPrimaryProfile ? null : `${row.ownerUser?.firstName ?? ''} ${row.ownerUser?.lastName ?? ''}`.trim() || null
     }));
   }
 
@@ -366,14 +371,15 @@ export class OrganizationService {
     }
     const profile = await PatientProfileModel.findById(input.patientProfileId).exec();
     if (!profile) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient profile not found');
-    const user = await UserModel.findById(profile.userId).exec();
+    const user = profile.userId ? await UserModel.findById(profile.userId).exec() : null;
+    const ownerUser = profile.ownerUserId ? await UserModel.findById(profile.ownerUserId).exec() : null;
     const stats = await AppointmentModel.aggregate<{ totalAppointments: number; lastAppointmentAt: Date | null }>([
       { $match: { organizationId: input.organizationId, patientProfileId: profile._id } },
       { $group: { _id: null, totalAppointments: { $sum: 1 }, lastAppointmentAt: { $max: '$startAt' } } }
     ]);
     return {
       patientProfile: {
-        id: profile._id.toString(), userId: profile.userId.toString(), firstName: profile.firstName ?? null, lastName: profile.lastName ?? null,
+        id: profile._id.toString(), userId: profile.userId ? profile.userId.toString() : null, ownerUserId: profile.ownerUserId ? profile.ownerUserId.toString() : (profile.userId ? profile.userId.toString() : ''), relationshipToOwner: profile.relationshipToOwner ?? null, isPrimaryProfile: profile.isPrimaryProfile ?? true, firstName: profile.firstName ?? null, lastName: profile.lastName ?? null,
         phone: profile.phone ?? null, dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString().slice(0, 10) : null, documentId: profile.documentId ?? null,
         sex: profile.sex ?? null, nationality: profile.nationality ?? null, address: profile.address ?? null, city: profile.city ?? null, province: profile.province ?? null,
         emergencyContactName: profile.emergencyContactName ?? null, emergencyContactPhone: profile.emergencyContactPhone ?? null, emergencyContactRelationship: profile.emergencyContactRelationship ?? null,
@@ -388,7 +394,8 @@ export class OrganizationService {
       linkedAt: link.linkedAt.toISOString(),
       linkStatus: link.status,
       totalAppointments: stats[0]?.totalAppointments ?? 0,
-      lastAppointmentAt: stats[0]?.lastAppointmentAt ? new Date(stats[0].lastAppointmentAt).toISOString() : null
+      lastAppointmentAt: stats[0]?.lastAppointmentAt ? new Date(stats[0].lastAppointmentAt).toISOString() : null,
+      ownerName: (profile.isPrimaryProfile ?? true) ? null : `${ownerUser?.firstName ?? ''} ${ownerUser?.lastName ?? ''}`.trim() || null
     };
   }
 

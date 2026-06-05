@@ -379,6 +379,7 @@ export const PatientBookPage = (): ReactElement => {
                           setError('Seleccioná un familiar activo antes de reservar.');
                           return;
                         }
+                        const selectedFamilyMember = familyMembers.find((item) => item.id === familyMemberId);
                         const appointment = await patientApi.createAppointment(accessToken, organizationId, {
                           professionalId,
                           specialtyId,
@@ -386,9 +387,9 @@ export const PatientBookPage = (): ReactElement => {
                           endAt: selectedEndAt,
                           durationMultiplier,
                           beneficiaryType,
-                          ...(beneficiaryType === 'family_member' ? { familyMemberId } : {})
+                          ...(beneficiaryType === 'family_member' && selectedFamilyMember ? { familyMemberId, patientProfileId: selectedFamilyMember.patientProfileId } : {})
                         });
-                        setMessage('Turno reservado con éxito.');
+                        setMessage(`Turno reservado con éxito para ${appointment.beneficiaryDisplayName ?? appointment.patientName}.`);
                         setConfirmedAppointment(appointment);
                         setSlots((prev) =>
                           prev.filter((current) => current.startsAtIso !== slot.startsAtIso && current.startsAtIso !== slot.endsAtIso)

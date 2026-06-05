@@ -55,7 +55,8 @@ const createAppointmentSchema = z.object({
   durationMultiplier: durationMultiplierSchema.optional(),
   notes: z.string().trim().max(500).optional(),
   beneficiaryType: z.enum(['self', 'family_member']).optional(),
-  familyMemberId: z.string().trim().min(1).optional()
+  familyMemberId: z.string().trim().min(1).optional(),
+  patientProfileId: z.string().trim().min(1).optional()
 });
 
 const createFamilyMemberSchema = z.object({
@@ -65,6 +66,22 @@ const createFamilyMemberSchema = z.object({
   dateOfBirth: z.string().trim().min(1),
   documentId: z.string().trim().min(1).max(60),
   phone: z.string().trim().max(40).optional(),
+  email: z.string().trim().max(120).optional(),
+  sex: z.string().trim().max(20).optional(),
+  address: z.string().trim().max(160).optional(),
+  city: z.string().trim().max(80).optional(),
+  province: z.string().trim().max(80).optional(),
+  emergencyContactName: z.string().trim().max(120).optional(),
+  emergencyContactPhone: z.string().trim().max(40).optional(),
+  emergencyContactRelationship: z.string().trim().max(80).optional(),
+  insuranceProvider: z.string().trim().max(120).optional(),
+  insuranceMemberId: z.string().trim().max(60).optional(),
+  insurancePlan: z.string().trim().max(60).optional(),
+  bloodType: z.string().trim().max(8).optional(),
+  allergies: z.string().trim().max(1200).optional(),
+  regularMedication: z.string().trim().max(1200).optional(),
+  preexistingConditions: z.string().trim().max(1200).optional(),
+  medicalNotes: z.string().trim().max(1200).optional(),
   notes: z.string().trim().max(500).optional(),
   isActive: z.boolean().optional()
 });
@@ -78,6 +95,22 @@ const updateFamilyMemberSchema = z.object({
   dateOfBirth: z.string().trim().min(1).optional(),
   documentId: z.string().trim().min(1).max(60).optional(),
   phone: z.string().trim().max(40).optional(),
+  email: z.string().trim().max(120).optional(),
+  sex: z.string().trim().max(20).optional(),
+  address: z.string().trim().max(160).optional(),
+  city: z.string().trim().max(80).optional(),
+  province: z.string().trim().max(80).optional(),
+  emergencyContactName: z.string().trim().max(120).optional(),
+  emergencyContactPhone: z.string().trim().max(40).optional(),
+  emergencyContactRelationship: z.string().trim().max(80).optional(),
+  insuranceProvider: z.string().trim().max(120).optional(),
+  insuranceMemberId: z.string().trim().max(60).optional(),
+  insurancePlan: z.string().trim().max(60).optional(),
+  bloodType: z.string().trim().max(8).optional(),
+  allergies: z.string().trim().max(1200).optional(),
+  regularMedication: z.string().trim().max(1200).optional(),
+  preexistingConditions: z.string().trim().max(1200).optional(),
+  medicalNotes: z.string().trim().max(1200).optional(),
   notes: z.string().trim().max(500).optional(),
   isActive: z.boolean().optional()
 });
@@ -152,13 +185,20 @@ export const patientController = {
       ...(input.durationMultiplier !== undefined ? { durationMultiplier: input.durationMultiplier } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(input.beneficiaryType !== undefined ? { beneficiaryType: input.beneficiaryType } : {}),
-      ...(input.familyMemberId !== undefined ? { familyMemberId: input.familyMemberId } : {})
+      ...(input.familyMemberId !== undefined ? { familyMemberId: input.familyMemberId } : {}),
+      ...(input.patientProfileId !== undefined ? { patientProfileId: input.patientProfileId } : {})
     });
     res.status(201).json({ success: true, data });
   },
 
   listFamilyMembers: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const data = await service.listFamilyMembers(req.auth!.userId);
+    res.status(200).json({ success: true, data });
+  },
+
+  getFamilyMember: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { familyMemberId } = familyMemberParamsSchema.parse(req.params);
+    const data = await service.getFamilyMember(req.auth!.userId, familyMemberId);
     res.status(200).json({ success: true, data });
   },
 
@@ -171,6 +211,22 @@ export const patientController = {
       dateOfBirth: input.dateOfBirth,
       documentId: input.documentId,
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.medicalNotes !== undefined ? { medicalNotes: input.medicalNotes } : {}),
+      ...(input.preexistingConditions !== undefined ? { preexistingConditions: input.preexistingConditions } : {}),
+      ...(input.regularMedication !== undefined ? { regularMedication: input.regularMedication } : {}),
+      ...(input.allergies !== undefined ? { allergies: input.allergies } : {}),
+      ...(input.bloodType !== undefined ? { bloodType: input.bloodType } : {}),
+      ...(input.insurancePlan !== undefined ? { insurancePlan: input.insurancePlan } : {}),
+      ...(input.insuranceMemberId !== undefined ? { insuranceMemberId: input.insuranceMemberId } : {}),
+      ...(input.insuranceProvider !== undefined ? { insuranceProvider: input.insuranceProvider } : {}),
+      ...(input.emergencyContactRelationship !== undefined ? { emergencyContactRelationship: input.emergencyContactRelationship } : {}),
+      ...(input.emergencyContactPhone !== undefined ? { emergencyContactPhone: input.emergencyContactPhone } : {}),
+      ...(input.emergencyContactName !== undefined ? { emergencyContactName: input.emergencyContactName } : {}),
+      ...(input.province !== undefined ? { province: input.province } : {}),
+      ...(input.city !== undefined ? { city: input.city } : {}),
+      ...(input.address !== undefined ? { address: input.address } : {}),
+      ...(input.sex !== undefined ? { sex: input.sex } : {}),
+      ...(input.email !== undefined ? { email: input.email } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
     });
@@ -187,6 +243,22 @@ export const patientController = {
       ...(input.dateOfBirth !== undefined ? { dateOfBirth: input.dateOfBirth } : {}),
       ...(input.documentId !== undefined ? { documentId: input.documentId } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.email !== undefined ? { email: input.email } : {}),
+      ...(input.sex !== undefined ? { sex: input.sex } : {}),
+      ...(input.address !== undefined ? { address: input.address } : {}),
+      ...(input.city !== undefined ? { city: input.city } : {}),
+      ...(input.province !== undefined ? { province: input.province } : {}),
+      ...(input.emergencyContactName !== undefined ? { emergencyContactName: input.emergencyContactName } : {}),
+      ...(input.emergencyContactPhone !== undefined ? { emergencyContactPhone: input.emergencyContactPhone } : {}),
+      ...(input.emergencyContactRelationship !== undefined ? { emergencyContactRelationship: input.emergencyContactRelationship } : {}),
+      ...(input.insuranceProvider !== undefined ? { insuranceProvider: input.insuranceProvider } : {}),
+      ...(input.insuranceMemberId !== undefined ? { insuranceMemberId: input.insuranceMemberId } : {}),
+      ...(input.insurancePlan !== undefined ? { insurancePlan: input.insurancePlan } : {}),
+      ...(input.bloodType !== undefined ? { bloodType: input.bloodType } : {}),
+      ...(input.allergies !== undefined ? { allergies: input.allergies } : {}),
+      ...(input.regularMedication !== undefined ? { regularMedication: input.regularMedication } : {}),
+      ...(input.preexistingConditions !== undefined ? { preexistingConditions: input.preexistingConditions } : {}),
+      ...(input.medicalNotes !== undefined ? { medicalNotes: input.medicalNotes } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {})
     });

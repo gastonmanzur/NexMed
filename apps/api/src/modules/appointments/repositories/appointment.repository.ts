@@ -84,8 +84,19 @@ export class AppointmentRepository {
     return AppointmentModel.find(query).sort({ startAt: 1, createdAt: -1 }).exec();
   }
 
+  async listByPatientProfiles(patientProfileIds: string[], filters: Omit<ListPatientAppointmentsFilters, 'patientProfileId'>): Promise<AppointmentDocument[]> {
+    const query: Record<string, unknown> = { patientProfileId: { $in: patientProfileIds } };
+    if (filters.status) query.status = filters.status;
+    if (filters.organizationId) query.organizationId = filters.organizationId;
+    return AppointmentModel.find(query).sort({ startAt: 1, createdAt: -1 }).exec();
+  }
+
   async findByIdForPatient(appointmentId: string, patientProfileId: string): Promise<AppointmentDocument | null> {
     return AppointmentModel.findOne({ _id: appointmentId, patientProfileId }).exec();
+  }
+
+  async findByIdForPatientProfiles(appointmentId: string, patientProfileIds: string[]): Promise<AppointmentDocument | null> {
+    return AppointmentModel.findOne({ _id: appointmentId, patientProfileId: { $in: patientProfileIds } }).exec();
   }
 
   async updateByIdInOrganization(
