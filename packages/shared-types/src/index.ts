@@ -268,12 +268,29 @@ export interface AppointmentDto {
 export interface PatientFamilyMemberDto {
   id: string;
   ownerUserId: string;
+  patientProfileId: string;
   firstName: string;
   lastName: string;
   relationship: string;
   dateOfBirth: string;
   documentId: string;
   phone: string | null;
+  email: string | null;
+  sex: string | null;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelationship: string | null;
+  insuranceProvider: string | null;
+  insuranceMemberId: string | null;
+  insurancePlan: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  regularMedication: string | null;
+  preexistingConditions: string | null;
+  medicalNotes: string | null;
   notes: string | null;
   isActive: boolean;
   createdAt: string;
@@ -284,7 +301,10 @@ export type PatientOrganizationLinkStatus = 'active' | 'blocked' | 'archived';
 
 export interface PatientProfileDto {
   id: string;
-  userId: string;
+  userId: string | null;
+  ownerUserId: string;
+  relationshipToOwner: string | null;
+  isPrimaryProfile: boolean;
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
@@ -352,6 +372,9 @@ export interface OrganizationPatientListItemDto {
   insuranceMemberId: string | null;
   totalAppointments: number;
   lastAppointmentAt: string | null;
+  relationshipToOwner: string | null;
+  isPrimaryProfile: boolean;
+  ownerName: string | null;
 }
 
 export interface OrganizationPatientDetailDto {
@@ -362,6 +385,7 @@ export interface OrganizationPatientDetailDto {
   linkStatus: PatientOrganizationLinkStatus;
   totalAppointments: number;
   lastAppointmentAt: string | null;
+  ownerName: string | null;
 }
 
 export interface JoinOrganizationPreviewDto {

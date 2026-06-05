@@ -2755,3 +2755,27 @@ body {
     text-align: center;
   }
 }
+
+.nx-family-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.nx-family-form { display: grid; gap: 1rem; }
+.nx-family-form__header { padding: 1rem; border: 1px solid var(--border); border-radius: 18px; background: linear-gradient(135deg, rgba(70, 85, 255, .08), rgba(20, 184, 166, .08)); }
+.nx-family-form__header h3 { margin: 0 0 .25rem; }
+.nx-family-form__header p { margin: 0; color: var(--text-soft); }
+.nx-family-section { border: 1px solid var(--border); border-radius: 18px; padding: 1rem; background: #fff; }
+.nx-family-section legend { padding: 0 .45rem; font-weight: 800; color: var(--text); }
+.nx-field--wide { grid-column: 1 / -1; }
+.nx-field textarea { min-height: 92px; resize: vertical; }
+.nx-check { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; color: var(--text); }
+.nx-family-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.nx-family-card { border: 1px solid var(--border); border-radius: 20px; padding: 1rem; background: #fff; box-shadow: 0 12px 30px rgba(15, 23, 42, .06); display: grid; gap: .9rem; }
+.nx-family-card.is-inactive { opacity: .68; background: #f8fafc; }
+.nx-family-card__top { display: flex; align-items: center; gap: .75rem; }
+.nx-family-card__top h3 { margin: 0; }
+.nx-family-card__top p { margin: .15rem 0 0; color: var(--text-soft); }
+.nx-family-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin: 0; }
+.nx-family-card dt { font-size: .75rem; color: var(--text-soft); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.nx-family-card dd { margin: .1rem 0 0; overflow-wrap: anywhere; }
+.nx-family-card__actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.nx-family-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.nx-family-detail p { margin: 0; padding: .8rem; border: 1px solid var(--border); border-radius: 14px; background: #fff; }
+@media (max-width: 720px) { .nx-family-card dl, .nx-family-detail { grid-template-columns: 1fr; } }

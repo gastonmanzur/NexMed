@@ -117,7 +117,7 @@ export class WaitlistService {
       if (!patientProfile) continue;
 
       await this.notifications.create({
-        userId: patientProfile.userId.toString(),
+        userId: (patientProfile.ownerUserId ?? patientProfile.userId).toString(),
         organizationId: item.organizationId.toString(),
         patientProfileId: item.patientProfileId.toString(),
         type: 'availability_alert',

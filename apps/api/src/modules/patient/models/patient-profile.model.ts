@@ -2,7 +2,10 @@ import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 const patientProfileSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true, ref: 'User', index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', index: true, default: null },
+    ownerUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+    relationshipToOwner: { type: String, required: false, trim: true, maxlength: 80, default: null },
+    isPrimaryProfile: { type: Boolean, required: true, default: true, index: true },
     firstName: { type: String, required: false, trim: true, maxlength: 80, default: null },
     lastName: { type: String, required: false, trim: true, maxlength: 80, default: null },
     phone: { type: String, required: false, trim: true, maxlength: 40, default: null },
@@ -33,6 +36,13 @@ const patientProfileSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+patientProfileSchema.index(
+  { userId: 1, isPrimaryProfile: 1 },
+  { unique: true, partialFilterExpression: { userId: { $type: 'objectId' }, isPrimaryProfile: true } }
+);
+patientProfileSchema.index({ ownerUserId: 1, isPrimaryProfile: 1, lastName: 1, firstName: 1 });
+
 
 export type PatientProfileDocument = InferSchemaType<typeof patientProfileSchema> & { _id: mongoose.Types.ObjectId };
 

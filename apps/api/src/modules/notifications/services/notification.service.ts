@@ -89,7 +89,7 @@ export class NotificationService {
     if (!patientProfile) return;
 
     await this.create({
-      userId: patientProfile.userId.toString(),
+      userId: (patientProfile.ownerUserId ?? patientProfile.userId).toString(),
       organizationId: appointment.organizationId,
       patientProfileId: appointment.patientProfileId,
       type,
