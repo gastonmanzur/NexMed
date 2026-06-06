@@ -47,6 +47,11 @@ interface CancelAppointmentInput {
   reason?: string | undefined;
 }
 
+interface UpdateAppointmentStatusInput {
+  status: AppointmentStatus;
+  note?: string | undefined;
+}
+
 interface RescheduleAppointmentInput {
   newProfessionalId?: string | undefined;
   newSpecialtyId?: string | undefined;
@@ -56,7 +61,19 @@ interface RescheduleAppointmentInput {
   reason?: string | undefined;
 }
 
-const ACTIVE_BOOKING_STATUSES: AppointmentStatus[] = ['booked'];
+const ACTIVE_BOOKING_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived'];
+const PENDING_OPERATIONAL_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived'];
+const TERMINAL_STATUSES: AppointmentStatus[] = ['completed', 'no_show', 'canceled_by_patient', 'canceled_by_staff', 'rescheduled'];
+const CENTER_STATUS_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
+  booked: ['arrived', 'completed', 'no_show', 'canceled_by_staff'],
+  confirmed_by_patient: ['arrived', 'completed', 'no_show', 'canceled_by_staff'],
+  arrived: ['completed', 'no_show', 'canceled_by_staff'],
+  completed: [],
+  no_show: [],
+  canceled_by_patient: [],
+  canceled_by_staff: [],
+  rescheduled: []
+};
 
 const isValidObjectId = (value: string): boolean => mongoose.isValidObjectId(value);
 
@@ -236,6 +253,7 @@ export class AppointmentsService {
     organizationId: string,
     appointmentId: string,
     actorUserId: string,
+    actorRole: 'owner' | 'admin' | 'staff' | 'patient',
     input: CancelAppointmentInput
   ): Promise<AppointmentDto> {
     const appointment = await this.getBookableAppointment(organizationId, appointmentId);
@@ -244,8 +262,11 @@ export class AppointmentsService {
       status: 'canceled_by_staff',
       canceledByUserId: actorUserId,
       canceledAt: new Date(),
-      cancelReason: normalizeOptionalString(input.reason) ?? null
-    });
+      cancelReason: normalizeOptionalString(input.reason) ?? null,
+      statusUpdatedAt: new Date(),
+      statusUpdatedByUserId: actorUserId,
+      statusUpdatedByRole: actorRole
+    }, this.buildStatusHistoryEntry('canceled_by_staff', actorUserId, actorRole, input.reason));
 
     if (!updated) {
       throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
@@ -278,6 +299,72 @@ export class AppointmentsService {
       startAt: new Date(appointment.startAt),
       endAt: new Date(appointment.endAt)
     });
+
+    return updatedDto;
+  }
+
+
+  async updateAppointmentStatus(
+    organizationId: string,
+    appointmentId: string,
+    actorUserId: string,
+    actorRole: 'owner' | 'admin' | 'staff' | 'patient',
+    input: UpdateAppointmentStatusInput
+  ): Promise<AppointmentDto> {
+    if (!isValidObjectId(appointmentId)) {
+      throw new AppError('INVALID_APPOINTMENT_ID', 400, 'appointmentId is invalid');
+    }
+
+    const appointment = await this.getAppointment(organizationId, appointmentId);
+    this.assertStatusTransitionAllowed(appointment.status, input.status, actorRole);
+
+    const now = new Date();
+    const note = normalizeOptionalString(input.note);
+    const update: Record<string, unknown> = {
+      status: input.status,
+      statusUpdatedAt: now,
+      statusUpdatedByUserId: actorUserId,
+      statusUpdatedByRole: actorRole
+    };
+
+    if (input.status === 'canceled_by_staff') {
+      update.canceledByUserId = actorUserId;
+      update.canceledAt = now;
+      update.cancelReason = note ?? null;
+    }
+
+    const updated = await this.appointments.updateByIdInOrganization(
+      organizationId,
+      appointmentId,
+      update,
+      this.buildStatusHistoryEntry(input.status, actorUserId, actorRole, note)
+    );
+
+    if (!updated) {
+      throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    }
+
+    await this.auditLogs.create({
+      organizationId,
+      actorUserId,
+      action: 'appointment_status_updated',
+      entityType: 'appointment',
+      entityId: updated._id.toString(),
+      payload: { previousStatus: appointment.status, status: input.status, note: note ?? null, actorRole }
+    });
+
+    const updatedDto = this.toDto(updated);
+    if (input.status === 'canceled_by_staff') {
+      await this.notifications.notifyPatientFromAppointment(updatedDto, 'appointment_canceled', 'Turno cancelado', 'Tu turno fue cancelado.');
+      await this.reminders.scheduleForAppointment(updated);
+      await this.waitlist.handleSlotFreed({
+        organizationId: updatedDto.organizationId,
+        professionalId: updatedDto.professionalId,
+        specialtyId: updatedDto.specialtyId,
+        startAt: new Date(appointment.startAt),
+        endAt: new Date(appointment.endAt)
+      });
+    }
 
     return updatedDto;
   }
@@ -348,16 +435,17 @@ export class AppointmentsService {
   ): Promise<AppointmentDto> {
     const appointment = await this.getAppointmentForPatient(patientProfileId, appointmentId);
 
-    if (!ACTIVE_BOOKING_STATUSES.includes(appointment.status)) {
-      throw new AppError('INVALID_APPOINTMENT_STATE', 409, `Appointment is not active (current status: ${appointment.status})`);
-    }
+    this.assertStatusTransitionAllowed(appointment.status, 'canceled_by_patient', 'patient');
 
     const updated = await this.appointments.updateByIdInOrganization(appointment.organizationId, appointment.id, {
       status: 'canceled_by_patient',
       canceledByUserId: actorUserId,
       canceledAt: new Date(),
-      cancelReason: normalizeOptionalString(reason) ?? null
-    });
+      cancelReason: normalizeOptionalString(reason) ?? null,
+      statusUpdatedAt: new Date(),
+      statusUpdatedByUserId: actorUserId,
+      statusUpdatedByRole: 'patient'
+    }, this.buildStatusHistoryEntry('canceled_by_patient', actorUserId, 'patient', reason));
 
     if (!updated) {
       throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
@@ -468,8 +556,11 @@ export class AppointmentsService {
       canceledByUserId: actorUserId,
       canceledAt: new Date(),
       cancelReason: reason ?? null,
-      rescheduledToAppointmentId: replacement._id
-    });
+      rescheduledToAppointmentId: replacement._id,
+      statusUpdatedAt: new Date(),
+      statusUpdatedByUserId: actorUserId,
+      statusUpdatedByRole: actorRole
+    }, this.buildStatusHistoryEntry('rescheduled', actorUserId, actorRole, input.reason));
 
     if (!updatedOriginal) {
       throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
@@ -711,6 +802,38 @@ export class AppointmentsService {
     return { endAt: parseIsoDate(secondSlot.endsAtIso, 'endAt') };
   }
 
+
+  private assertStatusTransitionAllowed(currentStatus: AppointmentStatus, nextStatus: AppointmentStatus, actorRole: 'owner' | 'admin' | 'staff' | 'patient'): void {
+    if (currentStatus === nextStatus) {
+      throw new AppError('INVALID_APPOINTMENT_STATE', 409, `Appointment already has status ${nextStatus}`);
+    }
+
+    if (actorRole === 'patient') {
+      if (currentStatus === 'booked' && nextStatus === 'confirmed_by_patient') return;
+      if ((currentStatus === 'booked' || currentStatus === 'confirmed_by_patient') && nextStatus === 'canceled_by_patient') return;
+      throw new AppError('APPOINTMENT_STATUS_FORBIDDEN', 403, 'Patients cannot apply this appointment status');
+    }
+
+    const allowed = CENTER_STATUS_TRANSITIONS[currentStatus] ?? [];
+    if (allowed.includes(nextStatus)) return;
+
+    if ((actorRole === 'owner' || actorRole === 'admin') && TERMINAL_STATUSES.includes(currentStatus) && PENDING_OPERATIONAL_STATUSES.includes(nextStatus)) {
+      return;
+    }
+
+    throw new AppError('INVALID_APPOINTMENT_STATUS_TRANSITION', 409, `Cannot change appointment from ${currentStatus} to ${nextStatus}`);
+  }
+
+  private buildStatusHistoryEntry(status: AppointmentStatus, actorUserId: string, actorRole: string, note?: string): Record<string, unknown> {
+    return {
+      status,
+      changedAt: new Date(),
+      changedByUserId: actorUserId,
+      changedByRole: actorRole,
+      note: normalizeOptionalString(note) ?? null
+    };
+  }
+
   private toDto(document: AppointmentDocument): AppointmentDto {
     return {
       id: document._id.toString(),
@@ -736,6 +859,16 @@ export class AppointmentsService {
       canceledByUserId: document.canceledByUserId ? document.canceledByUserId.toString() : null,
       canceledAt: document.canceledAt ? document.canceledAt.toISOString() : null,
       cancelReason: document.cancelReason ?? null,
+      statusUpdatedAt: document.statusUpdatedAt ? document.statusUpdatedAt.toISOString() : null,
+      statusUpdatedByUserId: document.statusUpdatedByUserId ? document.statusUpdatedByUserId.toString() : null,
+      statusUpdatedByRole: document.statusUpdatedByRole ?? null,
+      statusHistory: (document.statusHistory ?? []).map((entry) => ({
+        status: entry.status,
+        changedAt: entry.changedAt.toISOString(),
+        changedByUserId: entry.changedByUserId.toString(),
+        changedByRole: entry.changedByRole,
+        note: entry.note ?? null
+      })),
       rescheduledFromAppointmentId: document.rescheduledFromAppointmentId ? document.rescheduledFromAppointmentId.toString() : null,
       rescheduledToAppointmentId: document.rescheduledToAppointmentId ? document.rescheduledToAppointmentId.toString() : null,
       createdAt: document.createdAt.toISOString(),

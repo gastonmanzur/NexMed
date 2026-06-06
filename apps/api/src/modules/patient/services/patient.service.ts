@@ -672,7 +672,7 @@ export class PatientService {
     const enrichedRows = await this.attachOrganizationsToAppointments(rows);
 
     const now = Date.now();
-    const upcoming = enrichedRows.filter((item) => item.startAt && new Date(item.startAt).getTime() >= now && item.status === 'booked');
+    const upcoming = enrichedRows.filter((item) => item.startAt && new Date(item.startAt).getTime() >= now && ['booked', 'confirmed_by_patient', 'arrived'].includes(item.status));
     const history = enrichedRows.filter((item) => !upcoming.some((next) => next.id === item.id));
 
     return { upcoming, history };
@@ -682,6 +682,27 @@ export class PatientService {
     const profileIds = await this.getManagedPatientProfileIds(userId);
     const appointment = await this.appointmentsService.getAppointmentForPatientProfiles(profileIds, appointmentId);
     return this.attachOrganizationToAppointment(appointment);
+  }
+
+
+  async confirmAppointmentAttendance(userId: string, appointmentId: string, note?: string): Promise<AppointmentDto> {
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    const appointment = await this.appointmentsService.getAppointmentForPatientProfiles(profileIds, appointmentId);
+
+    const updated = await this.appointmentsService.updateAppointmentStatus(appointment.organizationId, appointment.id, userId, 'patient', {
+      status: 'confirmed_by_patient',
+      ...(note ? { note } : {})
+    });
+
+    await this.userEvents.create({
+      userId,
+      organizationId: appointment.organizationId,
+      type: 'patient_appointment_booked',
+      title: 'Asistencia confirmada',
+      body: 'Confirmaste que vas a asistir al turno.'
+    });
+
+    return this.attachOrganizationToAppointment(updated);
   }
 
   async cancelPatientAppointment(userId: string, appointmentId: string, reason?: string): Promise<AppointmentDto> {

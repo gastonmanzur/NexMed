@@ -102,6 +102,16 @@ export const appointmentsApi = {
     return result.data;
   },
 
+  updateStatus: async (accessToken: string, organizationId: string, appointmentId: string, input: { status: AppointmentStatus; note?: string }): Promise<AppointmentDto> => {
+    const result = await request<{ success: true; data: AppointmentDto }>(`${basePath(organizationId)}/${appointmentId}/status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+
+    return result.data;
+  },
+
   cancel: async (
     accessToken: string,
     organizationId: string,

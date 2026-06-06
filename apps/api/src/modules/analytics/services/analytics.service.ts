@@ -23,7 +23,7 @@ export class AnalyticsService {
       AppointmentModel.aggregate([{ $match: match }, { $group: { _id: '$professionalId', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
       AppointmentModel.aggregate([{ $match: match }, { $group: { _id: '$specialtyId', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
       AppointmentModel.aggregate([{ $match: match }, { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$startAt' } }, count: { $sum: 1 } } }, { $sort: { _id: 1 } }]),
-      AppointmentModel.countDocuments({ organizationId: oid(organizationId), status: 'booked', startAt: { $gte: new Date(), $lte: filters.to } }),
+      AppointmentModel.countDocuments({ organizationId: oid(organizationId), status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] }, startAt: { $gte: new Date(), $lte: filters.to } }),
       AppointmentModel.aggregate([{ $match: { ...match, status: 'completed', patientProfileId: { $ne: null } } }, { $group: { _id: '$patientProfileId' } }, { $count: 'count' }]),
       AppointmentModel.aggregate([{ $match: { ...match, patientProfileId: { $ne: null } } }, { $group: { _id: '$patientProfileId', firstSeen: { $min: '$createdAt' } } }, { $match: { firstSeen: { $gte: filters.from, $lte: filters.to } } }, { $count: 'count' }]),
       NotificationModel.countDocuments({ organizationId: oid(organizationId), createdAt: { $gte: filters.from, $lte: filters.to } }),
@@ -35,6 +35,10 @@ export class AnalyticsService {
     const canceled = (statusMap.get('canceled_by_staff') ?? 0) + (statusMap.get('canceled_by_patient') ?? 0);
     const reprogrammed = statusMap.get('rescheduled') ?? 0;
     const completed = statusMap.get('completed') ?? 0;
+    const confirmedByPatient = statusMap.get('confirmed_by_patient') ?? 0;
+    const arrived = statusMap.get('arrived') ?? 0;
+    const noShow = statusMap.get('no_show') ?? 0;
+    const closedOperational = completed + noShow;
     const uniqueAttendedPatients = uniquePatients[0]?.count ?? 0;
     const newPatientsCount = newPatients[0]?.count ?? 0;
 
@@ -55,6 +59,11 @@ export class AnalyticsService {
         canceledAppointments: canceled,
         rescheduledAppointments: reprogrammed,
         completedAppointments: completed,
+        confirmedByPatientAppointments: confirmedByPatient,
+        arrivedAppointments: arrived,
+        noShowAppointments: noShow,
+        attendanceRate: closedOperational ? completed / closedOperational : 0,
+        noShowRate: closedOperational ? noShow / closedOperational : 0,
         uniqueAttendedPatients,
         newPatients: newPatientsCount,
         recurringPatients: Math.max(uniqueAttendedPatients - newPatientsCount, 0),
@@ -69,14 +78,16 @@ export class AnalyticsService {
       timelineDaily: timeline.map((row) => ({ date: String(row._id), count: Number(row.count) })),
       statusBreakdown: {
         booked: statusMap.get('booked') ?? 0,
+        confirmedByPatient,
+        arrived,
         completed,
         canceledByStaff: statusMap.get('canceled_by_staff') ?? 0,
         canceledByPatient: statusMap.get('canceled_by_patient') ?? 0,
         rescheduled: reprogrammed,
-        noShow: statusMap.get('no_show') ?? 0
+        noShow
       },
       coverage: {
-        supported: ['turnos_totales','turnos_confirmados_reservados','turnos_cancelados','turnos_reprogramados','pacientes_atendidos','pacientes_nuevos','pacientes_recurrentes','turnos_por_profesional','turnos_por_especialidad','distribucion_diaria','tasa_cancelacion','tasa_reprogramacion','proximos_turnos','recordatorios_enviados','notificaciones_enviadas'],
+        supported: ['turnos_totales','turnos_reservados','turnos_confirmados_por_paciente','pacientes_llegados','turnos_cancelados','turnos_reprogramados','pacientes_atendidos','pacientes_nuevos','pacientes_recurrentes','turnos_por_profesional','turnos_por_especialidad','distribucion_diaria','tasa_cancelacion','tasa_reprogramacion','proximos_turnos','recordatorios_enviados','notificaciones_enviadas'],
         notSupportedYet: ['ocupacion_agenda','turnos_con_recordatorios_configurados','impacto_recordatorios']
       }
     };

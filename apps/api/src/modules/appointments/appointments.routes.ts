@@ -19,6 +19,12 @@ appointmentsRouter.get(
   asyncHandler(appointmentsController.getById)
 );
 appointmentsRouter.patch(
+  '/:appointmentId/status',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(appointmentsController.updateStatus)
+);
+appointmentsRouter.patch(
   '/:appointmentId/cancel',
   asyncHandler(requireOrganizationMember),
   asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),

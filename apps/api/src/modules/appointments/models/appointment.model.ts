@@ -2,6 +2,8 @@ import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 export const appointmentStatuses = [
   'booked',
+  'confirmed_by_patient',
+  'arrived',
   'canceled_by_staff',
   'canceled_by_patient',
   'rescheduled',
@@ -36,6 +38,20 @@ const appointmentSchema = new mongoose.Schema(
     canceledByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
     canceledAt: { type: Date, required: false, default: null },
     cancelReason: { type: String, required: false, trim: true, default: null },
+    statusUpdatedAt: { type: Date, required: false, default: null },
+    statusUpdatedByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
+    statusUpdatedByRole: { type: String, required: false, trim: true, default: null },
+    statusHistory: {
+      type: [{
+        status: { type: String, enum: appointmentStatuses, required: true },
+        changedAt: { type: Date, required: true },
+        changedByUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
+        changedByRole: { type: String, required: true, trim: true },
+        note: { type: String, required: false, trim: true, default: null }
+      }],
+      required: false,
+      default: []
+    },
     rescheduledFromAppointmentId: {
       type: mongoose.Schema.Types.ObjectId,
       required: false,
@@ -56,7 +72,7 @@ const appointmentSchema = new mongoose.Schema(
 
 appointmentSchema.index({ organizationId: 1, professionalId: 1, startAt: 1, endAt: 1 }, {
   unique: true,
-  partialFilterExpression: { status: 'booked' }
+  partialFilterExpression: { status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] } }
 });
 
 appointmentSchema.index({ organizationId: 1, professionalId: 1, startAt: 1 });

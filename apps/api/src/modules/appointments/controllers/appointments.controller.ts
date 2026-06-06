@@ -14,6 +14,8 @@ const appointmentPathSchema = pathSchema.extend({
 
 const appointmentStatusSchema = z.enum([
   'booked',
+  'confirmed_by_patient',
+  'arrived',
   'canceled_by_staff',
   'canceled_by_patient',
   'rescheduled',
@@ -45,6 +47,11 @@ const createSchema = z.object({
 
 const cancelSchema = z.object({
   reason: z.string().trim().max(500).optional()
+});
+
+const updateStatusSchema = z.object({
+  status: appointmentStatusSchema,
+  note: z.string().trim().max(1000).optional()
 });
 
 const rescheduleSchema = z.object({
@@ -94,7 +101,20 @@ export const appointmentsController = {
     const { organizationId, appointmentId } = appointmentPathSchema.parse(req.params);
     const input = cancelSchema.parse(req.body);
 
-    const data = await service.cancelAppointment(organizationId, appointmentId, req.auth!.userId, input);
+    const data = await service.cancelAppointment(organizationId, appointmentId, req.auth!.userId, req.auth!.organizationRole ?? 'staff', input);
+    res.status(200).json({ success: true, data });
+  },
+
+  updateStatus: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId, appointmentId } = appointmentPathSchema.parse(req.params);
+    const input = updateStatusSchema.parse(req.body);
+
+    const role = req.auth?.organizationRole;
+    const actorRole = role === 'owner' || role === 'admin' || role === 'staff' || role === 'patient' ? role : 'staff';
+    const data = await service.updateAppointmentStatus(organizationId, appointmentId, req.auth!.userId, actorRole, {
+      status: input.status as AppointmentStatus,
+      ...(input.note !== undefined ? { note: input.note } : {})
+    });
     res.status(200).json({ success: true, data });
   },
 

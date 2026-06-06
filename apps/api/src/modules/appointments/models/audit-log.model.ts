@@ -1,6 +1,6 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
-export const auditActions = ['appointment_created', 'appointment_canceled', 'appointment_rescheduled'] as const;
+export const auditActions = ['appointment_created', 'appointment_canceled', 'appointment_rescheduled', 'appointment_status_updated'] as const;
 
 const auditLogSchema = new mongoose.Schema(
   {

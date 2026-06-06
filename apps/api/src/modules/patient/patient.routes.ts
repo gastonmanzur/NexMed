@@ -25,6 +25,7 @@ patientRouter.patch('/family-members/:familyMemberId', asyncHandler(patientContr
 patientRouter.delete('/family-members/:familyMemberId', asyncHandler(patientController.deleteFamilyMember));
 patientRouter.get('/appointments', asyncHandler(patientController.listAppointments));
 patientRouter.get('/appointments/:appointmentId', asyncHandler(patientController.getAppointment));
+patientRouter.patch('/appointments/:appointmentId/confirm-attendance', asyncHandler(patientController.confirmAppointmentAttendance));
 patientRouter.patch('/appointments/:appointmentId/cancel', asyncHandler(patientController.cancelAppointment));
 patientRouter.patch('/appointments/:appointmentId/reschedule', asyncHandler(patientController.rescheduleAppointment));
 patientRouter.get('/events', asyncHandler(patientController.listEvents));

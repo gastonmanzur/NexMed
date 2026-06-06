@@ -230,10 +230,18 @@ export interface CalculatedAvailabilityDto {
 }
 
 
-export type AppointmentStatus = 'booked' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
+export type AppointmentStatus = 'booked' | 'confirmed_by_patient' | 'arrived' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
 export type AppointmentSource = 'staff_manual' | 'admin_manual' | 'patient_self_service';
 export type AppointmentBeneficiaryType = 'self' | 'family_member';
 export type AppointmentDurationMultiplier = 1 | 2;
+
+export interface AppointmentStatusHistoryItemDto {
+  status: AppointmentStatus;
+  changedAt: string;
+  changedByUserId: string;
+  changedByRole: string;
+  note: string | null;
+}
 
 export interface AppointmentDto {
   id: string;
@@ -259,6 +267,10 @@ export interface AppointmentDto {
   canceledByUserId: string | null;
   canceledAt: string | null;
   cancelReason: string | null;
+  statusUpdatedAt: string | null;
+  statusUpdatedByUserId: string | null;
+  statusUpdatedByRole: string | null;
+  statusHistory: AppointmentStatusHistoryItemDto[];
   rescheduledFromAppointmentId: string | null;
   rescheduledToAppointmentId: string | null;
   createdAt: string;
@@ -482,6 +494,11 @@ export interface AnalyticsSummaryDto {
     canceledAppointments: number;
     rescheduledAppointments: number;
     completedAppointments: number;
+    confirmedByPatientAppointments: number;
+    arrivedAppointments: number;
+    noShowAppointments: number;
+    attendanceRate: number;
+    noShowRate: number;
     uniqueAttendedPatients: number;
     newPatients: number;
     recurringPatients: number;
