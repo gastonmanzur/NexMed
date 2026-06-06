@@ -84,7 +84,7 @@ export const AppointmentDetailPage = (): ReactElement => {
   if (!appointmentId) return <Navigate to="/app/appointments" replace />;
 
   return (
-    <main style={{ maxWidth: 800, margin: '2rem auto', padding: '1rem' }}>
+    <main data-testid="appointment-detail-real-component" style={{ maxWidth: 800, margin: '2rem auto', padding: '1rem' }}>
       <Card title="Detalle de turno">
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Link className="nx-btn-secondary" to="/app/appointments">Volver al listado</Link>
