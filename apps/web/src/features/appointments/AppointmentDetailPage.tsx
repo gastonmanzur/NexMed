@@ -95,7 +95,7 @@ export const AppointmentDetailPage = (): ReactElement => {
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
 
         {appointment ? (
-          <section aria-label="Datos básicos del turno" style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
             <dl style={{ display: 'grid', gap: '0.5rem', margin: 0 }}>
               <div><dt>Paciente</dt><dd>{getAppointmentPatientName(appointment)}</dd></div>
               <div><dt>Fecha</dt><dd>{formatDate(appointment.startAt)}</dd></div>
@@ -104,7 +104,7 @@ export const AppointmentDetailPage = (): ReactElement => {
             </dl>
 
             <div>
-              <button className="nx-btn" type="button" disabled={!appointment.patientProfileId || loadingPatientDetail} onClick={() => void openPatientDetail()}>
+              <button type="button" disabled={!appointment.patientProfileId || loadingPatientDetail} onClick={() => void openPatientDetail()}>
                 {loadingPatientDetail ? 'Cargando datos...' : 'Datos del paciente'}
               </button>
               {!appointment.patientProfileId ? <p style={{ color: 'var(--text-soft)', margin: '0.5rem 0 0' }}>Este turno no tiene un perfil de paciente vinculado.</p> : null}
@@ -115,14 +115,14 @@ export const AppointmentDetailPage = (): ReactElement => {
                 <h3 style={{ margin: '0 0 0.5rem' }}>Acciones operativas</h3>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {centerStatusActions(appointment.status).map((action) => (
-                    <button className="nx-btn-secondary" key={action.status} type="button" disabled={updatingStatus === action.status} onClick={() => void updateStatus(action.status, action.note)}>
+                    <button key={action.status} type="button" disabled={updatingStatus === action.status} onClick={() => void updateStatus(action.status, action.note)}>
                       {isPendingClosure(appointment.status, appointment.endAt) && action.status === 'completed' ? 'Marcar atendido' : isPendingClosure(appointment.status, appointment.endAt) && action.status === 'no_show' ? 'Marcar no asistió' : action.label}
                     </button>
                   ))}
                 </div>
               </section>
             ) : null}
-          </section>
+          </div>
         ) : null}
       </Card>
       <PatientDetailModal patient={selectedPatient} isOpen={isPatientModalOpen} loading={loadingPatientDetail} error={patientDetailError} onClose={closePatientDetail} />
