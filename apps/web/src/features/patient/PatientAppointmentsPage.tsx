@@ -8,6 +8,7 @@ import { patientApi } from './patient-api';
 import { OrganizationLocationCard } from './OrganizationLocationCard';
 import { ConfirmActionButton } from '../../components/ConfirmActionButton';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
+import { statusLabel } from '../appointments/appointment-status';
 
 export const PatientAppointmentsPage = (): ReactElement => {
   const { accessToken } = useAuth();
@@ -16,11 +17,13 @@ export const PatientAppointmentsPage = (): ReactElement => {
   const [history, setHistory] = useState<AppointmentDto[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
 
   const reload = async (): Promise<void> => {
     if (!accessToken) return;
     setLoading(true);
     setError('');
+    setMessage('');
     try {
       const data = await patientApi.listAppointments(accessToken);
       setUpcoming(data.upcoming);
@@ -68,6 +71,7 @@ export const PatientAppointmentsPage = (): ReactElement => {
 
         {loading ? <LoadingState message="Cargando turnos..." /> : null}
         {!loading && error ? <ErrorState message={error} onRetry={() => void reload()} /> : null}
+        {message ? <p className="nx-form-success">{message}</p> : null}
 
         {!loading && !error ? (
           <>
@@ -98,10 +102,28 @@ export const PatientAppointmentsPage = (): ReactElement => {
                           ? ` (${item.beneficiaryRelationship})`
                           : ''}
                       </p>
-                      <p className="nx-appointment-item__status">Estado: {item.status}</p>
+                      <p className="nx-appointment-item__status">Estado: {statusLabel(item.status)}</p>
                       <OrganizationLocationCard organization={item.organization} compact />
                     </div>
                     <div className="nx-appointment-item__actions">
+                      {item.status === 'booked' ? (
+                        <button
+                          className="nx-btn-secondary"
+                          type="button"
+                          onClick={async () => {
+                            if (!accessToken) return;
+                            try {
+                              await patientApi.confirmAppointmentAttendance(accessToken, item.id);
+                              await reload();
+                              setMessage('Confirmaste que vas a asistir al turno.');
+                            } catch (cause) {
+                              setError((cause as Error).message);
+                            }
+                          }}
+                        >
+                          Confirmar asistencia
+                        </button>
+                      ) : null}
                       <ConfirmActionButton
                         confirmationMessage="¿Seguro que querés cancelar este turno?"
                         onConfirm={async () => {
@@ -116,9 +138,11 @@ export const PatientAppointmentsPage = (): ReactElement => {
                       >
                         Cancelar
                       </ConfirmActionButton>
-                      <Link className="nx-btn-secondary" to={`/patient/appointments/${item.id}/reschedule`}>
-                        Reprogramar
-                      </Link>
+                      {['booked', 'confirmed_by_patient'].includes(item.status) ? (
+                        <Link className="nx-btn-secondary" to={`/patient/appointments/${item.id}/reschedule`}>
+                          Reprogramar
+                        </Link>
+                      ) : null}
                     </div>
                   </li>
                 ))}

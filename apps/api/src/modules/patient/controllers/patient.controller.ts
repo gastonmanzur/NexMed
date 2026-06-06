@@ -118,11 +118,12 @@ const updateFamilyMemberSchema = z.object({
 const appointmentParamsSchema = z.object({ appointmentId: z.string().trim().min(1) });
 
 const listAppointmentsQuerySchema = z.object({
-  status: z.enum(['booked', 'canceled_by_staff', 'canceled_by_patient', 'rescheduled', 'completed', 'no_show']).optional(),
+  status: z.enum(['booked', 'confirmed_by_patient', 'arrived', 'canceled_by_staff', 'canceled_by_patient', 'rescheduled', 'completed', 'no_show']).optional(),
   organizationId: z.string().trim().min(1).optional()
 });
 
 const cancelSchema = z.object({ reason: z.string().trim().max(300).optional() });
+const confirmAttendanceSchema = z.object({ note: z.string().trim().max(300).optional() }).optional();
 
 const rescheduleSchema = z.object({
   newProfessionalId: z.string().trim().min(1).optional(),
@@ -283,6 +284,13 @@ export const patientController = {
   getAppointment: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { appointmentId } = appointmentParamsSchema.parse(req.params);
     const data = await service.getPatientAppointment(req.auth!.userId, appointmentId);
+    res.status(200).json({ success: true, data });
+  },
+
+  confirmAppointmentAttendance: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { appointmentId } = appointmentParamsSchema.parse(req.params);
+    const input = confirmAttendanceSchema.parse(req.body);
+    const data = await service.confirmAppointmentAttendance(req.auth!.userId, appointmentId, input?.note);
     res.status(200).json({ success: true, data });
   },
 

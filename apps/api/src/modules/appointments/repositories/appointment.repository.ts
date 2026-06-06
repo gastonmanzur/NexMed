@@ -102,9 +102,17 @@ export class AppointmentRepository {
   async updateByIdInOrganization(
     organizationId: string,
     appointmentId: string,
-    update: Record<string, unknown>
+    update: Record<string, unknown>,
+    statusHistoryEntry?: Record<string, unknown>
   ): Promise<AppointmentDocument | null> {
-    return AppointmentModel.findOneAndUpdate({ _id: appointmentId, organizationId }, { $set: update }, { new: true }).exec();
+    return AppointmentModel.findOneAndUpdate(
+      { _id: appointmentId, organizationId },
+      {
+        $set: update,
+        ...(statusHistoryEntry ? { $push: { statusHistory: statusHistoryEntry } } : {})
+      },
+      { new: true }
+    ).exec();
   }
 
   async findBookedOverlappingRange(
@@ -117,7 +125,7 @@ export class AppointmentRepository {
     const query: Record<string, unknown> = {
       organizationId,
       professionalId,
-      status: 'booked',
+      status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] },
       startAt: { $lt: endAt },
       endAt: { $gt: startAt }
     };
@@ -138,7 +146,7 @@ export class AppointmentRepository {
     return AppointmentModel.find({
       organizationId,
       professionalId,
-      status: 'booked',
+      status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] },
       startAt: { $lt: to },
       endAt: { $gt: from }
     }).exec();
@@ -146,7 +154,7 @@ export class AppointmentRepository {
 
   async findBookedStartingBetween(from: Date, to: Date): Promise<AppointmentDocument[]> {
     return AppointmentModel.find({
-      status: 'booked',
+      status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] },
       startAt: { $gte: from, $lte: to }
     }).exec();
   }

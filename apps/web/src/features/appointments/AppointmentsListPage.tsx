@@ -7,9 +7,10 @@ import { appointmentsApi } from './appointments-api';
 import { professionalsApi } from '../professionals/professionals-api';
 import { specialtiesApi } from '../specialties/specialties-api';
 import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
+import { appointmentStatuses, centerStatusActions, isPendingClosure, statusLabel, statusTone } from './appointment-status';
 import './appointments-agenda.css';
 
-const appointmentStatuses: AppointmentStatus[] = ['booked', 'canceled_by_staff', 'canceled_by_patient', 'rescheduled', 'completed', 'no_show'];
+
 const viewModes = ['Semana', 'Día', 'Mes'];
 const timeSlots = Array.from({ length: 12 }, (_, hour) => hour + 8);
 
@@ -33,22 +34,6 @@ const toLocalDateKey = (date: Date): string => {
 };
 const durationMinutes = (startAt: string, endAt: string): number => Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
 
-const statusTone = (status: AppointmentStatus): string => {
-  if (status === 'booked') return 'booked';
-  if (status === 'completed') return 'completed';
-  if (status === 'rescheduled') return 'rescheduled';
-  if (status === 'no_show') return 'no-show';
-  return 'canceled';
-};
-
-const statusLabel = (status: AppointmentStatus): string => {
-  if (status === 'booked') return 'Confirmado';
-  if (status === 'completed') return 'Completado';
-  if (status === 'rescheduled') return 'Reprogramado';
-  if (status === 'no_show') return 'Ausente';
-  return 'Cancelado';
-};
-
 const avatarFromName = (name: string): string =>
   name
     .split(' ')
@@ -69,6 +54,7 @@ export const AppointmentsListPage = (): ReactElement => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
   const [invalidAvatarUrls, setInvalidAvatarUrls] = useState<Record<string, true>>({});
+  const [updatingStatusId, setUpdatingStatusId] = useState('');
 
   const activeMembership = useMemo(
     () => memberships.find((membership) => membership.organizationId === activeOrganizationId),
@@ -166,6 +152,21 @@ export const AppointmentsListPage = (): ReactElement => {
     }
 
     return <span className="nx-prof-avatar">{initials}</span>;
+  };
+
+
+  const updateAppointmentStatus = async (appointment: AppointmentDto, status: AppointmentStatus, note?: string): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    setUpdatingStatusId(appointment.id);
+    setError('');
+    try {
+      await appointmentsApi.updateStatus(accessToken, activeOrganizationId, appointment.id, { status, ...(note ? { note } : {}) });
+      await load();
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setUpdatingStatusId('');
+    }
   };
 
   if (!user) return <Navigate to="/login" replace />;
@@ -267,22 +268,41 @@ export const AppointmentsListPage = (): ReactElement => {
                     <div className={`nx-agenda-cell ${isToday ? 'is-today' : ''}`.trim()} key={`${day.toISOString()}-${slotHour}`}>
                       {entries.map((appointment) => {
                         const isDouble = appointment.durationMultiplier === 2;
+                        const pendingClosure = isPendingClosure(appointment.status, appointment.endAt);
+                        const actions = centerStatusActions(appointment.status);
                         return (
-                        <Link to={`/app/appointments/${appointment.id}`} key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)} ${isDouble ? 'nx-agenda-event--double' : ''}`.trim()}>
-                          <div className="nx-agenda-event__head">
-                            <strong>{appointment.patientName}</strong>
-                            <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
-                          </div>
-                          <span className="nx-agenda-event__meta">
-                            {formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min
-                            {isDouble ? <b>Turno doble</b> : null}
-                          </span>
-                          <small>
-                            {professionalsById.get(appointment.professionalId)?.displayName ?? 'Profesional no asignado'}
-                            {' · '}
-                            {(appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) : null) ?? 'Especialidad'}
-                          </small>
-                        </Link>
+                        <article key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)} ${isDouble ? 'nx-agenda-event--double' : ''} ${pendingClosure ? 'nx-agenda-event--pending-closure' : ''}`.trim()}>
+                          <Link to={`/app/appointments/${appointment.id}`} className="nx-agenda-event__link">
+                            <div className="nx-agenda-event__head">
+                              <strong>{appointment.patientName}</strong>
+                              <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
+                            </div>
+                            <span className="nx-agenda-event__meta">
+                              {formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min
+                              {isDouble ? <b>Turno doble</b> : null}
+                            </span>
+                            <small>
+                              {professionalsById.get(appointment.professionalId)?.displayName ?? 'Profesional no asignado'}
+                              {' · '}
+                              {(appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) : null) ?? 'Especialidad'}
+                            </small>
+                            {pendingClosure ? <span className="nx-agenda-event__pending">Pendiente de cierre</span> : null}
+                          </Link>
+                          {canManage && actions.length > 0 ? (
+                            <div className="nx-agenda-event__actions">
+                              {actions.map((action) => (
+                                <button
+                                  key={action.status}
+                                  type="button"
+                                  disabled={updatingStatusId === appointment.id}
+                                  onClick={() => void updateAppointmentStatus(appointment, action.status, action.note)}
+                                >
+                                  {pendingClosure && action.status === 'completed' ? 'Marcar atendido' : pendingClosure && action.status === 'no_show' ? 'Marcar no asistió' : action.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </article>
                         );
                       })}
                     </div>

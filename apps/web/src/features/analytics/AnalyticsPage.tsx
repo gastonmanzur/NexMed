@@ -20,8 +20,10 @@ type RangeId = (typeof rangeOptions)[number]['id'];
 type StatusBreakdownKey = keyof AnalyticsSummaryDto['statusBreakdown'];
 
 const statusLabels: Record<StatusBreakdownKey, string> = {
-  booked: 'Confirmados',
-  completed: 'Completados',
+  booked: 'Reservados',
+  confirmedByPatient: 'Confirmados por paciente',
+  arrived: 'Llegaron',
+  completed: 'Atendidos',
   canceledByStaff: 'Cancelados por el centro',
   canceledByPatient: 'Cancelados por pacientes',
   rescheduled: 'Reprogramados',
@@ -30,6 +32,8 @@ const statusLabels: Record<StatusBreakdownKey, string> = {
 
 const statusColors: Record<StatusBreakdownKey, string> = {
   booked: '#2563eb',
+  confirmedByPatient: '#06b6d4',
+  arrived: '#22c55e',
   completed: '#10b981',
   canceledByStaff: '#f97316',
   canceledByPatient: '#ef4444',
@@ -164,8 +168,11 @@ export const AnalyticsPage = () => {
 
     return [
       { label: 'Turnos totales', value: formatNumber(data.kpis.totalAppointments), detail: 'Volumen del período seleccionado', icon: '▦', tone: 'blue' },
-      { label: 'Confirmados', value: formatNumber(data.kpis.bookedAppointments), detail: 'Turnos reservados activos', icon: '✓', tone: 'cyan' },
-      { label: 'Completados', value: formatNumber(data.kpis.completedAppointments), detail: 'Atenciones finalizadas', icon: '●', tone: 'green' },
+      { label: 'Reservados', value: formatNumber(data.kpis.bookedAppointments), detail: 'Turnos pendientes de confirmación', icon: '✓', tone: 'cyan' },
+      { label: 'Confirmados por paciente', value: formatNumber(data.kpis.confirmedByPatientAppointments), detail: 'Intención de asistencia registrada', icon: '✓', tone: 'cyan' },
+      { label: 'Llegaron', value: formatNumber(data.kpis.arrivedAppointments), detail: 'Pacientes en sala de espera', icon: '→', tone: 'teal' },
+      { label: 'Atendidos', value: formatNumber(data.kpis.completedAppointments), detail: `${formatPercent(data.kpis.attendanceRate)} de asistencia`, icon: '●', tone: 'green' },
+      { label: 'No asistieron', value: formatNumber(data.kpis.noShowAppointments), detail: `${formatPercent(data.kpis.noShowRate)} de ausencias`, icon: '!', tone: 'orange' },
       { label: 'Cancelados', value: formatNumber(data.kpis.canceledAppointments), detail: `${formatPercent(data.kpis.cancellationRate)} de cancelación`, icon: '!', tone: 'orange' },
       { label: 'Reprogramados', value: formatNumber(data.kpis.rescheduledAppointments), detail: `${formatPercent(data.kpis.rescheduleRate)} sobre el total`, icon: '↻', tone: 'violet' },
       { label: 'Pacientes atendidos', value: formatNumber(data.kpis.uniqueAttendedPatients), detail: `${formatNumber(data.kpis.newPatients)} nuevos · ${formatNumber(data.kpis.recurringPatients)} recurrentes`, icon: '◎', tone: 'teal' },
