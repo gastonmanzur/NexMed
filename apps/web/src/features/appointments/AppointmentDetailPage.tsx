@@ -87,8 +87,8 @@ export const AppointmentDetailPage = (): ReactElement => {
     <main style={{ maxWidth: 800, margin: '2rem auto', padding: '1rem' }}>
       <Card title="Detalle de turno">
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link to="/app/appointments">Volver al listado</Link>
-          {appointment && ['booked', 'confirmed_by_patient'].includes(appointment.status) ? <Link to={`/app/appointments/${appointment.id}/reschedule`}>Reprogramar</Link> : null}
+          <Link className="nx-btn-secondary" to="/app/appointments">Volver al listado</Link>
+          {appointment && ['booked', 'confirmed_by_patient'].includes(appointment.status) ? <Link className="nx-btn-secondary" to={`/app/appointments/${appointment.id}/reschedule`}>Reprogramar</Link> : null}
         </div>
 
         {loading ? <p>Cargando turno...</p> : null}
