@@ -33,6 +33,7 @@ const toLocalDateKey = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 const durationMinutes = (startAt: string, endAt: string): number => Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
+const getAppointmentPatientName = (appointment: AppointmentDto): string => appointment.beneficiaryDisplayName ?? appointment.patientName;
 
 const avatarFromName = (name: string): string =>
   name
@@ -274,7 +275,7 @@ export const AppointmentsListPage = (): ReactElement => {
                         <article key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)} ${isDouble ? 'nx-agenda-event--double' : ''} ${pendingClosure ? 'nx-agenda-event--pending-closure' : ''}`.trim()}>
                           <Link to={`/app/appointments/${appointment.id}`} className="nx-agenda-event__link">
                             <div className="nx-agenda-event__head">
-                              <strong>{appointment.patientName}</strong>
+                              <strong>{getAppointmentPatientName(appointment)}</strong>
                               <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
                             </div>
                             <span className="nx-agenda-event__meta">
@@ -322,7 +323,7 @@ export const AppointmentsListPage = (): ReactElement => {
                 <li key={appointment.id}>
                   {renderProfessionalAvatar(professionalsById.get(appointment.professionalId) ?? null)}
                   <div>
-                    <strong>{appointment.patientName}</strong>
+                    <strong>{getAppointmentPatientName(appointment)}</strong>
                     <span>{formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min</span>
                   </div>
                   <b>{statusLabel(appointment.status)}</b>
