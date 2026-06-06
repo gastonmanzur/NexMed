@@ -3,19 +3,27 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
+import { PatientDetailModal } from '../organizations/PatientDetailModal';
+import { organizationApi } from '../organizations/organization-api';
 import { appointmentsApi } from './appointments-api';
-import type { AppointmentDto, AppointmentStatus } from '@starter/shared-types';
-import { centerStatusActions, isPendingClosure, statusLabel } from './appointment-status';
+import type { AppointmentDto, AppointmentStatus, OrganizationPatientDetailDto } from '@starter/shared-types';
+import { centerStatusActions, isPendingClosure } from './appointment-status';
 
-const formatDateTime = (value: string): string => new Date(value).toLocaleString();
+const formatDate = (value: string): string => new Date(value).toLocaleDateString('es-AR');
+const formatTime = (value: string): string => new Date(value).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+const getAppointmentPatientName = (appointment: AppointmentDto): string => appointment.beneficiaryDisplayName ?? appointment.patientName;
 
 export const AppointmentDetailPage = (): ReactElement => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const { user, accessToken, activeOrganizationId } = useAuth();
 
   const [appointment, setAppointment] = useState<AppointmentDto | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<OrganizationPatientDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [loadingPatientDetail, setLoadingPatientDetail] = useState(false);
+  const [patientDetailError, setPatientDetailError] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState('');
 
   const load = async (): Promise<void> => {
@@ -50,6 +58,26 @@ export const AppointmentDetailPage = (): ReactElement => {
     }
   };
 
+  const openPatientDetail = async (): Promise<void> => {
+    if (!appointment?.patientProfileId || !accessToken || !activeOrganizationId) return;
+
+    setIsPatientModalOpen(true);
+    setLoadingPatientDetail(true);
+    setPatientDetailError('');
+    try {
+      setSelectedPatient(await organizationApi.getPatientDetail(accessToken, activeOrganizationId, appointment.patientProfileId));
+    } catch (cause) {
+      setPatientDetailError((cause as Error).message);
+    } finally {
+      setLoadingPatientDetail(false);
+    }
+  };
+
+  const closePatientDetail = (): void => {
+    setIsPatientModalOpen(false);
+    setSelectedPatient(null);
+    setPatientDetailError('');
+  };
 
   if (!user) return <Navigate to="/login" replace />;
   if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
@@ -59,45 +87,45 @@ export const AppointmentDetailPage = (): ReactElement => {
     <main style={{ maxWidth: 800, margin: '2rem auto', padding: '1rem' }}>
       <Card title="Detalle de turno">
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Link to="/app/appointments">Volver al listado</Link>
-          {appointment && ['booked', 'confirmed_by_patient'].includes(appointment.status) ? <Link to={`/app/appointments/${appointment.id}/reschedule`}>Reprogramar</Link> : null}
+          <Link className="nx-btn-secondary" to="/app/appointments">Volver al listado</Link>
+          {appointment && ['booked', 'confirmed_by_patient'].includes(appointment.status) ? <Link className="nx-btn-secondary" to={`/app/appointments/${appointment.id}/reschedule`}>Reprogramar</Link> : null}
         </div>
 
         {loading ? <p>Cargando turno...</p> : null}
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
 
         {appointment ? (
-          <dl style={{ display: 'grid', gap: '0.5rem', marginTop: '1rem' }}>
-            <div><dt>ID</dt><dd>{appointment.id}</dd></div>
-            <div><dt>Paciente</dt><dd>{appointment.patientName}</dd></div>
-            <div><dt>Email</dt><dd>{appointment.patientEmail ?? '-'}</dd></div>
-            <div><dt>Teléfono</dt><dd>{appointment.patientPhone ?? '-'}</dd></div>
-            <div><dt>Inicio</dt><dd>{formatDateTime(appointment.startAt)}</dd></div>
-            <div><dt>Fin</dt><dd>{formatDateTime(appointment.endAt)}</dd></div>
-            <div><dt>Estado</dt><dd><strong>{statusLabel(appointment.status)}</strong></dd></div>
-            {isPendingClosure(appointment.status, appointment.endAt) ? <div><dt>Cierre</dt><dd><strong>Pendiente de cierre</strong></dd></div> : null}
-            <div><dt>Origen</dt><dd>{appointment.source}</dd></div>
-            <div><dt>Creado por</dt><dd>{appointment.createdByUserId}</dd></div>
-            <div><dt>Cancelado por</dt><dd>{appointment.canceledByUserId ?? '-'}</dd></div>
-            <div><dt>Cancelado en</dt><dd>{appointment.canceledAt ? formatDateTime(appointment.canceledAt) : '-'}</dd></div>
-            <div><dt>Motivo cancelación</dt><dd>{appointment.cancelReason ?? '-'}</dd></div>
-            <div><dt>Reprogramado desde</dt><dd>{appointment.rescheduledFromAppointmentId ?? '-'}</dd></div>
-            <div><dt>Reprogramado hacia</dt><dd>{appointment.rescheduledToAppointmentId ?? '-'}</dd></div>
-            <div><dt>Notas</dt><dd>{appointment.notes ?? '-'}</dd></div>
-            <div><dt>Actualizado por</dt><dd>{appointment.statusUpdatedByUserId ?? '-'} {appointment.statusUpdatedByRole ? `(${appointment.statusUpdatedByRole})` : ''}</dd></div>
-            <div><dt>Actualizado en</dt><dd>{appointment.statusUpdatedAt ? formatDateTime(appointment.statusUpdatedAt) : '-'}</dd></div>
+          <section aria-label="Datos básicos del turno" style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+            <dl style={{ display: 'grid', gap: '0.5rem', margin: 0 }}>
+              <div><dt>Paciente</dt><dd>{getAppointmentPatientName(appointment)}</dd></div>
+              <div><dt>Fecha</dt><dd>{formatDate(appointment.startAt)}</dd></div>
+              <div><dt>Inicio</dt><dd>{formatTime(appointment.startAt)}</dd></div>
+              <div><dt>Fin</dt><dd>{formatTime(appointment.endAt)}</dd></div>
+            </dl>
+
+            <div>
+              <button className="nx-btn" type="button" disabled={!appointment.patientProfileId || loadingPatientDetail} onClick={() => void openPatientDetail()}>
+                {loadingPatientDetail ? 'Cargando datos...' : 'Datos del paciente'}
+              </button>
+              {!appointment.patientProfileId ? <p style={{ color: 'var(--text-soft)', margin: '0.5rem 0 0' }}>Este turno no tiene un perfil de paciente vinculado.</p> : null}
+            </div>
+
             {centerStatusActions(appointment.status).length > 0 ? (
-              <div><dt>Acciones operativas</dt><dd style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {centerStatusActions(appointment.status).map((action) => (
-                  <button key={action.status} type="button" disabled={updatingStatus === action.status} onClick={() => void updateStatus(action.status, action.note)}>
-                    {isPendingClosure(appointment.status, appointment.endAt) && action.status === 'completed' ? 'Marcar atendido' : isPendingClosure(appointment.status, appointment.endAt) && action.status === 'no_show' ? 'Marcar no asistió' : action.label}
-                  </button>
-                ))}
-              </dd></div>
+              <section>
+                <h3 style={{ margin: '0 0 0.5rem' }}>Acciones operativas</h3>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {centerStatusActions(appointment.status).map((action) => (
+                    <button className="nx-btn-secondary" key={action.status} type="button" disabled={updatingStatus === action.status} onClick={() => void updateStatus(action.status, action.note)}>
+                      {isPendingClosure(appointment.status, appointment.endAt) && action.status === 'completed' ? 'Marcar atendido' : isPendingClosure(appointment.status, appointment.endAt) && action.status === 'no_show' ? 'Marcar no asistió' : action.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
             ) : null}
-          </dl>
+          </section>
         ) : null}
       </Card>
+      <PatientDetailModal patient={selectedPatient} isOpen={isPatientModalOpen} loading={loadingPatientDetail} error={patientDetailError} onClose={closePatientDetail} />
     </main>
   );
 };
