@@ -1,23 +1,12 @@
-import type { PatientOrganizationLinkStatus, PatientProfileDto } from '@starter/shared-types';
+import type { OrganizationPatientDetailDto } from '@starter/shared-types';
 import type { ReactElement } from 'react';
 import { useEffect, useId, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const FALLBACK = '—';
 
-export type PatientDetailModalData = {
-  patientProfile: PatientProfileDto;
-  email: string | null;
-  avatarUrl?: string | null;
-  linkedAt: string | null;
-  linkStatus?: PatientOrganizationLinkStatus | null;
-  totalAppointments: number | null;
-  lastAppointmentAt: string | null;
-  ownerName: string | null;
-};
-
 type PatientDetailModalProps = {
-  patient: PatientDetailModalData | null;
+  patient: OrganizationPatientDetailDto | null;
   isOpen?: boolean;
   loading?: boolean;
   error?: string;
