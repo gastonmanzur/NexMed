@@ -12,6 +12,7 @@ import type {
   UserEventDto
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import { formatAppointmentDateTimeArgentina } from '../../../core/argentina-date-time.js';
 import { AppointmentsService } from '../../appointments/services/appointments.service.js';
 import { AvailabilityService } from '../../availability/services/availability.service.js';
 import { UserRepository } from '../../auth/repositories/user.repository.js';
@@ -648,7 +649,7 @@ export class PatientService {
       organizationId,
       type: 'patient_appointment_booked',
       title: 'Reserva confirmada',
-      body: `Turno para ${new Date(appointment.startAt).toLocaleString('es-AR', { hour12: false })}`
+      body: `Turno reservado para el ${formatAppointmentDateTimeArgentina(appointment.startAt)}.`
     });
 
     return this.attachOrganizationToAppointment(appointment);

@@ -7,9 +7,7 @@ import { PatientDetailModal } from '../organizations/PatientDetailModal';
 import { organizationApi } from '../organizations/organization-api';
 import { appointmentsApi } from './appointments-api';
 import type { AppointmentDto, OrganizationPatientDetailDto } from '@starter/shared-types';
-
-const formatDate = (value: string): string => new Date(value).toLocaleDateString('es-AR');
-const formatTime = (value: string): string => new Date(value).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+import { formatArgentinaDate, formatArgentinaTime } from '../../lib/argentina-date-time';
 const getAppointmentPatientName = (appointment: AppointmentDto): string => appointment.beneficiaryDisplayName ?? appointment.patientName;
 
 export const AppointmentDetailPage = (): ReactElement => {
@@ -76,9 +74,9 @@ export const AppointmentDetailPage = (): ReactElement => {
           <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
             <dl style={{ display: 'grid', gap: '0.5rem', margin: 0 }}>
               <div><dt>Paciente</dt><dd>{getAppointmentPatientName(appointment)}</dd></div>
-              <div><dt>Fecha</dt><dd>{formatDate(appointment.startAt)}</dd></div>
-              <div><dt>Inicio</dt><dd>{formatTime(appointment.startAt)}</dd></div>
-              <div><dt>Fin</dt><dd>{formatTime(appointment.endAt)}</dd></div>
+              <div><dt>Fecha</dt><dd>{formatArgentinaDate(appointment.startAt)}</dd></div>
+              <div><dt>Inicio</dt><dd>{formatArgentinaTime(appointment.startAt)}</dd></div>
+              <div><dt>Fin</dt><dd>{formatArgentinaTime(appointment.endAt)}</dd></div>
             </dl>
 
             <div>

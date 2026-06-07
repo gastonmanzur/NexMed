@@ -8,8 +8,9 @@ import { professionalsApi } from '../professionals/professionals-api';
 import { specialtiesApi } from '../specialties/specialties-api';
 import { availabilityApi } from '../professionals/availability-api';
 import { appointmentsApi } from './appointments-api';
+import { getTodayArgentinaDateKey, toAppointmentInstantIso } from '../../lib/argentina-date-time';
 
-const todayDate = (): string => new Date().toISOString().slice(0, 10);
+const todayDate = (): string => getTodayArgentinaDateKey();
 
 export const AppointmentCreatePage = (): ReactElement => {
   const { user, accessToken, activeOrganizationId } = useAuth();
@@ -130,8 +131,8 @@ export const AppointmentCreatePage = (): ReactElement => {
                   patientName,
                   ...(patientPhone.trim() ? { patientPhone: patientPhone.trim() } : {}),
                   ...(patientEmail.trim() ? { patientEmail: patientEmail.trim() } : {}),
-                  startAt: new Date(`${selectedSlot.startsAtIso}Z`).toISOString(),
-                  endAt: new Date(`${selectedSlot.endsAtIso}Z`).toISOString(),
+                  startAt: toAppointmentInstantIso(selectedSlot.startsAtIso),
+                  endAt: toAppointmentInstantIso(selectedSlot.endsAtIso),
                   ...(notes.trim() ? { notes: notes.trim() } : {})
                 });
 

@@ -7,6 +7,12 @@ import type {
   CalculatedAvailabilityDto
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import {
+  ARGENTINA_TIME_ZONE,
+  argentinaLocalDateTimeToUtcDate,
+  getArgentinaDayRange,
+  parseAppointmentInstant
+} from '../../../core/argentina-date-time.js';
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
 import { SpecialtyRepository } from '../../professionals/repositories/specialty.repository.js';
 import { ProfessionalSpecialtyRepository } from '../../professionals/repositories/professional-specialty.repository.js';
@@ -116,7 +122,7 @@ const compareDateStrings = (left: string, right: string): number => {
   return left < right ? -1 : 1;
 };
 
-const parseSlotInstant = (value: string): Date => new Date(`${value}Z`);
+const parseSlotInstant = (value: string): Date => parseAppointmentInstant(value);
 
 export class AvailabilityService {
   constructor(
@@ -276,8 +282,8 @@ export class AvailabilityService {
     const bookedAppointments = await this.appointments.findBookedByProfessionalAndRange(
       organizationId,
       professionalId,
-      new Date(`${validatedRange.startDate}T00:00:00.000Z`),
-      new Date(`${validatedRange.endDate}T23:59:59.999Z`)
+      getArgentinaDayRange(validatedRange.startDate).from,
+      getArgentinaDayRange(validatedRange.endDate).to
     );
 
     const now = new Date();
@@ -411,7 +417,7 @@ export class AvailabilityService {
   private async resolveOrganizationTimezone(organizationId: string): Promise<string> {
     const settings = await this.organizationSettings.findByOrganizationId(organizationId);
     if (!settings?.timezone) {
-      return 'UTC';
+      return ARGENTINA_TIME_ZONE;
     }
 
     return settings.timezone;
@@ -593,8 +599,8 @@ export class AvailabilityService {
         date,
         startTime,
         endTime,
-        startsAtIso: `${date}T${startTime}:00`,
-        endsAtIso: `${date}T${endTime}:00`
+        startsAtIso: argentinaLocalDateTimeToUtcDate(date, startTime).toISOString(),
+        endsAtIso: argentinaLocalDateTimeToUtcDate(date, endTime).toISOString()
       });
 
       cursor += step;
