@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && node scripts/check-src-js-duplicates.mjs && vite build && node scripts/check-src-js-duplicates.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "audit:appointment-detail": "node scripts/audit-appointment-detail-build.mjs"
+    "audit:appointment-detail": "node scripts/audit-appointment-detail-build.mjs",
+    "check:src-js-duplicates": "node scripts/check-src-js-duplicates.mjs"
   },
   "dependencies": {
     "@starter/shared-types": "0.1.0",
