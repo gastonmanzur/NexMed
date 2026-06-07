@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "audit:appointment-detail": "node scripts/audit-appointment-detail-build.mjs"
   },
   "dependencies": {
     "@starter/shared-types": "0.1.0",
