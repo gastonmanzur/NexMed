@@ -7,6 +7,14 @@ import { appointmentsApi } from './appointments-api';
 import { professionalsApi } from '../professionals/professionals-api';
 import { specialtiesApi } from '../specialties/specialties-api';
 import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
+import {
+  formatArgentinaDate,
+  formatArgentinaTime,
+  formatArgentinaTimeRange,
+  getArgentinaDateKey,
+  getArgentinaDateRangeIso,
+  getArgentinaWeekDateKeys
+} from '../../lib/argentina-date-time';
 import { appointmentStatuses, centerStatusActions, isPendingClosure, statusLabel, statusTone } from './appointment-status';
 import './appointments-agenda.css';
 
@@ -14,24 +22,10 @@ import './appointments-agenda.css';
 const viewModes = ['Semana', 'Día', 'Mes'];
 const timeSlots = Array.from({ length: 12 }, (_, hour) => hour + 8);
 
-const startOfWeek = (date: Date): Date => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const formatDayLabel = (date: Date): string => date.toLocaleDateString('es-AR', { weekday: 'short' });
-const formatDayNumber = (date: Date): string => date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
-const formatHour = (value: string): string => new Date(value).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-const toLocalDateKey = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const formatDayLabel = (dateKey: string): string =>
+  new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${dateKey}T12:00:00.000Z`));
+const formatDayNumber = (dateKey: string): string =>
+  new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(new Date(`${dateKey}T12:00:00.000Z`));
 const durationMinutes = (startAt: string, endAt: string): number => Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
 const getAppointmentPatientName = (appointment: AppointmentDto): string => appointment.beneficiaryDisplayName ?? appointment.patientName;
 
@@ -53,7 +47,7 @@ export const AppointmentsListPage = (): ReactElement => {
   const [activeViewMode, setActiveViewMode] = useState('Semana');
   const [selectedProfessionalId, setSelectedProfessionalId] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
+  const [weekAnchor, setWeekAnchor] = useState(() => new Date());
   const [invalidAvatarUrls, setInvalidAvatarUrls] = useState<Record<string, true>>({});
   const [updatingStatusId, setUpdatingStatusId] = useState('');
 
@@ -67,15 +61,7 @@ export const AppointmentsListPage = (): ReactElement => {
   const professionalsById = useMemo(() => new Map(professionals.map((item) => [item.id, item])), [professionals]);
   const specialtiesById = useMemo(() => new Map(specialties.map((item) => [item.id, item.name])), [specialties]);
 
-  const weekDays = useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, index) => {
-        const day = new Date(weekAnchor);
-        day.setDate(weekAnchor.getDate() + index);
-        return day;
-      }),
-    [weekAnchor]
-  );
+  const weekDays = useMemo(() => getArgentinaWeekDateKeys(weekAnchor), [weekAnchor]);
 
   const load = async (): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
@@ -84,17 +70,14 @@ export const AppointmentsListPage = (): ReactElement => {
     setError('');
 
     try {
-      const from = new Date(weekAnchor);
-      const to = new Date(weekAnchor);
-      to.setDate(to.getDate() + 6);
-      to.setHours(23, 59, 59, 999);
+      const { from, to } = getArgentinaDateRangeIso(weekDays[0]!, weekDays[6]!);
 
       const [appointmentsData, professionalsData, specialtiesData] = await Promise.all([
         appointmentsApi.list(accessToken, activeOrganizationId, {
           ...(selectedProfessionalId ? { professionalId: selectedProfessionalId } : {}),
           ...(selectedStatus ? { status: selectedStatus as AppointmentStatus } : {}),
-          from: from.toISOString(),
-          to: to.toISOString()
+          from,
+          to
         }),
         professionalsApi.list(accessToken, activeOrganizationId),
         specialtiesApi.list(accessToken, activeOrganizationId)
@@ -117,25 +100,25 @@ export const AppointmentsListPage = (): ReactElement => {
   const byDay = useMemo(
     () =>
       weekDays.map((day) => {
-        const key = toLocalDateKey(day);
+        const key = day;
         return appointments
-          .filter((item) => toLocalDateKey(new Date(item.startAt)) === key)
+          .filter((item) => getArgentinaDateKey(item.startAt) === key)
           .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
       }),
     [appointments, weekDays]
   );
 
-  const todayIsoKey = toLocalDateKey(new Date());
+  const todayIsoKey = getArgentinaDateKey(new Date());
   const todayAppointments = useMemo(
     () =>
       appointments
-        .filter((item) => toLocalDateKey(new Date(item.startAt)) === todayIsoKey)
+        .filter((item) => getArgentinaDateKey(item.startAt) === todayIsoKey)
         .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
     [appointments, todayIsoKey]
   );
 
-  const weekStartLabel = weekDays.at(0)?.toLocaleDateString('es-AR') ?? '-';
-  const weekEndLabel = weekDays.at(-1)?.toLocaleDateString('es-AR') ?? '-';
+  const weekStartLabel = weekDays.at(0) ? formatArgentinaDate(`${weekDays[0]}T12:00:00`) : '-';
+  const weekEndLabel = weekDays.at(-1) ? formatArgentinaDate(`${weekDays[6]}T12:00:00`) : '-';
   const renderProfessionalAvatar = (professional: ProfessionalDto | null): ReactElement => {
     const initials = avatarFromName(professional?.displayName ?? 'PR');
     const rawAvatarUrl = professional?.avatarUrl;
@@ -232,7 +215,7 @@ export const AppointmentsListPage = (): ReactElement => {
         </div>
 
         <div className="nx-agenda-toolbar__actions">
-          <button type="button" className="nx-agenda-toolbar__ghost-btn" onClick={() => setWeekAnchor(startOfWeek(new Date()))}>Hoy</button>
+          <button type="button" className="nx-agenda-toolbar__ghost-btn" onClick={() => setWeekAnchor(new Date())}>Hoy</button>
           <Link className="nx-agenda-toolbar__primary-link" to="/app/appointments/new" role="button" aria-disabled={!canManage} onClick={(event) => {
             if (!canManage) event.preventDefault();
           }}>
@@ -248,9 +231,9 @@ export const AppointmentsListPage = (): ReactElement => {
           <header className="nx-agenda-grid-head">
             <span>Horario</span>
             {weekDays.map((day) => {
-              const isToday = toLocalDateKey(day) === todayIsoKey;
+              const isToday = day === todayIsoKey;
               return (
-                <div key={day.toISOString()} className={isToday ? 'is-today' : undefined}>
+                <div key={day} className={isToday ? 'is-today' : undefined}>
                   <p>{formatDayLabel(day)} {isToday ? <span>Hoy</span> : null}</p>
                   <strong>{formatDayNumber(day)}</strong>
                 </div>
@@ -263,10 +246,10 @@ export const AppointmentsListPage = (): ReactElement => {
               <div className="nx-agenda-row" key={slotHour}>
                 <span className="nx-agenda-time">{`${slotHour.toString().padStart(2, '0')}:00`}</span>
                 {weekDays.map((day, dayIndex) => {
-                  const entries = (byDay[dayIndex] ?? []).filter((appointment) => new Date(appointment.startAt).getHours() === slotHour);
-                  const isToday = toLocalDateKey(day) === todayIsoKey;
+                  const entries = (byDay[dayIndex] ?? []).filter((appointment) => Number(formatArgentinaTime(appointment.startAt).slice(0, 2)) === slotHour);
+                  const isToday = day === todayIsoKey;
                   return (
-                    <div className={`nx-agenda-cell ${isToday ? 'is-today' : ''}`.trim()} key={`${day.toISOString()}-${slotHour}`}>
+                    <div className={`nx-agenda-cell ${isToday ? 'is-today' : ''}`.trim()} key={`${day}-${slotHour}`}>
                       {entries.map((appointment) => {
                         const isDouble = appointment.durationMultiplier === 2;
                         const pendingClosure = isPendingClosure(appointment.status, appointment.endAt);
@@ -279,7 +262,7 @@ export const AppointmentsListPage = (): ReactElement => {
                               <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
                             </div>
                             <span className="nx-agenda-event__meta">
-                              {formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min
+                              {formatArgentinaTimeRange(appointment.startAt, appointment.endAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min
                               {isDouble ? <b>Turno doble</b> : null}
                             </span>
                             <small>
@@ -324,7 +307,7 @@ export const AppointmentsListPage = (): ReactElement => {
                   {renderProfessionalAvatar(professionalsById.get(appointment.professionalId) ?? null)}
                   <div>
                     <strong>{getAppointmentPatientName(appointment)}</strong>
-                    <span>{formatHour(appointment.startAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min</span>
+                    <span>{formatArgentinaTimeRange(appointment.startAt, appointment.endAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min</span>
                   </div>
                   <b>{statusLabel(appointment.status)}</b>
                 </li>

@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 import type { AppointmentBeneficiaryType, AppointmentDto, AppointmentDurationMultiplier, AppointmentStatus, AppointmentSource } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import {
+  formatAppointmentDateTimeArgentina,
+  getArgentinaDateKey,
+  parseAppointmentInstant
+} from '../../../core/argentina-date-time.js';
 import { AvailabilityService } from '../../availability/services/availability.service.js';
 import { ProfessionalRepository } from '../../professionals/repositories/professional.repository.js';
 import { SpecialtyRepository } from '../../professionals/repositories/specialty.repository.js';
@@ -91,7 +96,7 @@ const normalizeOptionalPhone = (value?: string): string | undefined => {
 };
 
 const parseIsoDate = (value: string, fieldName: string): Date => {
-  const parsed = new Date(value);
+  const parsed = parseAppointmentInstant(value);
   if (Number.isNaN(parsed.getTime())) {
     throw new AppError('INVALID_DATE', 400, `${fieldName} must be a valid ISO datetime`);
   }
@@ -99,8 +104,7 @@ const parseIsoDate = (value: string, fieldName: string): Date => {
   return parsed;
 };
 
-const extractDate = (date: Date): string => date.toISOString().slice(0, 10);
-const extractTime = (date: Date): string => date.toISOString().slice(11, 16);
+const extractDate = (date: Date): string => getArgentinaDateKey(date);
 
 const assertStartsInFuture = (startAt: Date): void => {
   if (startAt.getTime() <= Date.now()) {
@@ -234,7 +238,7 @@ export class AppointmentsService {
         createdDto,
         'appointment_booked',
         'Turno reservado',
-        `Tu turno para ${new Date(createdDto.startAt).toLocaleString('es-AR', { hour12: false })} fue reservado.`
+        `Turno reservado para el ${formatAppointmentDateTimeArgentina(createdDto.startAt)}.`
       );
 
       await this.reminders.scheduleForAppointment(created);
@@ -584,7 +588,7 @@ export class AppointmentsService {
       replacementDto,
       'appointment_rescheduled',
       'Turno reprogramado',
-      `Tu turno fue reprogramado para ${new Date(replacementDto.startAt).toLocaleString('es-AR', { hour12: false })}.`
+      `Tu turno fue reprogramado para el ${formatAppointmentDateTimeArgentina(replacementDto.startAt)}.`
     );
     await this.reminders.scheduleForAppointment(updatedOriginal);
     await this.reminders.scheduleForAppointment(replacement);
@@ -608,8 +612,8 @@ export class AppointmentsService {
     startDate: string,
     endDate: string
   ): Promise<Array<{ startsAtIso: string; endsAtIso: string }>> {
-    const from = new Date(`${startDate}T00:00:00.000Z`);
-    const to = new Date(`${endDate}T23:59:59.999Z`);
+    const from = parseAppointmentInstant(`${startDate}T00:00:00`);
+    const to = parseAppointmentInstant(`${endDate}T23:59:59.999`);
 
     const rows = await this.appointments.findBookedByProfessionalAndRange(organizationId, professionalId, from, to);
 
@@ -782,9 +786,8 @@ export class AppointmentsService {
       endDate: date
     });
 
-    const isoStart = `${date}T${extractTime(startAt)}:00`;
     const slots = availability.days.flatMap((day) => day.slots);
-    const firstSlot = slots.find((slot) => slot.startsAtIso === isoStart);
+    const firstSlot = slots.find((slot) => parseIsoDate(slot.startsAtIso, 'slot.startsAtIso').getTime() === startAt.getTime());
 
     if (!firstSlot) {
       throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Requested slot is not available');
@@ -794,7 +797,8 @@ export class AppointmentsService {
       return { endAt: parseIsoDate(firstSlot.endsAtIso, 'endAt') };
     }
 
-    const secondSlot = slots.find((slot) => slot.startsAtIso === firstSlot.endsAtIso);
+    const firstSlotEndAt = parseIsoDate(firstSlot.endsAtIso, 'slot.endsAtIso');
+    const secondSlot = slots.find((slot) => parseIsoDate(slot.startsAtIso, 'slot.startsAtIso').getTime() === firstSlotEndAt.getTime());
     if (!secondSlot) {
       throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Este horario no permite turno doble porque no hay disponibilidad suficiente.');
     }

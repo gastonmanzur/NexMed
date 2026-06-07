@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useNotifications } from '../notifications/NotificationsContext';
 import { patientApi } from './patient-api';
 import { resolveNotificationTargetUrl } from './notification-navigation';
+import { formatArgentinaDateTime } from '../../lib/argentina-date-time';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export const PatientNotificationsPage = (): ReactElement => {
@@ -125,7 +126,7 @@ export const PatientNotificationsPage = (): ReactElement => {
               >
                 <strong>{item.title}</strong>
                 <p style={{ margin: '6px 0' }}>{item.message}</p>
-                <small>{new Date(item.createdAt).toLocaleString('es-AR', { hour12: false })}</small>
+                <small>{formatArgentinaDateTime(item.createdAt)}</small>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   {!item.readAt ? <button type="button" onClick={(event) => { event.stopPropagation(); void markRead(item.id); }}>Marcar como leída</button> : null}
                 </div>

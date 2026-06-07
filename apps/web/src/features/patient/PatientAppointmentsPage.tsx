@@ -9,6 +9,7 @@ import { OrganizationLocationCard } from './OrganizationLocationCard';
 import { ConfirmActionButton } from '../../components/ConfirmActionButton';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 import { statusLabel } from '../appointments/appointment-status';
+import { formatArgentinaDate, formatArgentinaTimeRange } from '../../lib/argentina-date-time';
 
 export const PatientAppointmentsPage = (): ReactElement => {
   const { accessToken } = useAuth();
@@ -94,7 +95,7 @@ export const PatientAppointmentsPage = (): ReactElement => {
                   <li key={item.id} className="nx-appointment-item">
                     <div>
                       <p className="nx-appointment-item__date">
-                        {new Date(item.startAt).toLocaleString('es-AR', { hour12: false })}
+                        {formatArgentinaDate(item.startAt)} — {formatArgentinaTimeRange(item.startAt, item.endAt)}
                       </p>
                       <p className="nx-appointment-item__status">
                         Paciente: {item.beneficiaryDisplayName ?? item.patientName}
@@ -156,7 +157,7 @@ export const PatientAppointmentsPage = (): ReactElement => {
                 {history.map((item) => (
                   <li key={item.id} className="nx-appointment-item nx-appointment-item--history">
                     <p className="nx-appointment-item__date">
-                      {new Date(item.startAt).toLocaleString('es-AR', { hour12: false })}
+                      {formatArgentinaDate(item.startAt)} — {formatArgentinaTimeRange(item.startAt, item.endAt)}
                     </p>
                     <p className="nx-appointment-item__status">
                       Paciente: {item.beneficiaryDisplayName ?? item.patientName}

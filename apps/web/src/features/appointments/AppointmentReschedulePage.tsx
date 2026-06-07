@@ -8,8 +8,9 @@ import { appointmentsApi } from './appointments-api';
 import { professionalsApi } from '../professionals/professionals-api';
 import { specialtiesApi } from '../specialties/specialties-api';
 import { availabilityApi } from '../professionals/availability-api';
+import { getArgentinaDateKey, toAppointmentInstantIso } from '../../lib/argentina-date-time';
 
-const toInputDate = (iso: string): string => new Date(iso).toISOString().slice(0, 10);
+const toInputDate = (iso: string): string => getArgentinaDateKey(iso);
 
 export const AppointmentReschedulePage = (): ReactElement => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
@@ -123,8 +124,8 @@ export const AppointmentReschedulePage = (): ReactElement => {
                 const result = await appointmentsApi.reschedule(accessToken, activeOrganizationId, appointmentId, {
                   newProfessionalId: professionalId,
                   ...(specialtyId ? { newSpecialtyId: specialtyId } : {}),
-                  newStartAt: new Date(`${selected.startsAtIso}Z`).toISOString(),
-                  newEndAt: new Date(`${selected.endsAtIso}Z`).toISOString(),
+                  newStartAt: toAppointmentInstantIso(selected.startsAtIso),
+                  newEndAt: toAppointmentInstantIso(selected.endsAtIso),
                   ...(reason.trim() ? { reason: reason.trim() } : {})
                 });
 
