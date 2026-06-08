@@ -28,6 +28,8 @@ const formatDayNumber = (dateKey: string): string =>
   new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(new Date(`${dateKey}T12:00:00.000Z`));
 const durationMinutes = (startAt: string, endAt: string): number => Math.max(0, Math.round((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000));
 const getAppointmentPatientName = (appointment: AppointmentDto): string => appointment.beneficiaryDisplayName ?? appointment.patientName;
+const getAppointmentSlotGroupKey = (appointment: AppointmentDto): string =>
+  `${getArgentinaDateKey(appointment.startAt)}-${formatArgentinaTime(appointment.startAt)}`;
 
 const avatarFromName = (name: string): string =>
   name
@@ -50,6 +52,7 @@ export const AppointmentsListPage = (): ReactElement => {
   const [weekAnchor, setWeekAnchor] = useState(() => new Date());
   const [invalidAvatarUrls, setInvalidAvatarUrls] = useState<Record<string, true>>({});
   const [updatingStatusId, setUpdatingStatusId] = useState('');
+  const [openSlotGroups, setOpenSlotGroups] = useState<Record<string, true>>({});
 
   const activeMembership = useMemo(
     () => memberships.find((membership) => membership.organizationId === activeOrganizationId),
@@ -119,6 +122,63 @@ export const AppointmentsListPage = (): ReactElement => {
 
   const weekStartLabel = weekDays.at(0) ? formatArgentinaDate(`${weekDays[0]}T12:00:00`) : '-';
   const weekEndLabel = weekDays.at(-1) ? formatArgentinaDate(`${weekDays[6]}T12:00:00`) : '-';
+
+  const toggleSlotGroup = (groupKey: string): void => {
+    setOpenSlotGroups((current) => {
+      if (current[groupKey]) {
+        const remainingGroups = { ...current };
+        delete remainingGroups[groupKey];
+        return remainingGroups;
+      }
+
+      return { ...current, [groupKey]: true };
+    });
+  };
+
+  const renderAppointmentCard = (appointment: AppointmentDto, className = ''): ReactElement => {
+    const isDouble = appointment.durationMultiplier === 2;
+    const pendingClosure = isPendingClosure(appointment.status, appointment.endAt);
+    const actions = centerStatusActions(appointment.status);
+
+    return (
+      <article
+        key={appointment.id}
+        className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)} ${isDouble ? 'nx-agenda-event--double' : ''} ${pendingClosure ? 'nx-agenda-event--pending-closure' : ''} ${className}`.trim()}
+      >
+        <Link to={`/app/appointments/${appointment.id}`} className="nx-agenda-event__link">
+          <div className="nx-agenda-event__head">
+            <strong>{getAppointmentPatientName(appointment)}</strong>
+            <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
+          </div>
+          <span className="nx-agenda-event__meta">
+            {formatArgentinaTimeRange(appointment.startAt, appointment.endAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min
+            {isDouble ? <b>Turno doble</b> : null}
+          </span>
+          <small>
+            {professionalsById.get(appointment.professionalId)?.displayName ?? 'Profesional no asignado'}
+            {' · '}
+            {(appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) : null) ?? 'Especialidad'}
+          </small>
+          {pendingClosure ? <span className="nx-agenda-event__pending">Pendiente de cierre</span> : null}
+        </Link>
+        {canManage && actions.length > 0 ? (
+          <div className="nx-agenda-event__actions">
+            {actions.map((action) => (
+              <button
+                key={action.status}
+                type="button"
+                disabled={updatingStatusId === appointment.id}
+                onClick={() => void updateAppointmentStatus(appointment, action.status, action.note)}
+              >
+                {pendingClosure && action.status === 'completed' ? 'Marcar atendido' : pendingClosure && action.status === 'no_show' ? 'Marcar no asistió' : action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </article>
+    );
+  };
+
   const renderProfessionalAvatar = (professional: ProfessionalDto | null): ReactElement => {
     const initials = avatarFromName(professional?.displayName ?? 'PR');
     const rawAvatarUrl = professional?.avatarUrl;
@@ -247,46 +307,43 @@ export const AppointmentsListPage = (): ReactElement => {
                 <span className="nx-agenda-time">{`${slotHour.toString().padStart(2, '0')}:00`}</span>
                 {weekDays.map((day, dayIndex) => {
                   const entries = (byDay[dayIndex] ?? []).filter((appointment) => Number(formatArgentinaTime(appointment.startAt).slice(0, 2)) === slotHour);
+                  const groupedEntries = Array.from(
+                    entries.reduce<Map<string, AppointmentDto[]>>((groups, appointment) => {
+                      const groupKey = getAppointmentSlotGroupKey(appointment);
+                      groups.set(groupKey, [...(groups.get(groupKey) ?? []), appointment]);
+                      return groups;
+                    }, new Map())
+                  ).sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey));
                   const isToday = day === todayIsoKey;
                   return (
                     <div className={`nx-agenda-cell ${isToday ? 'is-today' : ''}`.trim()} key={`${day}-${slotHour}`}>
-                      {entries.map((appointment) => {
-                        const isDouble = appointment.durationMultiplier === 2;
-                        const pendingClosure = isPendingClosure(appointment.status, appointment.endAt);
-                        const actions = centerStatusActions(appointment.status);
+                      {groupedEntries.map(([groupKey, appointmentsInSlot]) => {
+                        if (appointmentsInSlot.length === 1) {
+                          return renderAppointmentCard(appointmentsInSlot[0]!);
+                        }
+
+                        const isGroupOpen = Boolean(openSlotGroups[groupKey]);
+                        const slotTime = formatArgentinaTime(appointmentsInSlot[0]!.startAt);
+
                         return (
-                        <article key={appointment.id} className={`nx-agenda-event nx-agenda-event--${statusTone(appointment.status)} ${isDouble ? 'nx-agenda-event--double' : ''} ${pendingClosure ? 'nx-agenda-event--pending-closure' : ''}`.trim()}>
-                          <Link to={`/app/appointments/${appointment.id}`} className="nx-agenda-event__link">
-                            <div className="nx-agenda-event__head">
-                              <strong>{getAppointmentPatientName(appointment)}</strong>
-                              <span className={`nx-agenda-event__chip nx-agenda-event__chip--${statusTone(appointment.status)}`}>{statusLabel(appointment.status)}</span>
-                            </div>
-                            <span className="nx-agenda-event__meta">
-                              {formatArgentinaTimeRange(appointment.startAt, appointment.endAt)} · {durationMinutes(appointment.startAt, appointment.endAt)} min
-                              {isDouble ? <b>Turno doble</b> : null}
-                            </span>
-                            <small>
-                              {professionalsById.get(appointment.professionalId)?.displayName ?? 'Profesional no asignado'}
-                              {' · '}
-                              {(appointment.specialtyId ? specialtiesById.get(appointment.specialtyId) : null) ?? 'Especialidad'}
-                            </small>
-                            {pendingClosure ? <span className="nx-agenda-event__pending">Pendiente de cierre</span> : null}
-                          </Link>
-                          {canManage && actions.length > 0 ? (
-                            <div className="nx-agenda-event__actions">
-                              {actions.map((action) => (
-                                <button
-                                  key={action.status}
-                                  type="button"
-                                  disabled={updatingStatusId === appointment.id}
-                                  onClick={() => void updateAppointmentStatus(appointment, action.status, action.note)}
-                                >
-                                  {pendingClosure && action.status === 'completed' ? 'Marcar atendido' : pendingClosure && action.status === 'no_show' ? 'Marcar no asistió' : action.label}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </article>
+                          <section className="nx-agenda-slot-group" key={groupKey} aria-label={`${appointmentsInSlot.length} turnos a las ${slotTime}`}>
+                            <button
+                              type="button"
+                              className="nx-agenda-slot-group__summary"
+                              aria-expanded={isGroupOpen}
+                              aria-controls={`agenda-slot-group-${groupKey}`}
+                              onClick={() => toggleSlotGroup(groupKey)}
+                            >
+                              <span className="nx-agenda-slot-group__count">{appointmentsInSlot.length} turnos</span>
+                              <span className="nx-agenda-slot-group__hint">Mismo horario · Ver detalle</span>
+                              <span className="nx-agenda-slot-group__chevron" aria-hidden="true">⌄</span>
+                            </button>
+                            {isGroupOpen ? (
+                              <div className="nx-agenda-slot-group__cards" id={`agenda-slot-group-${groupKey}`}>
+                                {appointmentsInSlot.map((appointment) => renderAppointmentCard(appointment, 'nx-agenda-event--grouped'))}
+                              </div>
+                            ) : null}
+                          </section>
                         );
                       })}
                     </div>
