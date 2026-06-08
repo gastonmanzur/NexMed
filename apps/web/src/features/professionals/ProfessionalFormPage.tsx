@@ -1,6 +1,6 @@
 import type { OrganizationMemberRole, SpecialtyDto } from '@starter/shared-types';
 import type { ReactElement } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Card } from '@starter/ui';
@@ -37,6 +37,7 @@ export const ProfessionalFormPage = (): ReactElement => {
   const [error, setError] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
 
   useEffect(() => {
@@ -171,14 +172,57 @@ export const ProfessionalFormPage = (): ReactElement => {
             <fieldset className="nx-entity-form-page__fieldset">
               <legend>Foto del profesional</legend>
               <div className="nx-professional-avatar-upload">
-                {avatarPreview && !removeAvatar ? <img src={avatarPreview} alt="Avatar profesional" className="nx-avatar nx-doctor-card__avatar" /> : <span className="nx-avatar nx-avatar--fallback nx-doctor-card__avatar">{`${firstName.charAt(0)}${lastName.charAt(0)}`.trim() || 'PR'}</span>}
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
-                  setAvatarFile(file);
-                  setRemoveAvatar(false);
-                  setAvatarPreview(file ? URL.createObjectURL(file) : avatarPreview);
-                }} />
-                <button type="button" className="nx-btn-secondary" onClick={() => { setAvatarFile(null); setRemoveAvatar(true); setAvatarPreview(null); }}>Quitar foto</button>
+                {avatarPreview && !removeAvatar ? (
+                  <img src={avatarPreview} alt="Avatar profesional" className="nx-avatar nx-professional-avatar-upload__preview" />
+                ) : (
+                  <span className="nx-avatar nx-avatar--fallback nx-professional-avatar-upload__preview">{`${firstName.charAt(0)}${lastName.charAt(0)}`.trim() || 'PR'}</span>
+                )}
+                <div className="nx-professional-avatar-upload__content">
+                  <div className="nx-professional-avatar-upload__actions">
+                    <input
+                      id="professional-photo-input"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      ref={avatarInputRef}
+                      className="nx-sr-only nx-professional-avatar-upload__input"
+                      disabled={loading}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        setAvatarFile(file);
+                        setRemoveAvatar(false);
+                        setAvatarPreview(file ? URL.createObjectURL(file) : avatarPreview);
+                      }}
+                    />
+                    <label
+                      htmlFor="professional-photo-input"
+                      className={`nx-professional-avatar-upload__button${loading ? ' nx-professional-avatar-upload__button--disabled' : ''}`}
+                      aria-disabled={loading}
+                    >
+                      {avatarFile || (avatarPreview && !removeAvatar) ? 'Cambiar foto' : 'Subir foto'}
+                    </label>
+                    {avatarFile || (avatarPreview && !removeAvatar) ? (
+                      <button
+                        type="button"
+                        className="nx-professional-avatar-upload__remove"
+                        disabled={loading}
+                        onClick={() => {
+                          setAvatarFile(null);
+                          setRemoveAvatar(true);
+                          setAvatarPreview(null);
+                          if (avatarInputRef.current) {
+                            avatarInputRef.current.value = '';
+                          }
+                        }}
+                      >
+                        Quitar foto
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="nx-professional-avatar-upload__filename" aria-live="polite">
+                    {avatarFile?.name ?? (avatarPreview && !removeAvatar ? 'Foto actual del profesional' : 'Ningún archivo seleccionado')}
+                  </p>
+                  <p className="nx-professional-avatar-upload__hint">JPG, PNG o WEBP. Tamaño recomendado: imagen cuadrada.</p>
+                </div>
               </div>
             </fieldset>
 
