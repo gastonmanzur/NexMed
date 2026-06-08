@@ -338,17 +338,6 @@
   transform: translateY(-50%) rotate(180deg);
 }
 
-.nx-agenda-slot-group__cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-  gap: 0.48rem;
-  align-items: start;
-  min-width: 0;
-}
-
-.nx-agenda-event--grouped {
-  min-width: 0;
-}
 
 .nx-agenda-sidepanel {
   display: grid;
@@ -439,9 +428,6 @@
   .nx-agenda-toolbar__primary-link { justify-content: center; }
 }
 
-@media (max-width: 700px) {
-  .nx-agenda-slot-group__cards { grid-template-columns: 1fr; }
-}
 
 @media (max-width: 900px) {
   .nx-agenda-grid-card { overflow: auto; }
@@ -495,4 +481,193 @@
   font-size: 0.62rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.nx-agenda-event,
+.nx-agenda-event * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.nx-agenda-event__head {
+  flex-wrap: wrap;
+}
+
+.nx-agenda-event__link {
+  min-width: 0;
+}
+
+.nx-agenda-event__actions button {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.nx-appointment-group-trigger {
+  isolation: isolate;
+}
+
+.nx-appointment-group-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.nx-appointment-group-modal__overlay {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(2px);
+  cursor: default;
+}
+
+.nx-appointment-group-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(920px, calc(100vw - 2.5rem));
+  max-height: min(82vh, 760px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.15rem;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.nx-appointment-group-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.nx-appointment-group-modal__header h2 {
+  margin: 0.1rem 0;
+  color: #0f172a;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  line-height: 1.15;
+}
+
+.nx-appointment-group-modal__header p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.nx-appointment-group-modal__eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e3a8a !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nx-appointment-group-modal__close {
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 auto;
+  border: 1px solid #d7e1ee;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  transition: transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.nx-appointment-group-modal__close:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.nx-appointment-group-modal__close:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.34);
+  outline-offset: 2px;
+}
+
+.nx-appointment-group-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 0.85rem;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.1rem 0.15rem 0.2rem;
+}
+
+.nx-appointment-group-card {
+  min-width: 0;
+  padding: 0.82rem;
+  border-radius: 16px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+}
+
+.nx-appointment-group-card .nx-agenda-event__head {
+  gap: 0.5rem;
+}
+
+.nx-appointment-group-card .nx-agenda-event__head strong {
+  flex: 1 1 150px;
+  font-size: 0.95rem;
+}
+
+.nx-appointment-group-card .nx-agenda-event__chip {
+  flex: 0 1 auto;
+  white-space: normal;
+  text-align: center;
+}
+
+.nx-appointment-group-card .nx-agenda-event__meta,
+.nx-appointment-group-card small {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.nx-appointment-group-card .nx-agenda-event__actions {
+  gap: 0.38rem;
+}
+
+.nx-appointment-group-card .nx-agenda-event__actions button {
+  flex: 1 1 112px;
+  min-height: 32px;
+  padding: 0.3rem 0.56rem;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 760px) {
+  .nx-appointment-group-modal {
+    align-items: end;
+    padding: 0.75rem;
+  }
+
+  .nx-appointment-group-modal__panel {
+    width: min(100%, calc(100vw - 1.5rem));
+    max-height: 88vh;
+    border-radius: 22px;
+    padding: 1rem;
+  }
+
+  .nx-appointment-group-modal__grid {
+    grid-template-columns: 1fr;
+  }
 }

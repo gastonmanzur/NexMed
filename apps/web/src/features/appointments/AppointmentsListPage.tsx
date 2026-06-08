@@ -1,6 +1,6 @@
 import type { AppointmentDto, AppointmentStatus, ProfessionalDto, SpecialtyDto } from '@starter/shared-types';
 import type { ReactElement } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { appointmentsApi } from './appointments-api';
@@ -31,6 +31,13 @@ const getAppointmentPatientName = (appointment: AppointmentDto): string => appoi
 const getAppointmentSlotGroupKey = (appointment: AppointmentDto): string =>
   `${getArgentinaDateKey(appointment.startAt)}-${formatArgentinaTime(appointment.startAt)}`;
 
+type SelectedAppointmentGroup = {
+  groupKey: string;
+  day: string;
+  time: string;
+  appointments: AppointmentDto[];
+};
+
 const avatarFromName = (name: string): string =>
   name
     .split(' ')
@@ -52,7 +59,8 @@ export const AppointmentsListPage = (): ReactElement => {
   const [weekAnchor, setWeekAnchor] = useState(() => new Date());
   const [invalidAvatarUrls, setInvalidAvatarUrls] = useState<Record<string, true>>({});
   const [updatingStatusId, setUpdatingStatusId] = useState('');
-  const [openSlotGroups, setOpenSlotGroups] = useState<Record<string, true>>({});
+  const [selectedAppointmentGroup, setSelectedAppointmentGroup] = useState<SelectedAppointmentGroup | null>(null);
+  const groupModalCloseButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const activeMembership = useMemo(
     () => memberships.find((membership) => membership.organizationId === activeOrganizationId),
@@ -123,16 +131,62 @@ export const AppointmentsListPage = (): ReactElement => {
   const weekStartLabel = weekDays.at(0) ? formatArgentinaDate(`${weekDays[0]}T12:00:00`) : '-';
   const weekEndLabel = weekDays.at(-1) ? formatArgentinaDate(`${weekDays[6]}T12:00:00`) : '-';
 
-  const toggleSlotGroup = (groupKey: string): void => {
-    setOpenSlotGroups((current) => {
-      if (current[groupKey]) {
-        const remainingGroups = { ...current };
-        delete remainingGroups[groupKey];
-        return remainingGroups;
-      }
+  useEffect(() => {
+    if (!selectedAppointmentGroup) return;
 
-      return { ...current, [groupKey]: true };
+    const appointmentIds = new Set(selectedAppointmentGroup.appointments.map((appointment) => appointment.id));
+    const refreshedAppointments = appointments
+      .filter((appointment) => appointmentIds.has(appointment.id))
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+
+    if (refreshedAppointments.length === 0) {
+      setSelectedAppointmentGroup(null);
+      return;
+    }
+
+    const hasChanged =
+      refreshedAppointments.length !== selectedAppointmentGroup.appointments.length ||
+      refreshedAppointments.some((appointment, index) => appointment !== selectedAppointmentGroup.appointments[index]);
+
+    if (hasChanged) {
+      setSelectedAppointmentGroup({
+        ...selectedAppointmentGroup,
+        appointments: refreshedAppointments,
+        day: getArgentinaDateKey(refreshedAppointments[0]!.startAt),
+        time: formatArgentinaTime(refreshedAppointments[0]!.startAt)
+      });
+    }
+  }, [appointments, selectedAppointmentGroup]);
+
+  useEffect(() => {
+    if (!selectedAppointmentGroup) return;
+
+    groupModalCloseButtonRef.current?.focus();
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setSelectedAppointmentGroup(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [selectedAppointmentGroup]);
+
+  const openAppointmentGroup = (groupKey: string, appointmentsInSlot: AppointmentDto[]): void => {
+    const firstAppointment = appointmentsInSlot[0];
+    if (!firstAppointment) return;
+
+    setSelectedAppointmentGroup({
+      groupKey,
+      day: getArgentinaDateKey(firstAppointment.startAt),
+      time: formatArgentinaTime(firstAppointment.startAt),
+      appointments: appointmentsInSlot
     });
+  };
+
+  const closeAppointmentGroup = (): void => {
+    setSelectedAppointmentGroup(null);
   };
 
   const renderAppointmentCard = (appointment: AppointmentDto, className = ''): ReactElement => {
@@ -322,27 +376,22 @@ export const AppointmentsListPage = (): ReactElement => {
                           return renderAppointmentCard(appointmentsInSlot[0]!);
                         }
 
-                        const isGroupOpen = Boolean(openSlotGroups[groupKey]);
+                        const isSelectedGroup = selectedAppointmentGroup?.groupKey === groupKey;
                         const slotTime = formatArgentinaTime(appointmentsInSlot[0]!.startAt);
 
                         return (
                           <section className="nx-agenda-slot-group" key={groupKey} aria-label={`${appointmentsInSlot.length} turnos a las ${slotTime}`}>
                             <button
                               type="button"
-                              className="nx-agenda-slot-group__summary"
-                              aria-expanded={isGroupOpen}
-                              aria-controls={`agenda-slot-group-${groupKey}`}
-                              onClick={() => toggleSlotGroup(groupKey)}
+                              className="nx-agenda-slot-group__summary nx-appointment-group-trigger"
+                              aria-haspopup="dialog"
+                              aria-expanded={isSelectedGroup}
+                              onClick={() => openAppointmentGroup(groupKey, appointmentsInSlot)}
                             >
                               <span className="nx-agenda-slot-group__count">{appointmentsInSlot.length} turnos</span>
                               <span className="nx-agenda-slot-group__hint">Mismo horario · Ver detalle</span>
-                              <span className="nx-agenda-slot-group__chevron" aria-hidden="true">⌄</span>
+                              <span className="nx-agenda-slot-group__chevron" aria-hidden="true">↗</span>
                             </button>
-                            {isGroupOpen ? (
-                              <div className="nx-agenda-slot-group__cards" id={`agenda-slot-group-${groupKey}`}>
-                                {appointmentsInSlot.map((appointment) => renderAppointmentCard(appointment, 'nx-agenda-event--grouped'))}
-                              </div>
-                            ) : null}
                           </section>
                         );
                       })}
@@ -390,6 +439,46 @@ export const AppointmentsListPage = (): ReactElement => {
           </section>
         </aside>
       </section>
+
+      {selectedAppointmentGroup ? (
+        <div className="nx-appointment-group-modal" role="presentation">
+          <button
+            type="button"
+            className="nx-appointment-group-modal__overlay"
+            aria-label="Cerrar detalle de turnos agrupados"
+            onClick={closeAppointmentGroup}
+          />
+          <section
+            className="nx-appointment-group-modal__panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="appointment-group-modal-title"
+            aria-describedby="appointment-group-modal-description"
+          >
+            <header className="nx-appointment-group-modal__header">
+              <div>
+                <p className="nx-appointment-group-modal__eyebrow">{selectedAppointmentGroup.appointments.length} turnos</p>
+                <h2 id="appointment-group-modal-title">Turnos del mismo horario</h2>
+                <p id="appointment-group-modal-description">
+                  {formatArgentinaDate(`${selectedAppointmentGroup.day}T12:00:00`)} · {selectedAppointmentGroup.time} hs
+                </p>
+              </div>
+              <button
+                ref={groupModalCloseButtonRef}
+                type="button"
+                className="nx-appointment-group-modal__close"
+                aria-label="Cerrar ventana de turnos agrupados"
+                onClick={closeAppointmentGroup}
+              >
+                ×
+              </button>
+            </header>
+            <div className="nx-appointment-group-modal__grid">
+              {selectedAppointmentGroup.appointments.map((appointment) => renderAppointmentCard(appointment, 'nx-appointment-group-card'))}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 };
