@@ -1,0 +1,266 @@
+.nx-appointment-detail-page {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: clamp(1rem, 2.5vw, 2rem);
+}
+
+.nx-appointment-detail-card {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1.15rem, 3vw, 1.7rem);
+  border-color: rgba(199, 214, 236, 0.9);
+  background:
+    radial-gradient(680px circle at 12% -18%, rgba(47, 128, 237, 0.12), transparent 42%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 22px 46px rgba(15, 23, 42, 0.09);
+}
+
+.nx-appointment-detail-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.nx-appointment-detail-card .nx-card__header {
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.nx-appointment-detail-card .nx-card__title {
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  letter-spacing: -0.035em;
+}
+
+.nx-appointment-detail-card .nx-card__subtitle {
+  max-width: 620px;
+  margin-top: 0.45rem;
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.nx-appointment-detail__content {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.nx-appointment-detail__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 0;
+}
+
+.nx-appointment-detail__item {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid rgba(211, 220, 232, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 10px 22px rgba(14, 44, 92, 0.045);
+}
+
+.nx-appointment-detail__label {
+  margin: 0 0 0.42rem;
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.065em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.nx-appointment-detail__value {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.02rem, 2vw, 1.17rem);
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.nx-appointment-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid rgba(211, 220, 232, 0.85);
+  border-radius: 20px;
+  background: rgba(248, 251, 255, 0.88);
+}
+
+.nx-appointment-detail__patient-button {
+  min-height: 46px;
+  border: 1px solid #1d4ed8;
+  border-radius: 14px;
+  padding: 0.78rem 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.22);
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.nx-appointment-detail__patient-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #1e40af;
+  box-shadow: 0 18px 32px rgba(37, 99, 235, 0.28);
+}
+
+.nx-appointment-detail__patient-button:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.28);
+  outline-offset: 3px;
+}
+
+.nx-appointment-detail__patient-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+  box-shadow: none;
+}
+
+.nx-appointment-detail__button-icon {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.85rem;
+}
+
+.nx-appointment-detail__loading-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+  animation: nx-appointment-detail-spin 800ms linear infinite;
+}
+
+.nx-appointment-detail__notice,
+.nx-appointment-detail__state {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem;
+  border-radius: 18px;
+}
+
+.nx-appointment-detail__notice {
+  width: 100%;
+  border: 1px solid #dbe7f5;
+  background: #f3f8ff;
+  color: var(--text-muted);
+}
+
+.nx-appointment-detail__state {
+  border: 1px solid rgba(211, 220, 232, 0.9);
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--text-muted);
+}
+
+.nx-appointment-detail__state--error {
+  border-color: #fecdd3;
+  background: var(--danger-bg);
+  color: #9f1239;
+}
+
+.nx-appointment-detail__state-icon,
+.nx-appointment-detail__notice-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.95rem;
+}
+
+.nx-appointment-detail__state-icon {
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+}
+
+.nx-appointment-detail__state--error .nx-appointment-detail__state-icon {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.nx-appointment-detail__notice-icon {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.nx-appointment-detail__state-copy,
+.nx-appointment-detail__notice-copy {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.nx-appointment-detail__state-copy strong,
+.nx-appointment-detail__notice-copy strong {
+  color: inherit;
+  font-weight: 800;
+}
+
+.nx-appointment-detail__state-copy span,
+.nx-appointment-detail__notice-copy span {
+  color: currentColor;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+@keyframes nx-appointment-detail-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 720px) {
+  .nx-appointment-detail-page {
+    padding: 1rem;
+  }
+
+  .nx-appointment-detail-card .nx-card__header {
+    margin-bottom: 1rem;
+  }
+
+  .nx-appointment-detail__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-appointment-detail__actions {
+    align-items: stretch;
+  }
+
+  .nx-appointment-detail__patient-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .nx-appointment-detail-page {
+    padding-inline: 0.75rem;
+  }
+
+  .nx-appointment-detail-card {
+    border-radius: 20px;
+  }
+
+  .nx-appointment-detail__item,
+  .nx-appointment-detail__actions,
+  .nx-appointment-detail__notice,
+  .nx-appointment-detail__state {
+    border-radius: 16px;
+  }
+}
