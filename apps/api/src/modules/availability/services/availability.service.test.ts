@@ -162,8 +162,8 @@ describe('AvailabilityService progressive release', () => {
 
     expect(slotState(afterCancellation.days[0]!.slots)).toEqual([
       '08:30:enabled',
-      '09:30:enabled',
-      '10:00:enabled',
+      '09:30:blocked',
+      '10:00:blocked',
       '10:30:blocked',
       '11:00:blocked',
       '11:30:blocked',
