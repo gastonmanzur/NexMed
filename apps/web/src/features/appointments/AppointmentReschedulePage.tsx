@@ -79,7 +79,7 @@ export const AppointmentReschedulePage = (): ReactElement => {
     try {
       const data = await availabilityApi.getCalculatedAvailability(accessToken, activeOrganizationId, professionalId, date, date);
       const slots = data.days.flatMap((day) =>
-        day.slots.map((item) => ({
+        day.slots.filter((item) => item.available !== false).map((item) => ({
           startsAtIso: item.startsAtIso,
           endsAtIso: item.endsAtIso,
           label: `${item.startTime} - ${item.endTime}`

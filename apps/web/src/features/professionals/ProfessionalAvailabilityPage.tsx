@@ -461,7 +461,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                   {day.slots.length === 0 ? (
                     <p className="nx-availability-day__slots">Sin disponibilidad</p>
                   ) : (
-                    <p className="nx-availability-day__slots">{day.slots.map((slot) => `${slot.startTime}–${slot.endTime}`).join(' · ')}</p>
+                    <p className="nx-availability-day__slots">{day.slots.map((slot) => `${slot.startTime}–${slot.endTime}${slot.available === false ? ' (Bloqueado por agenda progresiva)' : ''}`).join(' · ')}</p>
                   )}
                 </li>
               ))}

@@ -131,6 +131,7 @@ export interface PushDeviceDto {
 
 
 export type ProfessionalStatus = 'active' | 'inactive' | 'archived';
+export type AvailabilityReleaseMode = 'free' | 'progressive';
 export type SpecialtyStatus = 'active' | 'inactive' | 'archived';
 
 export interface SpecialtySummaryDto {
@@ -152,6 +153,8 @@ export interface ProfessionalDto {
   avatarUrl: string | null;
   status: ProfessionalStatus;
   userId: string | null;
+  availabilityReleaseMode: AvailabilityReleaseMode;
+  availabilityReleaseLimit: number | null;
   specialties: SpecialtySummaryDto[];
   createdAt: string;
   updatedAt: string;
@@ -200,12 +203,17 @@ export interface AvailabilityExceptionDto {
   updatedAt: string;
 }
 
+export type AvailabilityBlockedReason = 'progressive_release' | 'occupied' | 'outside_working_hours' | 'past_time' | 'exception';
+
 export interface AvailabilitySlotDto {
   date: string;
   startTime: string;
   endTime: string;
   startsAtIso: string;
   endsAtIso: string;
+  available: boolean;
+  blockedReason?: AvailabilityBlockedReason;
+  displayLabel?: string;
 }
 
 export interface AvailabilityByDateDto {
@@ -222,6 +230,8 @@ export interface CalculatedAvailabilityDto {
     endDate: string;
   };
   professionalStatus: ProfessionalStatus;
+  availabilityReleaseMode: AvailabilityReleaseMode;
+  availabilityReleaseLimit: number | null;
   isBookableInCurrentStage: boolean;
   note: string;
   days: AvailabilityByDateDto[];

@@ -11,6 +11,7 @@ import { LocalStorageProvider } from '../../avatar/file-storage/local-storage.pr
 import { logger } from '../../../config/logger.js';
 
 const professionalStatusSchema = z.enum(['active', 'inactive', 'archived']);
+const availabilityReleaseModeSchema = z.enum(['free', 'progressive']);
 const specialtyStatusSchema = z.enum(['active', 'inactive', 'archived']);
 
 const pathParamsSchema = z.object({
@@ -32,7 +33,13 @@ const createProfessionalSchema = z.object({
   phone: z.string().trim().min(1).max(40).optional(),
   licenseNumber: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(2000).optional(),
+  availabilityReleaseMode: availabilityReleaseModeSchema.optional(),
+  availabilityReleaseLimit: z.number().int().min(1).max(20).nullable().optional(),
   specialtyIds: z.array(z.string().trim().min(1)).optional()
+}).superRefine((value, context) => {
+  if (value.availabilityReleaseMode === 'progressive' && value.availabilityReleaseLimit == null) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['availabilityReleaseLimit'], message: 'availabilityReleaseLimit is required for progressive release' });
+  }
 });
 
 const updateProfessionalSchema = z
@@ -44,7 +51,14 @@ const updateProfessionalSchema = z
     licenseNumber: z.string().trim().max(80).optional(),
     notes: z.string().trim().max(2000).optional(),
     status: professionalStatusSchema.optional(),
+    availabilityReleaseMode: availabilityReleaseModeSchema.optional(),
+    availabilityReleaseLimit: z.number().int().min(1).max(20).nullable().optional(),
     specialtyIds: z.array(z.string().trim().min(1)).optional()
+  })
+  .superRefine((value, context) => {
+    if (value.availabilityReleaseMode === 'progressive' && value.availabilityReleaseLimit == null) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['availabilityReleaseLimit'], message: 'availabilityReleaseLimit is required for progressive release' });
+    }
   })
   .refine((value) => Object.keys(value).length > 0, 'At least one field must be provided');
 

@@ -4,7 +4,8 @@ import type {
   AvailabilityExceptionType,
   AvailabilityRuleDto,
   AvailabilityRuleStatus,
-  CalculatedAvailabilityDto
+  CalculatedAvailabilityDto,
+  AvailabilitySlotDto
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import {
@@ -345,7 +346,7 @@ export class AvailabilityService {
 
       filteredSlots.sort((a, b) => compareDateStrings(a.startsAtIso, b.startsAtIso));
 
-      return { date, slots: filteredSlots };
+      return { date, slots: this.applyAvailabilityReleaseForDay(professional, filteredSlots) };
     });
 
     return {
@@ -354,6 +355,8 @@ export class AvailabilityService {
       timezone,
       range: validatedRange,
       professionalStatus: professional.status,
+      availabilityReleaseMode: professional.availabilityReleaseMode ?? 'free',
+      availabilityReleaseLimit: professional.availabilityReleaseMode === 'progressive' ? professional.availabilityReleaseLimit ?? null : null,
       isBookableInCurrentStage: true,
       note: 'Disponibilidad operativa: se aplican reglas, excepciones y turnos booked.',
       days,
@@ -607,6 +610,35 @@ export class AvailabilityService {
     }
 
     return slots;
+  }
+
+
+  private applyAvailabilityReleaseForDay(
+    professional: { availabilityReleaseMode?: 'free' | 'progressive' | null; availabilityReleaseLimit?: number | null },
+    slots: Array<{ date: string; startTime: string; endTime: string; startsAtIso: string; endsAtIso: string }>
+  ): AvailabilitySlotDto[] {
+    const mode = professional.availabilityReleaseMode ?? 'free';
+    if (mode !== 'progressive') {
+      return slots.map((slot) => ({ ...slot, available: true }));
+    }
+
+    const limit = professional.availabilityReleaseLimit;
+    if (!Number.isInteger(limit) || (limit as number) < 1) {
+      return slots.map((slot) => ({ ...slot, available: true }));
+    }
+
+    return slots.map((slot, index) => {
+      if (index < (limit as number)) {
+        return { ...slot, available: true };
+      }
+
+      return {
+        ...slot,
+        available: false,
+        blockedReason: 'progressive_release' as const,
+        displayLabel: 'Disponible próximamente'
+      };
+    });
   }
 
   private toRuleDto(document: AvailabilityRuleDocument): AvailabilityRuleDto {
