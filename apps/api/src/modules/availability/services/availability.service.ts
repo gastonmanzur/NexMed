@@ -8,6 +8,7 @@ import type {
   AvailabilitySlotDto
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import { logger } from '../../../config/logger.js';
 import {
   ARGENTINA_TIME_ZONE,
   argentinaLocalDateTimeToUtcDate,
@@ -332,9 +333,13 @@ export class AvailabilityService {
           return false;
         }
 
-        const slotEndAt = parseSlotInstant(slot.endsAtIso);
+        return true;
+      });
 
-        const blockedByBookedAppointment = bookedAppointments.some((appointment) =>
+      const candidateSlotsWithOccupation = candidateSlots.map((slot): AvailabilitySlotCandidate => {
+        const slotStartAt = parseSlotInstant(slot.startsAtIso);
+        const slotEndAt = parseSlotInstant(slot.endsAtIso);
+        const occupied = bookedAppointments.some((appointment) =>
           minutesOverlap(
             slotStartAt.getTime(),
             slotEndAt.getTime(),
@@ -343,7 +348,7 @@ export class AvailabilityService {
           )
         );
 
-        return !blockedByBookedAppointment;
+        return { ...slot, occupied };
       });
 
       validFreeSlots.sort((a, b) => compareDateStrings(a.startsAtIso, b.startsAtIso));
@@ -616,6 +621,9 @@ export class AvailabilityService {
 
 
   private applyAvailabilityReleaseForDay(
+    organizationId: string,
+    professionalId: string,
+    date: string,
     professional: { availabilityReleaseMode?: 'free' | 'progressive' | null; availabilityReleaseLimit?: number | null },
     validFreeSlots: AvailabilitySlotCandidate[]
   ): AvailabilitySlotDto[] {
