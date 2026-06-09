@@ -92,15 +92,24 @@ const buildService = ({
   };
 };
 
-const slotState = (slots: Array<{ startTime: string; available: boolean }>) =>
-  slots.map((slot) => `${slot.startTime}:${slot.available ? 'enabled' : 'blocked'}`);
+const slotState = (slots: Array<{ startTime: string; available: boolean; blockedReason?: string }>) =>
+  slots.map((slot) => `${slot.startTime}:${slot.available ? 'enabled' : slot.blockedReason ?? 'blocked'}`);
+
+const availableTimes = (slots: Array<{ startTime: string; available: boolean }>) =>
+  slots.filter((slot) => slot.available).map((slot) => slot.startTime);
+
+const progressiveBlockedTimes = (slots: Array<{ startTime: string; blockedReason?: string }>) =>
+  slots.filter((slot) => slot.blockedReason === 'progressive_release').map((slot) => slot.startTime);
+
+const occupiedTimes = (slots: Array<{ startTime: string; blockedReason?: string }>) =>
+  slots.filter((slot) => slot.blockedReason === 'occupied').map((slot) => slot.startTime);
 
 describe('AvailabilityService progressive release', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('habilita solo los primeros N slots libres del día y bloquea el resto por agenda progresiva', async () => {
+  it('habilita solo la primera tanda fija y bloquea las tandas posteriores por agenda progresiva', async () => {
     vi.setSystemTime(new Date('2029-12-31T00:00:00.000Z'));
     const { service } = buildService();
 
@@ -113,18 +122,35 @@ describe('AvailabilityService progressive release', () => {
       '08:00:enabled',
       '08:30:enabled',
       '09:00:enabled',
-      '09:30:blocked',
-      '10:00:blocked',
-      '10:30:blocked',
-      '11:00:blocked',
-      '11:30:blocked',
-      '12:00:blocked',
-      '12:30:blocked'
+      '09:30:progressive_release',
+      '10:00:progressive_release',
+      '10:30:progressive_release',
+      '11:00:progressive_release',
+      '11:30:progressive_release',
+      '12:00:progressive_release',
+      '12:30:progressive_release'
     ]);
-    expect(availability.days[0]!.slots.slice(3).every((slot) => slot.blockedReason === 'progressive_release')).toBe(true);
+    expect(availableTimes(availability.days[0]!.slots)).toEqual(['08:00', '08:30', '09:00']);
+    expect(progressiveBlockedTimes(availability.days[0]!.slots)).toHaveLength(7);
   });
 
-  it('no cuenta turnos reservados dentro del límite progresivo y recalcula como una cancelación cuando ya no están reservados', async () => {
+  it('mantiene las tandas fijas cuando solo hay un turno reservado en la primera tanda', async () => {
+    vi.setSystemTime(new Date('2029-12-31T00:00:00.000Z'));
+    const { service } = buildService({
+      appointments: [makeAppointment('2030-01-07', '11:00', '11:30')]
+    });
+
+    const availability = await service.getCalculatedAvailability(organizationId, professionalId, {
+      startDate: '2030-01-07',
+      endDate: '2030-01-07'
+    });
+
+    expect(occupiedTimes(availability.days[0]!.slots)).toEqual(['08:00']);
+    expect(availableTimes(availability.days[0]!.slots)).toEqual(['08:30', '09:00']);
+    expect(availability.days[0]!.slots.find((slot) => slot.startTime === '09:30')?.blockedReason).toBe('progressive_release');
+  });
+
+  it('habilita la segunda tanda cuando la primera tanda fija está completa y vuelve a la primera si se cancela un turno anterior', async () => {
     vi.setSystemTime(new Date('2029-12-31T00:00:00.000Z'));
     const bookedFirstThree = [
       makeAppointment('2030-01-07', '11:00', '11:30'),
@@ -140,15 +166,9 @@ describe('AvailabilityService progressive release', () => {
       endDate: '2030-01-07'
     });
 
-    expect(slotState(afterBookings.days[0]!.slots)).toEqual([
-      '09:30:enabled',
-      '10:00:enabled',
-      '10:30:enabled',
-      '11:00:blocked',
-      '11:30:blocked',
-      '12:00:blocked',
-      '12:30:blocked'
-    ]);
+    expect(occupiedTimes(afterBookings.days[0]!.slots)).toEqual(['08:00', '08:30', '09:00']);
+    expect(availableTimes(afterBookings.days[0]!.slots)).toEqual(['09:30', '10:00', '10:30']);
+    expect(progressiveBlockedTimes(afterBookings.days[0]!.slots)).toEqual(['11:00', '11:30', '12:00', '12:30']);
 
     const afterCancellationBookings = [makeAppointment('2030-01-07', '11:00', '11:30'), makeAppointment('2030-01-07', '12:00', '12:30')];
     const { service: serviceAfterCancellation } = buildService({
@@ -160,16 +180,9 @@ describe('AvailabilityService progressive release', () => {
       endDate: '2030-01-07'
     });
 
-    expect(slotState(afterCancellation.days[0]!.slots)).toEqual([
-      '08:30:enabled',
-      '09:30:blocked',
-      '10:00:blocked',
-      '10:30:blocked',
-      '11:00:blocked',
-      '11:30:blocked',
-      '12:00:blocked',
-      '12:30:blocked'
-    ]);
+    expect(occupiedTimes(afterCancellation.days[0]!.slots)).toEqual(['08:00', '09:00']);
+    expect(availableTimes(afterCancellation.days[0]!.slots)).toEqual(['08:30']);
+    expect(progressiveBlockedTimes(afterCancellation.days[0]!.slots)).toEqual(['09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30']);
   });
 
   it('calcula el límite progresivo de manera independiente para cada día del rango', async () => {
@@ -185,7 +198,7 @@ describe('AvailabilityService progressive release', () => {
 
     expect(availability.days).toHaveLength(3);
     for (const day of availability.days) {
-      expect(slotState(day.slots).slice(0, 4)).toEqual(['08:00:enabled', '08:30:enabled', '09:00:enabled', '09:30:blocked']);
+      expect(slotState(day.slots).slice(0, 4)).toEqual(['08:00:enabled', '08:30:enabled', '09:00:enabled', '09:30:progressive_release']);
     }
   });
 
@@ -220,7 +233,7 @@ describe('AvailabilityService progressive release', () => {
       '09:00:enabled',
       '09:30:enabled',
       '10:00:enabled',
-      '10:30:blocked'
+      '10:30:progressive_release'
     ]);
   });
 
@@ -235,6 +248,6 @@ describe('AvailabilityService progressive release', () => {
       endDate: '2030-01-07'
     });
 
-    expect(slotState(availability.days[0]!.slots).slice(0, 4)).toEqual(['12:30:enabled', '13:00:enabled', '13:30:enabled', '14:00:blocked']);
+    expect(slotState(availability.days[0]!.slots).slice(0, 4)).toEqual(['12:30:enabled', '13:00:enabled', '13:30:enabled', '14:00:progressive_release']);
   });
 });
