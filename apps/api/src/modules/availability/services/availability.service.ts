@@ -59,7 +59,7 @@ interface UpdateAvailabilityExceptionInput {
   status?: AvailabilityExceptionStatus | undefined;
 }
 
-type AvailabilitySlotCandidate = { date: string; startTime: string; endTime: string; startsAtIso: string; endsAtIso: string; occupied: boolean };
+type AvailabilitySlotCandidate = { date: string; startTime: string; endTime: string; startsAtIso: string; endsAtIso: string };
 
 const MAX_AVAILABILITY_RANGE_DAYS = 62;
 
@@ -310,7 +310,7 @@ export class AvailabilityService {
       }
 
       const slots = rulesForDay.flatMap((rule) => this.generateRuleSlotsForDate(date, rule));
-      const candidateSlots = slots.filter((slot) => {
+      const validFreeSlots = slots.filter((slot) => {
         const slotStart = parseTimeToMinutes(slot.startTime);
         const slotEnd = parseTimeToMinutes(slot.endTime);
 
@@ -351,12 +351,9 @@ export class AvailabilityService {
         return { ...slot, occupied };
       });
 
-      candidateSlotsWithOccupation.sort((a, b) => compareDateStrings(a.startsAtIso, b.startsAtIso));
+      validFreeSlots.sort((a, b) => compareDateStrings(a.startsAtIso, b.startsAtIso));
 
-      return {
-        date,
-        slots: this.applyAvailabilityReleaseForDay(organizationId, professionalId, date, professional, candidateSlotsWithOccupation)
-      };
+      return { date, slots: this.applyAvailabilityReleaseForDay(professional, validFreeSlots) };
     });
 
     return {
@@ -628,106 +625,30 @@ export class AvailabilityService {
     professionalId: string,
     date: string,
     professional: { availabilityReleaseMode?: 'free' | 'progressive' | null; availabilityReleaseLimit?: number | null },
-    candidateSlots: AvailabilitySlotCandidate[]
+    validFreeSlots: AvailabilitySlotCandidate[]
   ): AvailabilitySlotDto[] {
     const mode = professional.availabilityReleaseMode ?? 'free';
     if (mode !== 'progressive') {
-      return candidateSlots.filter((slot) => !slot.occupied).map((slot) => this.toAvailabilitySlot(slot, true));
+      return validFreeSlots.map((slot) => ({ ...slot, available: true }));
     }
 
     const limit = professional.availabilityReleaseLimit;
     if (!Number.isInteger(limit) || (limit as number) < 1) {
-      return candidateSlots.filter((slot) => !slot.occupied).map((slot) => this.toAvailabilitySlot(slot, true));
+      return validFreeSlots.map((slot) => ({ ...slot, available: true }));
     }
 
-    const releaseLimit = limit as number;
-    const batches = this.chunkSlots(candidateSlots, releaseLimit);
-    const activeBatchIndex = batches.findIndex((batch) => !batch.every((slot) => slot.occupied));
-    const effectiveActiveBatchIndex = activeBatchIndex === -1 ? batches.length : activeBatchIndex;
+    const enabledSlots = validFreeSlots.slice(0, limit as number);
+    const blockedSlots = validFreeSlots.slice(limit as number);
 
-    const slots = batches.flatMap((batch, batchIndex) =>
-      batch.map((slot) => {
-        if (slot.occupied) {
-          return this.toAvailabilitySlot(slot, false);
-        }
-
-        if (batchIndex === effectiveActiveBatchIndex) {
-          return this.toAvailabilitySlot(slot, true);
-        }
-
-        return this.toAvailabilitySlot(slot, false, 'progressive_release', 'Se habilita al completar turnos anteriores');
-      })
-    );
-
-    this.logProgressiveReleaseDiagnostics(organizationId, professionalId, date, mode, releaseLimit, candidateSlots, batches, activeBatchIndex, slots);
-
-    return slots;
-  }
-
-  private chunkSlots(slots: AvailabilitySlotCandidate[], size: number): AvailabilitySlotCandidate[][] {
-    const batches: AvailabilitySlotCandidate[][] = [];
-    for (let index = 0; index < slots.length; index += size) {
-      batches.push(slots.slice(index, index + size));
-    }
-
-    return batches;
-  }
-
-  private toAvailabilitySlot(
-    slot: AvailabilitySlotCandidate,
-    availableWhenFree: boolean,
-    blockedReason?: AvailabilitySlotDto['blockedReason'],
-    displayLabel?: string
-  ): AvailabilitySlotDto {
-    const { occupied, ...slotDto } = slot;
-    if (occupied) {
-      return {
-        ...slotDto,
+    return [
+      ...enabledSlots.map((slot) => ({ ...slot, available: true })),
+      ...blockedSlots.map((slot) => ({
+        ...slot,
         available: false,
-        blockedReason: 'occupied',
-        displayLabel: 'Ocupado'
-      };
-    }
-
-    return {
-      ...slotDto,
-      available: availableWhenFree,
-      ...(blockedReason ? { blockedReason } : {}),
-      ...(displayLabel ? { displayLabel } : {})
-    };
-  }
-
-  private logProgressiveReleaseDiagnostics(
-    organizationId: string,
-    professionalId: string,
-    date: string,
-    releaseMode: 'progressive',
-    releaseLimit: number,
-    candidateSlots: AvailabilitySlotCandidate[],
-    batches: AvailabilitySlotCandidate[][],
-    activeBatchIndex: number,
-    resultSlots: AvailabilitySlotDto[]
-  ): void {
-    if (process.env.AVAILABILITY_DEBUG_PROGRESSIVE_RELEASE !== 'true') {
-      return;
-    }
-
-    logger.debug(
-      {
-        organizationId,
-        professionalId,
-        date,
-        releaseMode,
-        releaseLimit,
-        candidateSlots: candidateSlots.map((slot) => slot.startTime),
-        batches: batches.map((batch) => batch.map((slot) => slot.startTime)),
-        activeBatchIndex,
-        enabledSlots: resultSlots.filter((slot) => slot.available).map((slot) => slot.startTime),
-        blockedSlots: resultSlots.filter((slot) => slot.blockedReason === 'progressive_release').map((slot) => slot.startTime),
-        occupiedSlots: resultSlots.filter((slot) => slot.blockedReason === 'occupied').map((slot) => slot.startTime)
-      },
-      'Progressive availability release diagnostic'
-    );
+        blockedReason: 'progressive_release' as const,
+        displayLabel: 'Disponible próximamente'
+      }))
+    ];
   }
 
   private toRuleDto(document: AvailabilityRuleDocument): AvailabilityRuleDto {

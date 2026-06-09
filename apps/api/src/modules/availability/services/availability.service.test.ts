@@ -92,11 +92,8 @@ const buildService = ({
   };
 };
 
-const slotState = (slots: Array<{ startTime: string; available: boolean; blockedReason?: string }>) =>
-  slots.map((slot) => {
-    const state = slot.blockedReason === 'occupied' ? 'occupied' : slot.available ? 'enabled' : 'blocked';
-    return `${slot.startTime}:${state}`;
-  });
+const slotState = (slots: Array<{ startTime: string; available: boolean }>) =>
+  slots.map((slot) => `${slot.startTime}:${slot.available ? 'enabled' : 'blocked'}`);
 
 describe('AvailabilityService progressive release', () => {
   afterEach(() => {
@@ -127,51 +124,23 @@ describe('AvailabilityService progressive release', () => {
     expect(availability.days[0]!.slots.slice(3).every((slot) => slot.blockedReason === 'progressive_release')).toBe(true);
   });
 
-  it('mantiene bloqueadas las tandas posteriores hasta completar la tanda activa', async () => {
-    vi.setSystemTime(new Date('2029-12-31T00:00:00.000Z'));
-    const { service } = buildService({
-      appointments: [makeAppointment('2030-01-07', '11:00', '11:30')]
-    });
-
-    const availability = await service.getCalculatedAvailability(organizationId, professionalId, {
-      startDate: '2030-01-07',
-      endDate: '2030-01-07'
-    });
-
-    expect(slotState(availability.days[0]!.slots)).toEqual([
-      '08:00:occupied',
-      '08:30:enabled',
-      '09:00:enabled',
-      '09:30:blocked',
-      '10:00:blocked',
-      '10:30:blocked',
-      '11:00:blocked',
-      '11:30:blocked',
-      '12:00:blocked',
-      '12:30:blocked'
-    ]);
-  });
-
-  it('habilita la siguiente tanda solo cuando la tanda anterior está completa', async () => {
+  it('no cuenta turnos reservados dentro del límite progresivo y recalcula como una cancelación cuando ya no están reservados', async () => {
     vi.setSystemTime(new Date('2029-12-31T00:00:00.000Z'));
     const bookedFirstThree = [
       makeAppointment('2030-01-07', '11:00', '11:30'),
       makeAppointment('2030-01-07', '11:30', '12:00'),
       makeAppointment('2030-01-07', '12:00', '12:30')
     ];
-    const { service } = buildService({
+    const { service: serviceWithBookings } = buildService({
       appointments: bookedFirstThree
     });
 
-    const availability = await service.getCalculatedAvailability(organizationId, professionalId, {
+    const afterBookings = await serviceWithBookings.getCalculatedAvailability(organizationId, professionalId, {
       startDate: '2030-01-07',
       endDate: '2030-01-07'
     });
 
-    expect(slotState(availability.days[0]!.slots)).toEqual([
-      '08:00:occupied',
-      '08:30:occupied',
-      '09:00:occupied',
+    expect(slotState(afterBookings.days[0]!.slots)).toEqual([
       '09:30:enabled',
       '10:00:enabled',
       '10:30:enabled',
@@ -180,29 +149,21 @@ describe('AvailabilityService progressive release', () => {
       '12:00:blocked',
       '12:30:blocked'
     ]);
-  });
 
-  it('vuelve a la tanda anterior cuando una cancelación la deja incompleta', async () => {
-    vi.setSystemTime(new Date('2029-12-31T00:00:00.000Z'));
-    const { service } = buildService({
-      appointments: [
-        makeAppointment('2030-01-07', '11:00', '11:30'),
-        makeAppointment('2030-01-07', '12:00', '12:30'),
-        makeAppointment('2030-01-07', '12:30', '13:00')
-      ]
+    const afterCancellationBookings = [makeAppointment('2030-01-07', '11:00', '11:30'), makeAppointment('2030-01-07', '12:00', '12:30')];
+    const { service: serviceAfterCancellation } = buildService({
+      appointments: afterCancellationBookings
     });
 
-    const availability = await service.getCalculatedAvailability(organizationId, professionalId, {
+    const afterCancellation = await serviceAfterCancellation.getCalculatedAvailability(organizationId, professionalId, {
       startDate: '2030-01-07',
       endDate: '2030-01-07'
     });
 
-    expect(slotState(availability.days[0]!.slots)).toEqual([
-      '08:00:occupied',
+    expect(slotState(afterCancellation.days[0]!.slots)).toEqual([
       '08:30:enabled',
-      '09:00:occupied',
-      '09:30:occupied',
-      '10:00:blocked',
+      '09:30:enabled',
+      '10:00:enabled',
       '10:30:blocked',
       '11:00:blocked',
       '11:30:blocked',
