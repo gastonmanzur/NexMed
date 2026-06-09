@@ -2,6 +2,9 @@ import { AppointmentModel, type AppointmentDocument } from '../models/appointmen
 
 type AppointmentStatus = AppointmentDocument['status'];
 
+const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived'];
+const OCCUPIED_APPOINTMENT_STATUSES: AppointmentStatus[] = [...ACTIVE_APPOINTMENT_STATUSES, 'completed', 'no_show'];
+
 interface CreateAppointmentInput {
   organizationId: string;
   professionalId: string;
@@ -125,7 +128,7 @@ export class AppointmentRepository {
     const query: Record<string, unknown> = {
       organizationId,
       professionalId,
-      status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] },
+      status: { $in: OCCUPIED_APPOINTMENT_STATUSES },
       startAt: { $lt: endAt },
       endAt: { $gt: startAt }
     };
@@ -146,7 +149,7 @@ export class AppointmentRepository {
     return AppointmentModel.find({
       organizationId,
       professionalId,
-      status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] },
+      status: { $in: OCCUPIED_APPOINTMENT_STATUSES },
       startAt: { $lt: to },
       endAt: { $gt: from }
     }).exec();
@@ -154,7 +157,7 @@ export class AppointmentRepository {
 
   async findBookedStartingBetween(from: Date, to: Date): Promise<AppointmentDocument[]> {
     return AppointmentModel.find({
-      status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] },
+      status: { $in: ACTIVE_APPOINTMENT_STATUSES },
       startAt: { $gte: from, $lte: to }
     }).exec();
   }

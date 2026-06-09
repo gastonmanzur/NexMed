@@ -797,7 +797,7 @@ export class AppointmentsService {
       throw new AppError(
         'SLOT_BLOCKED_BY_PROGRESSIVE_RELEASE',
         409,
-        'Este horario todavía no está habilitado para reservas. Elegí uno de los primeros turnos disponibles.'
+        'Este horario todavía no está habilitado para reservas. Deben completarse los turnos anteriores del día.'
       );
     }
 
@@ -811,7 +811,7 @@ export class AppointmentsService {
 
     const firstSlotEndAt = parseIsoDate(firstSlot.endsAtIso, 'slot.endsAtIso');
     const secondSlot = slots.find((slot) => parseIsoDate(slot.startsAtIso, 'slot.startsAtIso').getTime() === firstSlotEndAt.getTime());
-    if (!secondSlot) {
+    if (!secondSlot || secondSlot.available === false) {
       throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Este horario no permite turno doble porque no hay disponibilidad suficiente.');
     }
 
