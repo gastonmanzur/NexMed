@@ -3,6 +3,7 @@ import type {
   AvailabilityExceptionType,
   AvailabilityRuleDto,
   CalculatedAvailabilityDto,
+  AvailabilitySlotDto,
   OrganizationMemberRole,
   ProfessionalDto
 } from '@starter/shared-types';
@@ -25,6 +26,22 @@ const daysFromNowIsoDate = (days: number): string => {
   const now = new Date();
   now.setDate(now.getDate() + days);
   return now.toISOString().slice(0, 10);
+};
+
+const availabilitySlotLabel = (slot: AvailabilitySlotDto): string => {
+  if (slot.available) {
+    return `${slot.startTime}–${slot.endTime}`;
+  }
+
+  if (slot.blockedReason === 'progressive_release') {
+    return `${slot.startTime}–${slot.endTime} (Disponible próximamente)`;
+  }
+
+  if (slot.blockedReason === 'occupied') {
+    return `${slot.startTime}–${slot.endTime} (Ocupado)`;
+  }
+
+  return `${slot.startTime}–${slot.endTime} (No disponible)`;
 };
 
 export const ProfessionalAvailabilityPage = (): ReactElement => {
@@ -461,7 +478,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                   {day.slots.length === 0 ? (
                     <p className="nx-availability-day__slots">Sin disponibilidad</p>
                   ) : (
-                    <p className="nx-availability-day__slots">{day.slots.map((slot) => `${slot.startTime}–${slot.endTime}${slot.available === false ? ' (Bloqueado por agenda progresiva)' : ''}`).join(' · ')}</p>
+                    <p className="nx-availability-day__slots">{day.slots.map((slot) => availabilitySlotLabel(slot)).join(' · ')}</p>
                   )}
                 </li>
               ))}
