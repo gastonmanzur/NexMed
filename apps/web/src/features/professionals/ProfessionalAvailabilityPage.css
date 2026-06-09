@@ -19,3 +19,8 @@
 .nx-availability-day__slots,.nx-availability-note { margin-top:.42rem; color:var(--text-soft); }
 @media (max-width:900px){ .nx-availability-page{padding:1rem;} .nx-availability-form-grid,.nx-availability-range-grid{grid-template-columns:1fr;} }
 @media (max-width:640px){ .nx-availability-page{padding:.8rem;} .nx-availability-actions,.nx-availability-form-actions{width:100%;} .nx-availability-actions > *,.nx-availability-form-actions > *{flex:1 1 auto;} }
+.nx-availability-release-policy { border-top:0; padding-top:0; }
+.nx-availability-release-policy__options { border:1px solid var(--border); border-radius:var(--radius-md); padding:.8rem; display:grid; gap:.65rem; }
+.nx-availability-release-policy__limit { max-width:320px; }
+.nx-radio-option { display:flex; align-items:center; gap:.55rem; color:var(--text); font-weight:600; }
+.nx-radio-option input { width:1rem; height:1rem; }
