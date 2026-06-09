@@ -24,6 +24,7 @@ import { AvailabilityExceptionRepository } from '../repositories/availability-ex
 import type { AvailabilityRuleDocument } from '../models/availability-rule.model.js';
 import type { AvailabilityExceptionDocument } from '../models/availability-exception.model.js';
 import { AppointmentRepository } from '../../appointments/repositories/appointment.repository.js';
+import { applyProgressiveReleaseBatches, type ProgressiveReleaseDebugDetails } from './progressive-release.js';
 
 interface CreateAvailabilityRuleInput {
   weekday: number;
@@ -672,25 +673,21 @@ export class AvailabilityService {
 
     const releaseMode = professional.availabilityReleaseMode ?? 'free';
     const releaseLimit = professional.availabilityReleaseLimit;
-    const buildDebugSnapshot = (
-      batches: AvailabilitySlotCandidateWithOccupation[][],
-      activeBatchIndex: number,
-      slots: AvailabilitySlotDto[]
-    ): ProgressiveReleaseDebugSnapshot => ({
+    const buildDebugSnapshot = (debug: ProgressiveReleaseDebugDetails, slots: AvailabilitySlotDto[]): ProgressiveReleaseDebugSnapshot => ({
       professionalId,
       date,
-      releaseMode: professional.availabilityReleaseMode,
+      releaseMode,
       releaseLimit,
       totalCandidateSlots: candidateSlots.length,
-      candidateSlots: candidateSlots.map((slot) => slot.startsAtIso),
+      candidateSlots: debug.candidateSlots,
       occupiedSlots: occupiedSlots.map((slot) => slot.startsAtIso),
       blockedByExceptionSlots: blockedByExceptionSlots.map((slot) => slot.startsAtIso),
-      batches: batches.map((batch) => batch.map((slot) => slot.startsAtIso)),
-      activeBatchIndex,
-      enabledSlots: slots.filter((slot) => slot.available).map((slot) => slot.startsAtIso),
-      progressiveBlockedSlots: slots
-        .filter((slot) => slot.blockedReason === 'progressive_release')
-        .map((slot) => slot.startsAtIso)
+      batches: debug.batches,
+      activeBatchIndex: debug.activeBatchIndex,
+      enabledSlots: debug.enabledSlots.length > 0 ? debug.enabledSlots : slots.filter((slot) => slot.available).map((slot) => slot.startsAtIso),
+      progressiveBlockedSlots: debug.progressiveBlockedSlots.length > 0
+        ? debug.progressiveBlockedSlots
+        : slots.filter((slot) => slot.blockedReason === 'progressive_release').map((slot) => slot.startsAtIso)
     });
     const logDebugSnapshot = (snapshot: ProgressiveReleaseDebugSnapshot) => {
       if (process.env.NODE_ENV !== 'production' && process.env.AVAILABILITY_DEBUG === 'true') {
@@ -698,55 +695,45 @@ export class AvailabilityService {
       }
     };
 
+    const freeModeSlots = () => candidateSlots.map((slot) => (slot.occupied ? toSlotDto(slot, false, 'occupied') : toSlotDto(slot, true)));
+    const emptyDebug: ProgressiveReleaseDebugDetails = {
+      candidateSlots: candidateSlots.map((slot) => slot.startsAtIso),
+      batches: [],
+      activeBatchIndex: -1,
+      enabledSlots: [],
+      progressiveBlockedSlots: []
+    };
+
     if (releaseMode !== 'progressive') {
-      const slots = candidateSlots.map((slot) => (slot.occupied ? toSlotDto(slot, false, 'occupied') : toSlotDto(slot, true)));
-      logDebugSnapshot(buildDebugSnapshot([], -1, slots));
+      const slots = freeModeSlots();
+      logDebugSnapshot(buildDebugSnapshot(emptyDebug, slots));
       return slots;
     }
 
     const limit = Number(releaseLimit);
     if (!Number.isInteger(limit) || limit <= 0) {
-      const slots = candidateSlots.map((slot) => (slot.occupied ? toSlotDto(slot, false, 'occupied') : toSlotDto(slot, true)));
-      logDebugSnapshot(buildDebugSnapshot([], -1, slots));
+      const slots = freeModeSlots();
+      logDebugSnapshot(buildDebugSnapshot(emptyDebug, slots));
       return slots;
     }
 
-    const batches: AvailabilitySlotCandidateWithOccupation[][] = [];
-    for (let index = 0; index < candidateSlots.length; index += limit) {
-      batches.push(candidateSlots.slice(index, index + limit));
-    }
-
-    const activeBatchIndex = batches.findIndex((batch) => batch.some((slot) => !slot.occupied));
-    if (activeBatchIndex === -1) {
-      const slots = candidateSlots.map((slot) => toSlotDto(slot, false, slot.occupied ? 'occupied' : 'progressive_release'));
-      logDebugSnapshot(buildDebugSnapshot(batches, activeBatchIndex, slots));
-      return slots;
-    }
-
-    const batchIndexBySlot = new Map<string, number>();
-    batches.forEach((batch, batchIndex) => {
-      batch.forEach((slot) => batchIndexBySlot.set(slot.startsAtIso, batchIndex));
+    const release = applyProgressiveReleaseBatches({
+      releaseLimit: limit,
+      slots: candidateSlots.map((slot) => ({
+        ...slot,
+        startAt: parseSlotInstant(slot.startsAtIso),
+        endAt: parseSlotInstant(slot.endsAtIso),
+        isOccupied: slot.occupied
+      }))
     });
 
-    const slots = candidateSlots.map((slot) => {
-      const batchIndex = batchIndexBySlot.get(slot.startsAtIso) ?? -1;
+    const slots = release.slots.map((slot) => ({
+      ...toSlotDto(slot, slot.available, slot.blockedReason),
+      ...(slot.releaseBatchIndex !== undefined ? { releaseBatchIndex: slot.releaseBatchIndex } : {}),
+      ...(slot.releaseBatchActive !== undefined ? { releaseBatchActive: slot.releaseBatchActive } : {})
+    }));
 
-      if (slot.occupied) {
-        return toSlotDto(slot, false, 'occupied');
-      }
-
-      if (batchIndex === activeBatchIndex) {
-        return toSlotDto(slot, true);
-      }
-
-      if (batchIndex > activeBatchIndex) {
-        return toSlotDto(slot, false, 'progressive_release');
-      }
-
-      return toSlotDto(slot, false, 'occupied');
-    });
-
-    logDebugSnapshot(buildDebugSnapshot(batches, activeBatchIndex, slots));
+    logDebugSnapshot(buildDebugSnapshot(release.debug, slots));
     return slots;
   }
 

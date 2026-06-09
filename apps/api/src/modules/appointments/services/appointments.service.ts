@@ -797,7 +797,7 @@ export class AppointmentsService {
       throw new AppError(
         'SLOT_BLOCKED_BY_PROGRESSIVE_RELEASE',
         409,
-        'Este horario todavía no está habilitado para reservas. Deben completarse los turnos anteriores del día.'
+        'Este horario todavía no está habilitado. Deben completarse los turnos anteriores del día.'
       );
     }
 

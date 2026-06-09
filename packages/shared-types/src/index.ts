@@ -214,6 +214,8 @@ export interface AvailabilitySlotDto {
   available: boolean;
   blockedReason?: AvailabilityBlockedReason;
   displayLabel?: string;
+  releaseBatchIndex?: number;
+  releaseBatchActive?: boolean;
 }
 
 export interface AvailabilityByDateDto {
