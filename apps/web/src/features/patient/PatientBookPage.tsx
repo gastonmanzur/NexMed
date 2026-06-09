@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { AppointmentDto, AppointmentDurationMultiplier, PatientFamilyMemberDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
@@ -112,6 +112,23 @@ export const PatientBookPage = (): ReactElement => {
   );
 
   const canSearchAvailability = Boolean(accessToken && professionalId && specialtyId && isValidCombination && !catalogLoading);
+
+  const loadAvailability = useCallback(async () => {
+    if (!accessToken || !canSearchAvailability) {
+      throw new Error('Seleccioná un profesional y una especialidad compatibles antes de buscar disponibilidad.');
+    }
+
+    const availability = await patientApi.getAvailability(accessToken, organizationId, {
+      professionalId,
+      specialtyId,
+      startDate,
+      endDate
+    });
+    const currentNow = new Date();
+    setNow(currentNow);
+    setSlots(availability.days.flatMap((day) => day.slots).filter((slot) => isFutureSlot(slot, currentNow)));
+    setAvailabilitySearched(true);
+  }, [accessToken, canSearchAvailability, endDate, organizationId, professionalId, specialtyId, startDate]);
 
   const slotsByStart = useMemo(() => new Map(slots.map((slot) => [slot.startsAtIso, slot])), [slots]);
 
@@ -308,16 +325,7 @@ export const PatientBookPage = (): ReactElement => {
                 setError('');
                 setAvailabilityLoading(true);
                 setAvailabilitySearched(false);
-                const availability = await patientApi.getAvailability(accessToken!, organizationId, {
-                  professionalId,
-                  specialtyId,
-                  startDate,
-                  endDate
-                });
-                const currentNow = new Date();
-                setNow(currentNow);
-                setSlots(availability.days.flatMap((day) => day.slots).filter((slot) => isFutureSlot(slot, currentNow)));
-                setAvailabilitySearched(true);
+                await loadAvailability();
               } catch (cause) {
                 setError((cause as Error).message);
               } finally {
@@ -427,9 +435,7 @@ export const PatientBookPage = (): ReactElement => {
                         });
                         setMessage(`Turno reservado con éxito para ${appointment.beneficiaryDisplayName ?? appointment.patientName}.`);
                         setConfirmedAppointment(appointment);
-                        setSlots((prev) =>
-                          prev.filter((current) => current.startsAtIso !== slot.startsAtIso && current.startsAtIso !== slot.endsAtIso)
-                        );
+                        await loadAvailability();
                       } catch (cause) {
                         setError((cause as Error).message);
                       }
