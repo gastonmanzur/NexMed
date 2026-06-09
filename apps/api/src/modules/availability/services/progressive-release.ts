@@ -136,3 +136,5 @@ export const applyProgressiveReleaseBatches = <TSlot extends SlotForProgressiveR
     }
   };
 };
+
+export const applyProgressiveBatchRelease = applyProgressiveReleaseBatches;

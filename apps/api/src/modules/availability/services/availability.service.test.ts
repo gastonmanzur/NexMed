@@ -248,6 +248,17 @@ describe('AvailabilityService progressive release', () => {
       endDate: '2030-01-07'
     });
 
-    expect(slotState(availability.days[0]!.slots).slice(0, 4)).toEqual(['12:30:enabled', '13:00:enabled', '13:30:enabled', '14:00:progressive_release']);
+    expect(slotState(availability.days[0]!.slots).slice(0, 9)).toEqual([
+      '08:00:past_time',
+      '08:30:past_time',
+      '09:00:past_time',
+      '09:30:past_time',
+      '10:00:past_time',
+      '10:30:past_time',
+      '11:00:past_time',
+      '11:30:past_time',
+      '12:00:past_time'
+    ]);
+    expect(slotState(availability.days[0]!.slots).slice(9, 13)).toEqual(['12:30:enabled', '13:00:enabled', '13:30:enabled', '14:00:progressive_release']);
   });
 });
