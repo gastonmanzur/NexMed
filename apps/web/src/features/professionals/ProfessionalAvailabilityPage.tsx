@@ -1,6 +1,7 @@
 import type {
   AvailabilityExceptionDto,
   AvailabilityExceptionType,
+  AvailabilityReleaseMode,
   AvailabilityRuleDto,
   CalculatedAvailabilityDto,
   AvailabilitySlotDto,
@@ -62,10 +63,16 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
   const [loading, setLoading] = useState(true);
   const [savingRule, setSavingRule] = useState(false);
   const [savingException, setSavingException] = useState(false);
+  const [savingReleasePolicy, setSavingReleasePolicy] = useState(false);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
 
   const [range, setRange] = useState({ startDate: todayIsoDate(), endDate: daysFromNowIsoDate(7) });
+
+  const [releasePolicyForm, setReleasePolicyForm] = useState({
+    availabilityReleaseMode: 'free' as AvailabilityReleaseMode,
+    availabilityReleaseLimit: '3'
+  });
 
   const [ruleForm, setRuleForm] = useState({
     weekday: 1,
@@ -98,6 +105,10 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
       ]);
 
       setProfessional(professionalData);
+      setReleasePolicyForm({
+        availabilityReleaseMode: professionalData.availabilityReleaseMode,
+        availabilityReleaseLimit: String(professionalData.availabilityReleaseLimit ?? 3)
+      });
       setRules(rulesData);
       setExceptions(exceptionsData);
       setAvailability(availabilityData);
@@ -112,6 +123,29 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeOrganizationId, professionalId]);
+
+  const saveReleasePolicy = async (): Promise<void> => {
+    if (!accessToken || !activeOrganizationId || !professionalId) return;
+
+    const parsedAvailabilityReleaseLimit = Number(releasePolicyForm.availabilityReleaseLimit);
+    if (
+      releasePolicyForm.availabilityReleaseMode === 'progressive' &&
+      (!Number.isInteger(parsedAvailabilityReleaseLimit) || parsedAvailabilityReleaseLimit < 1 || parsedAvailabilityReleaseLimit > 20)
+    ) {
+      throw new Error('La cantidad de turnos habilitados por tanda debe ser un entero entre 1 y 20.');
+    }
+
+    const updated = await professionalsApi.update(accessToken, activeOrganizationId, professionalId, {
+      availabilityReleaseMode: releasePolicyForm.availabilityReleaseMode,
+      availabilityReleaseLimit: releasePolicyForm.availabilityReleaseMode === 'progressive' ? parsedAvailabilityReleaseLimit : null
+    });
+
+    setProfessional(updated);
+    setReleasePolicyForm({
+      availabilityReleaseMode: updated.availabilityReleaseMode,
+      availabilityReleaseLimit: String(updated.availabilityReleaseLimit ?? 3)
+    });
+  };
 
   const refreshAvailability = async (): Promise<void> => {
     if (!accessToken || !activeOrganizationId || !professionalId) return;
@@ -160,6 +194,86 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
         ) : null}
         {feedback ? <p className="nx-alert nx-alert--success">{feedback}</p> : null}
         {error ? <p className="nx-alert nx-alert--error">{error}</p> : null}
+      </Card>
+
+      <Card title="Modo de publicación de turnos" subtitle="Definí cómo se habilitan los turnos reservables para pacientes.">
+        <form
+          className="nx-availability-form nx-availability-release-policy"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (!canManage) return;
+
+            try {
+              setSavingReleasePolicy(true);
+              setError('');
+              setFeedback('');
+
+              await saveReleasePolicy();
+              setFeedback('Modo de publicación guardado correctamente.');
+              await refreshAvailability();
+            } catch (cause) {
+              setError((cause as Error).message);
+            } finally {
+              setSavingReleasePolicy(false);
+            }
+          }}
+        >
+          <fieldset className="nx-availability-release-policy__options" disabled={!canManage || savingReleasePolicy || loading}>
+            <legend className="nx-availability-form__title">Modo de agenda</legend>
+            <label className="nx-radio-option">
+              <input
+                type="radio"
+                name="availabilityReleaseMode"
+                value="free"
+                checked={releasePolicyForm.availabilityReleaseMode === 'free'}
+                onChange={() => setReleasePolicyForm((current) => ({ ...current, availabilityReleaseMode: 'free' }))}
+              />
+              <span>Agenda libre</span>
+            </label>
+            <label className="nx-radio-option">
+              <input
+                type="radio"
+                name="availabilityReleaseMode"
+                value="progressive"
+                checked={releasePolicyForm.availabilityReleaseMode === 'progressive'}
+                onChange={() => setReleasePolicyForm((current) => ({ ...current, availabilityReleaseMode: 'progressive' }))}
+              />
+              <span>Agenda progresiva por tandas</span>
+            </label>
+          </fieldset>
+
+          {releasePolicyForm.availabilityReleaseMode === 'progressive' ? (
+            <label className="nx-field nx-availability-release-policy__limit">
+              Cantidad de turnos habilitados por tanda
+              <input
+                type="number"
+                min={1}
+                max={20}
+                step={1}
+                value={releasePolicyForm.availabilityReleaseLimit}
+                disabled={!canManage || savingReleasePolicy || loading}
+                onChange={(event) =>
+                  setReleasePolicyForm((current) => ({ ...current, availabilityReleaseLimit: event.target.value }))
+                }
+                required
+              />
+            </label>
+          ) : null}
+
+          <p className="nx-availability-note">
+            En agenda progresiva, los pacientes solo podrán reservar la tanda activa del día. Cuando esa tanda se complete, se habilitará la siguiente.
+          </p>
+
+          {canManage ? (
+            <div className="nx-availability-form-actions">
+              <button className="nx-btn" type="submit" disabled={savingReleasePolicy || loading}>
+                {savingReleasePolicy ? 'Guardando...' : 'Guardar modo de agenda'}
+              </button>
+            </div>
+          ) : (
+            <p className="nx-availability-note">Solo owner/admin pueden modificar el modo de agenda.</p>
+          )}
+        </form>
       </Card>
 
       <Card title="Reglas semanales">
@@ -291,7 +405,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
         )}
       </Card>
 
-      <Card title="Excepciones y bloqueos">
+      <Card title="Bloqueo del día" subtitle="Usá esta sección solo para bloquear o habilitar días completos o franjas puntuales; no controla la agenda progresiva.">
         {loading ? <p>Cargando excepciones...</p> : null}
         {!loading && exceptions.length === 0 ? <p>No hay excepciones para este profesional.</p> : null}
         {exceptions.length > 0 ? (
@@ -326,7 +440,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                       }
                     }}
                   >
-                    {exception.status === 'active' ? 'Desactivar' : 'Activar'}
+                    {exception.status === 'active' ? 'Desactivar bloqueo' : 'Activar bloqueo'}
                   </button>
                 ) : null}
               </li>
@@ -365,7 +479,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
               }
             }}
           >
-            <h3 className="nx-availability-form__title">Nueva excepción</h3>
+            <h3 className="nx-availability-form__title">Nuevo bloqueo del día o franja</h3>
             <div className="nx-availability-form-grid">
             <label className="nx-field">
               Fecha
