@@ -61,7 +61,7 @@ interface UpdateAvailabilityExceptionInput {
 }
 
 type AvailabilitySlotCandidate = { date: string; startTime: string; endTime: string; startsAtIso: string; endsAtIso: string };
-type AvailabilitySlotCandidateWithOccupation = AvailabilitySlotCandidate & { occupied: boolean };
+type AvailabilitySlotCandidateWithOccupation = AvailabilitySlotCandidate & { occupied: boolean; isPast: boolean; isBlockedByException: boolean };
 type ProgressiveReleaseDebugSnapshot = {
   professionalId: string;
   date: string;
@@ -326,12 +326,11 @@ export class AvailabilityService {
       }
 
       const slots = rulesForDay.flatMap((rule) => this.generateRuleSlotsForDate(date, rule));
-      const blockedByExceptionSlots: AvailabilitySlotCandidate[] = [];
-      const candidateSlots = slots.filter((slot) => {
+      const candidateSlotsWithOccupation = slots.map((slot): AvailabilitySlotCandidateWithOccupation => {
         const slotStart = parseTimeToMinutes(slot.startTime);
         const slotEnd = parseTimeToMinutes(slot.endTime);
 
-        const blockedByException = dayExceptions.some((exception) => {
+        const isBlockedByException = dayExceptions.some((exception) => {
           if (exception.type !== 'partial_block' || !exception.startTime || !exception.endTime) {
             return false;
           }
@@ -341,22 +340,9 @@ export class AvailabilityService {
           return minutesOverlap(slotStart, slotEnd, blockStart, blockEnd);
         });
 
-        if (blockedByException) {
-          blockedByExceptionSlots.push(slot);
-          return false;
-        }
-
-        const slotStartAt = parseSlotInstant(slot.startsAtIso);
-        if (slotStartAt.getTime() <= now.getTime()) {
-          return false;
-        }
-
-        return true;
-      });
-
-      const candidateSlotsWithOccupation = candidateSlots.map((slot): AvailabilitySlotCandidateWithOccupation => {
         const slotStartAt = parseSlotInstant(slot.startsAtIso);
         const slotEndAt = parseSlotInstant(slot.endsAtIso);
+        const isPast = slotStartAt.getTime() <= now.getTime();
         const occupied = bookedAppointments.some((appointment) =>
           minutesOverlap(
             slotStartAt.getTime(),
@@ -366,8 +352,9 @@ export class AvailabilityService {
           )
         );
 
-        return { ...slot, occupied };
+        return { ...slot, occupied, isPast, isBlockedByException };
       });
+      const blockedByExceptionSlots = candidateSlotsWithOccupation.filter((slot) => slot.isBlockedByException);
 
       candidateSlotsWithOccupation.sort((a, b) => compareDateStrings(a.startsAtIso, b.startsAtIso));
       const occupiedSlots = candidateSlotsWithOccupation.filter((slot) => slot.occupied);
@@ -695,7 +682,12 @@ export class AvailabilityService {
       }
     };
 
-    const freeModeSlots = () => candidateSlots.map((slot) => (slot.occupied ? toSlotDto(slot, false, 'occupied') : toSlotDto(slot, true)));
+    const freeModeSlots = () => candidateSlots.map((slot) => {
+      if (slot.isPast) return toSlotDto(slot, false, 'past_time');
+      if (slot.isBlockedByException) return toSlotDto(slot, false, 'exception');
+      if (slot.occupied) return toSlotDto(slot, false, 'occupied');
+      return toSlotDto(slot, true);
+    });
     const emptyDebug: ProgressiveReleaseDebugDetails = {
       candidateSlots: candidateSlots.map((slot) => slot.startsAtIso),
       batches: [],
@@ -723,7 +715,9 @@ export class AvailabilityService {
         ...slot,
         startAt: parseSlotInstant(slot.startsAtIso),
         endAt: parseSlotInstant(slot.endsAtIso),
-        isOccupied: slot.occupied
+        isOccupied: slot.occupied,
+        isPast: slot.isPast,
+        isBlockedByException: slot.isBlockedByException
       }))
     });
 

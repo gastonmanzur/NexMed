@@ -195,7 +195,7 @@ export const ProfessionalAvailabilityPage = (): ReactElement => {
                       }
                     }}
                   >
-                    {rule.status === 'active' ? 'Desactivar' : 'Activar'}
+                    {rule.status === 'active' ? 'Desactivar regla semanal' : 'Activar regla semanal'}
                   </button>
                 ) : null}
               </li>

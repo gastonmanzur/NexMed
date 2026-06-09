@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyProgressiveReleaseBatches, type SlotForProgressiveRelease } from './progressive-release.js';
+import { applyProgressiveBatchRelease, applyProgressiveReleaseBatches, type SlotForProgressiveRelease } from './progressive-release.js';
 
 type TestSlot = SlotForProgressiveRelease & { time: string };
 
@@ -16,6 +16,20 @@ const stateByTime = (slots: ReturnType<typeof apply>) =>
   Object.fromEntries(slots.map((result) => [result.time, result.available ? 'available' : result.blockedReason]));
 
 describe('applyProgressiveReleaseBatches', () => {
+  it('expone el alias applyProgressiveBatchRelease para publicar slots por tandas', () => {
+    const result = applyProgressiveBatchRelease({
+      releaseLimit: 3,
+      slots: ['08:00', '08:30', '09:00', '09:30'].map((time) => slot(time))
+    }).slots;
+
+    expect(stateByTime(result)).toMatchObject({
+      '08:00': 'available',
+      '08:30': 'available',
+      '09:00': 'available',
+      '09:30': 'progressive_release'
+    });
+  });
+
   it('Test 1 — estado inicial: habilita solo la primera tanda fija', () => {
     const result = apply(['08:00', '08:30', '09:00', '09:30', '10:00', '10:30'].map((time) => slot(time)));
 

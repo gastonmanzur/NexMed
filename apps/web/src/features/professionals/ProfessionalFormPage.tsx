@@ -175,7 +175,7 @@ export const ProfessionalFormPage = (): ReactElement => {
 
 
             <fieldset className="nx-entity-form-page__fieldset">
-              <legend>Modo de habilitación de turnos</legend>
+              <legend>Modo de agenda</legend>
               <p className="nx-entity-form-page__hint">
                 En agenda progresiva, los pacientes solo podrán elegir los primeros turnos disponibles del día. Cuando esos turnos se reserven, se habilitarán los siguientes.
               </p>
@@ -198,12 +198,12 @@ export const ProfessionalFormPage = (): ReactElement => {
                     checked={availabilityReleaseMode === 'progressive'}
                     onChange={() => setAvailabilityReleaseMode('progressive')}
                   />
-                  <span>Habilitar turnos progresivamente</span>
+                  <span>Agenda progresiva por tandas</span>
                 </label>
               </div>
               {availabilityReleaseMode === 'progressive' ? (
                 <label className="nx-field" style={{ marginTop: '0.75rem' }}>
-                  <span>Cantidad de turnos habilitados por día</span>
+                  <span>Cantidad de turnos por tanda</span>
                   <input
                     type="number"
                     min={1}
