@@ -1,6 +1,7 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 export const professionalStatuses = ['active', 'inactive', 'archived'] as const;
+export const availabilityReleaseModes = ['free', 'progressive'] as const;
 
 const professionalSchema = new mongoose.Schema(
   {
@@ -14,6 +15,8 @@ const professionalSchema = new mongoose.Schema(
     notes: { type: String, required: false, trim: true },
     avatarUrl: { type: String, required: false, trim: true, default: null },
     status: { type: String, enum: professionalStatuses, default: 'active', index: true },
+    availabilityReleaseMode: { type: String, enum: availabilityReleaseModes, default: 'free' },
+    availabilityReleaseLimit: { type: Number, required: false, min: 1, max: 20, default: null },
     userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null }
   },
   { timestamps: true }

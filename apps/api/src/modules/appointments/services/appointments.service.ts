@@ -793,6 +793,18 @@ export class AppointmentsService {
       throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Requested slot is not available');
     }
 
+    if (firstSlot.available === false && firstSlot.blockedReason === 'progressive_release') {
+      throw new AppError(
+        'SLOT_BLOCKED_BY_PROGRESSIVE_RELEASE',
+        409,
+        'Este horario todavía no está habilitado para reservas. Elegí uno de los primeros turnos disponibles.'
+      );
+    }
+
+    if (firstSlot.available === false) {
+      throw new AppError('SLOT_NOT_AVAILABLE', 409, 'Requested slot is not available');
+    }
+
     if (durationMultiplier === 1) {
       return { endAt: parseIsoDate(firstSlot.endsAtIso, 'endAt') };
     }

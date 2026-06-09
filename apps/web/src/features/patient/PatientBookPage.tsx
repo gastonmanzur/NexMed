@@ -17,7 +17,7 @@ import {
 const today = getTodayArgentinaDateKey();
 const nextWeek = addDaysToDateKey(today, 6);
 
-type BookableSlot = { startsAtIso: string; endsAtIso: string; startTime: string; endTime: string };
+type BookableSlot = { startsAtIso: string; endsAtIso: string; startTime: string; endTime: string; available?: boolean; blockedReason?: string; displayLabel?: string };
 type CatalogProfessional = { id: string; displayName: string; specialtyIds: string[] };
 type CatalogSpecialty = { id: string; name: string; professionalIds: string[] };
 
@@ -348,7 +348,8 @@ export const PatientBookPage = (): ReactElement => {
           {slots.filter((slot) => isFutureSlot(slot, now)).map((slot) => {
             const doubleEndSlot = getDoubleEndSlot(slot);
             const slotStillFuture = isFutureSlot(slot, now);
-            const canBookSelectedDuration = slotStillFuture && (durationMultiplier === 1 || Boolean(doubleEndSlot));
+            const slotIsReleased = slot.available !== false;
+            const canBookSelectedDuration = slotStillFuture && slotIsReleased && (durationMultiplier === 1 || Boolean(doubleEndSlot));
             const selectedEndAt = durationMultiplier === 2 && doubleEndSlot ? doubleEndSlot.endsAtIso : slot.endsAtIso;
             const selectedEndTime = durationMultiplier === 2 && doubleEndSlot ? doubleEndSlot.endTime : slot.endTime;
             const estimatedMinutes = slotDurationMinutes(slot) * durationMultiplier;
@@ -374,10 +375,12 @@ export const PatientBookPage = (): ReactElement => {
                 <div className="nx-doctor-card__meta">
                   <span>Confirmación inmediata</span>
                   <span>Reserva online</span>
-                  <span>{durationMultiplier === 2 ? 'Turno doble' : 'Turno simple'}</span>
+                  <span>{slot.available === false ? slot.displayLabel ?? 'Disponible próximamente' : durationMultiplier === 2 ? 'Turno doble' : 'Turno simple'}</span>
                 </div>
 
-                {!canBookSelectedDuration ? (
+                {slot.available === false ? (
+                  <p className="nx-book-slot-warning">Disponible próximamente por agenda progresiva.</p>
+                ) : !canBookSelectedDuration ? (
                   <p className="nx-book-slot-warning">
                     Este horario no permite turno doble porque no hay disponibilidad suficiente.
                   </p>
@@ -397,6 +400,10 @@ export const PatientBookPage = (): ReactElement => {
                         setError('');
                         if (!isValidCombination) {
                           setError('Seleccioná un profesional y una especialidad compatibles antes de reservar.');
+                          return;
+                        }
+                        if (slot.available === false) {
+                          setError('Este horario todavía no está habilitado para reservas. Elegí uno de los primeros turnos disponibles.');
                           return;
                         }
                         if (!isFutureSlot(slot, new Date())) {
@@ -428,7 +435,7 @@ export const PatientBookPage = (): ReactElement => {
                       }
                     }}
                   >
-                    {durationMultiplier === 2 ? 'Reservar turno doble' : 'Reservar turno simple'}
+                    {slot.available === false ? 'Disponible próximamente' : durationMultiplier === 2 ? 'Reservar turno doble' : 'Reservar turno simple'}
                   </button>
                 </div>
               </li>

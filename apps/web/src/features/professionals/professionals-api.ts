@@ -1,4 +1,4 @@
-import type { ProfessionalDto } from '@starter/shared-types';
+import type { AvailabilityReleaseMode, ProfessionalDto } from '@starter/shared-types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
 
@@ -75,6 +75,8 @@ export const professionalsApi = {
       phone?: string;
       licenseNumber?: string;
       notes?: string;
+      availabilityReleaseMode?: AvailabilityReleaseMode;
+      availabilityReleaseLimit?: number | null;
       specialtyIds?: string[];
     }
   ): Promise<ProfessionalDto> => {
@@ -99,6 +101,8 @@ export const professionalsApi = {
       licenseNumber?: string;
       notes?: string;
       status?: 'active' | 'inactive' | 'archived';
+      availabilityReleaseMode?: AvailabilityReleaseMode;
+      availabilityReleaseLimit?: number | null;
       specialtyIds?: string[];
     }
   ): Promise<ProfessionalDto> => {

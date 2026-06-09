@@ -11,6 +11,8 @@ interface CreateProfessionalInput {
   notes?: string | undefined;
   avatarUrl?: string | null | undefined;
   status?: 'active' | 'inactive' | 'archived' | undefined;
+  availabilityReleaseMode?: 'free' | 'progressive' | undefined;
+  availabilityReleaseLimit?: number | null | undefined;
   userId?: string | null | undefined;
 }
 
@@ -24,6 +26,8 @@ interface UpdateProfessionalInput {
   notes?: string | undefined;
   avatarUrl?: string | null | undefined;
   status?: 'active' | 'inactive' | 'archived' | undefined;
+  availabilityReleaseMode?: 'free' | 'progressive' | undefined;
+  availabilityReleaseLimit?: number | null | undefined;
   userId?: string | null | undefined;
 }
 

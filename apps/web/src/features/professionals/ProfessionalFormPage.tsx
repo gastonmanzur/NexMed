@@ -1,4 +1,4 @@
-import type { OrganizationMemberRole, SpecialtyDto } from '@starter/shared-types';
+import type { AvailabilityReleaseMode, OrganizationMemberRole, SpecialtyDto } from '@starter/shared-types';
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { resolveAvatarUrl } from '../../lib/resolve-avatar-url';
@@ -30,6 +30,8 @@ export const ProfessionalFormPage = (): ReactElement => {
   const [licenseNumber, setLicenseNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive' | 'archived'>('active');
+  const [availabilityReleaseMode, setAvailabilityReleaseMode] = useState<AvailabilityReleaseMode>('free');
+  const [availabilityReleaseLimit, setAvailabilityReleaseLimit] = useState('3');
   const [specialties, setSpecialties] = useState<SpecialtyDto[]>([]);
   const [selectedSpecialtyIds, setSelectedSpecialtyIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,6 +67,8 @@ export const ProfessionalFormPage = (): ReactElement => {
           setLicenseNumber(professional.licenseNumber ?? '');
           setNotes(professional.notes ?? '');
           setStatus(professional.status);
+          setAvailabilityReleaseMode(professional.availabilityReleaseMode);
+          setAvailabilityReleaseLimit(String(professional.availabilityReleaseLimit ?? 3));
           setSelectedSpecialtyIds(professional.specialties.map((specialty) => specialty.id));
           setAvatarPreview(professional.avatarUrl ? resolveAvatarUrl(professional.avatarUrl) : null);
         }
@@ -169,6 +173,49 @@ export const ProfessionalFormPage = (): ReactElement => {
             </fieldset>
 
 
+
+            <fieldset className="nx-entity-form-page__fieldset">
+              <legend>Modo de habilitación de turnos</legend>
+              <p className="nx-entity-form-page__hint">
+                En agenda progresiva, los pacientes solo podrán elegir los primeros turnos disponibles del día. Cuando esos turnos se reserven, se habilitarán los siguientes.
+              </p>
+              <div className="nx-entity-form-page__checkboxes">
+                <label className="nx-checkbox-field nx-entity-form-page__checkbox-item">
+                  <input
+                    type="radio"
+                    name="availabilityReleaseMode"
+                    value="free"
+                    checked={availabilityReleaseMode === 'free'}
+                    onChange={() => setAvailabilityReleaseMode('free')}
+                  />
+                  <span>Agenda libre</span>
+                </label>
+                <label className="nx-checkbox-field nx-entity-form-page__checkbox-item">
+                  <input
+                    type="radio"
+                    name="availabilityReleaseMode"
+                    value="progressive"
+                    checked={availabilityReleaseMode === 'progressive'}
+                    onChange={() => setAvailabilityReleaseMode('progressive')}
+                  />
+                  <span>Habilitar turnos progresivamente</span>
+                </label>
+              </div>
+              {availabilityReleaseMode === 'progressive' ? (
+                <label className="nx-field" style={{ marginTop: '0.75rem' }}>
+                  <span>Cantidad de turnos habilitados por día</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={availabilityReleaseLimit}
+                    onChange={(event) => setAvailabilityReleaseLimit(event.target.value)}
+                  />
+                </label>
+              ) : null}
+            </fieldset>
+
             <fieldset className="nx-entity-form-page__fieldset">
               <legend>Foto del profesional</legend>
               <div className="nx-professional-avatar-upload">
@@ -242,6 +289,10 @@ export const ProfessionalFormPage = (): ReactElement => {
 
                     if (!firstName.trim()) throw new Error('El nombre es obligatorio');
                     if (!lastName.trim()) throw new Error('El apellido es obligatorio');
+                    const parsedAvailabilityReleaseLimit = Number(availabilityReleaseLimit);
+                    if (availabilityReleaseMode === 'progressive' && (!Number.isInteger(parsedAvailabilityReleaseLimit) || parsedAvailabilityReleaseLimit < 1 || parsedAvailabilityReleaseLimit > 20)) {
+                      throw new Error('La cantidad de turnos habilitados por día debe ser un entero entre 1 y 20.');
+                    }
 
                     const payload = {
                       firstName,
@@ -251,6 +302,8 @@ export const ProfessionalFormPage = (): ReactElement => {
                       ...(licenseNumber.trim() ? { licenseNumber } : {}),
                       ...(notes.trim() ? { notes } : {}),
                       specialtyIds: selectedSpecialtyIds,
+                      availabilityReleaseMode,
+                      availabilityReleaseLimit: availabilityReleaseMode === 'progressive' ? parsedAvailabilityReleaseLimit : null,
                       ...(isEdit ? { status } : {})
                     };
 

@@ -1,4 +1,4 @@
-import type { ProfessionalDto, ProfessionalStatus, SpecialtyDto, SpecialtyStatus, SpecialtySummaryDto } from '@starter/shared-types';
+import type { AvailabilityReleaseMode, ProfessionalDto, ProfessionalStatus, SpecialtyDto, SpecialtyStatus, SpecialtySummaryDto } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
 import { ProfessionalRepository } from '../repositories/professional.repository.js';
 import { SpecialtyRepository } from '../repositories/specialty.repository.js';
@@ -14,6 +14,8 @@ interface UpsertProfessionalInput {
   licenseNumber?: string | undefined;
   notes?: string | undefined;
   status?: ProfessionalStatus | undefined;
+  availabilityReleaseMode?: AvailabilityReleaseMode | undefined;
+  availabilityReleaseLimit?: number | null | undefined;
   specialtyIds?: string[] | undefined;
 }
 
@@ -90,6 +92,8 @@ export class ProfessionalsService {
       licenseNumber: normalized.licenseNumber,
       notes: normalized.notes,
       status: normalized.status ?? 'active',
+      availabilityReleaseMode: normalized.availabilityReleaseMode ?? 'free',
+      availabilityReleaseLimit: normalized.availabilityReleaseLimit ?? null,
       userId: null
     });
 
@@ -125,6 +129,8 @@ export class ProfessionalsService {
     licenseNumber?: string | undefined;
     notes?: string | undefined;
     status?: ProfessionalStatus | undefined;
+    availabilityReleaseMode?: AvailabilityReleaseMode | undefined;
+    availabilityReleaseLimit?: number | null | undefined;
     specialtyIds?: string[] | undefined;
   }, actor?: { globalRole?: 'super_admin' | 'user' }): Promise<ProfessionalDto> {
     const normalized = this.normalizeProfessionalPatchInput(input);
@@ -157,7 +163,9 @@ export class ProfessionalsService {
       ...(normalized.phone !== undefined ? { phone: normalized.phone } : {}),
       ...(normalized.licenseNumber !== undefined ? { licenseNumber: normalized.licenseNumber } : {}),
       ...(normalized.notes !== undefined ? { notes: normalized.notes } : {}),
-      ...(normalized.status !== undefined ? { status: normalized.status } : {})
+      ...(normalized.status !== undefined ? { status: normalized.status } : {}),
+      ...(normalized.availabilityReleaseMode !== undefined ? { availabilityReleaseMode: normalized.availabilityReleaseMode } : {}),
+      ...(normalized.availabilityReleaseLimit !== undefined ? { availabilityReleaseLimit: normalized.availabilityReleaseLimit } : {})
     });
 
     if (!professional) {
@@ -392,6 +400,7 @@ export class ProfessionalsService {
       licenseNumber: this.normalizeOptionalText(input.licenseNumber),
       notes: this.normalizeOptionalText(input.notes),
       status: input.status,
+      ...this.normalizeAvailabilityRelease(input.availabilityReleaseMode, input.availabilityReleaseLimit, true),
       specialtyIds: input.specialtyIds ? this.normalizeIds(input.specialtyIds) : undefined
     };
   }
@@ -404,6 +413,8 @@ export class ProfessionalsService {
     licenseNumber?: string | undefined;
     notes?: string | undefined;
     status?: ProfessionalStatus | undefined;
+    availabilityReleaseMode?: AvailabilityReleaseMode | undefined;
+    availabilityReleaseLimit?: number | null | undefined;
     specialtyIds?: string[] | undefined;
   }): {
     firstName?: string | undefined;
@@ -413,6 +424,8 @@ export class ProfessionalsService {
     licenseNumber?: string | undefined;
     notes?: string | undefined;
     status?: ProfessionalStatus | undefined;
+    availabilityReleaseMode?: AvailabilityReleaseMode | undefined;
+    availabilityReleaseLimit?: number | null | undefined;
     specialtyIds?: string[] | undefined;
   } {
     return {
@@ -423,8 +436,54 @@ export class ProfessionalsService {
       ...(input.licenseNumber !== undefined ? { licenseNumber: this.normalizeOptionalText(input.licenseNumber) } : {}),
       ...(input.notes !== undefined ? { notes: this.normalizeOptionalText(input.notes) } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
+      ...this.normalizeAvailabilityRelease(input.availabilityReleaseMode, input.availabilityReleaseLimit, false),
       ...(input.specialtyIds !== undefined ? { specialtyIds: this.normalizeIds(input.specialtyIds) } : {})
     };
+  }
+
+
+  private normalizeAvailabilityRelease(
+    mode: AvailabilityReleaseMode | undefined,
+    limit: number | null | undefined,
+    includeDefaults: boolean
+  ): { availabilityReleaseMode?: AvailabilityReleaseMode; availabilityReleaseLimit?: number | null } {
+    const nextMode = mode ?? (includeDefaults ? 'free' : undefined);
+
+    if (nextMode !== undefined && nextMode !== 'free' && nextMode !== 'progressive') {
+      throw new AppError('INVALID_AVAILABILITY_RELEASE_MODE', 400, 'availabilityReleaseMode must be free or progressive');
+    }
+
+    if (nextMode === 'free') {
+      return {
+        availabilityReleaseMode: 'free',
+        availabilityReleaseLimit: null
+      };
+    }
+
+    if (nextMode === 'progressive') {
+      if (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 20) {
+        throw new AppError('INVALID_AVAILABILITY_RELEASE_LIMIT', 400, 'availabilityReleaseLimit must be an integer between 1 and 20 for progressive release');
+      }
+
+      return {
+        availabilityReleaseMode: 'progressive',
+        availabilityReleaseLimit: limit as number
+      };
+    }
+
+    if (limit !== undefined) {
+      if (limit === null) {
+        return { availabilityReleaseLimit: null };
+      }
+
+      if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
+        throw new AppError('INVALID_AVAILABILITY_RELEASE_LIMIT', 400, 'availabilityReleaseLimit must be an integer between 1 and 20');
+      }
+
+      return { availabilityReleaseLimit: limit };
+    }
+
+    return {};
   }
 
   private normalizeSpecialtyInput(input: UpsertSpecialtyInput): UpsertSpecialtyInput {
@@ -491,6 +550,8 @@ export class ProfessionalsService {
       notes?: string | null;
       avatarUrl?: string | null;
       status: ProfessionalStatus;
+      availabilityReleaseMode?: AvailabilityReleaseMode | null;
+      availabilityReleaseLimit?: number | null;
       userId?: { toString(): string } | null;
       createdAt: Date;
       updatedAt: Date;
@@ -509,6 +570,8 @@ export class ProfessionalsService {
       notes: professional.notes ?? null,
       avatarUrl: professional.avatarUrl ?? null,
       status: professional.status,
+      availabilityReleaseMode: professional.availabilityReleaseMode ?? 'free',
+      availabilityReleaseLimit: professional.availabilityReleaseMode === 'progressive' ? professional.availabilityReleaseLimit ?? null : null,
       userId: professional.userId ? professional.userId.toString() : null,
       specialties,
       createdAt: professional.createdAt.toISOString(),
