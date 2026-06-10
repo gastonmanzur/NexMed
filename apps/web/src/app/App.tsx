@@ -13,6 +13,7 @@ import { AdminDiscountDetailPage } from '../features/admin/AdminDiscountDetailPa
 import {
   LoginPage,
   RegisterPage,
+  PatientRegistrationUnavailablePage,
   ForgotPasswordPage,
   ResetPasswordPage,
   VerifyEmailPage,
@@ -66,6 +67,8 @@ export const App = (): ReactElement => {
       <Route path="/demo" element={<DemoAppPage />} />
 
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/register/patient" element={<PatientRegistrationUnavailablePage />} />
+      <Route path="/signup/patient" element={<PatientRegistrationUnavailablePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/join/:tokenOrSlug" element={<JoinPage />} />

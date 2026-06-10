@@ -32,7 +32,7 @@ export const DemoTour = (): ReactElement => {
       <div className="demo-tour-progress"><span style={{ width: `${progress}%` }} /></div>
       <h3>{step.title}</h3>
       <p>{step.description}</p>
-      {stepIndex === demoTourSteps.length - 1 ? <div className="demo-tour-cta"><Link to="/register" className="nx-btn">Crear cuenta</Link><a href="https://wa.me/541122626516?text=Hola%2C%20quiero%20activar%20NexMed" target="_blank" rel="noreferrer" className="nx-btn-secondary">Hablar por WhatsApp</a><Link to="/" className="nx-btn-tertiary">Volver a la landing</Link></div> : null}
+      {stepIndex === demoTourSteps.length - 1 ? <div className="demo-tour-cta"><Link to="/register" className="nx-btn">Crear cuenta del centro</Link><a href="https://wa.me/541122626516?text=Hola%2C%20quiero%20activar%20NexMed" target="_blank" rel="noreferrer" className="nx-btn-secondary">Hablar por WhatsApp</a><Link to="/" className="nx-btn-tertiary">Volver a la landing</Link></div> : null}
       <div className="demo-tour-actions"><button className="nx-btn-tertiary" disabled={stepIndex===0} onClick={() => setStepIndex((v)=>Math.max(0,v-1))}>Anterior</button><button className="nx-btn-secondary" onClick={() => setOpen(false)}>Omitir</button><button className="nx-btn" onClick={() => setStepIndex((v)=>Math.min(demoTourSteps.length-1,v+1))}>{stepIndex===demoTourSteps.length-1?'Finalizado':'Siguiente'}</button></div>
     </aside>
   </div>;

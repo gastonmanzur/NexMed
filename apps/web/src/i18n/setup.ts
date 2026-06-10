@@ -14,7 +14,7 @@ void i18n.use(initReactI18next).init({
         },
         auth: {
           common: { goLogin: 'Ir a login' },
-          register: { title: 'Registro', submit: 'Crear cuenta', success: 'Registro exitoso, revisa tu email.' },
+          register: { title: 'Registrá tu centro', submit: 'Crear cuenta del centro', success: 'Registro exitoso, revisa tu email.' },
           login: { title: 'Login', submit: 'Ingresar', google: 'Entrar con Google', forgot: '¿Olvidaste tu contraseña?' },
           verify: { title: 'Verificar email', submit: 'Verificar', success: 'Email verificado correctamente' },
           forgot: { title: 'Recuperar contraseña', submit: 'Enviar email', success: 'Si existe la cuenta, enviamos un email.' },
@@ -74,7 +74,7 @@ void i18n.use(initReactI18next).init({
         },
         auth: {
           common: { goLogin: 'Go to login' },
-          register: { title: 'Register', submit: 'Create account', success: 'Registration successful, check your email.' },
+          register: { title: 'Register your center', submit: 'Create center account', success: 'Registration successful, check your email.' },
           login: { title: 'Login', submit: 'Sign in', google: 'Sign in with Google', forgot: 'Forgot your password?' },
           verify: { title: 'Verify email', submit: 'Verify', success: 'Email verified successfully' },
           forgot: { title: 'Forgot password', submit: 'Send email', success: 'If account exists, email has been sent.' },

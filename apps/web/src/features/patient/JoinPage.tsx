@@ -49,7 +49,7 @@ export const JoinPage = (): ReactElement => {
               {!user ? (
                 <div className="nx-join__actions" role="group" aria-label="Acciones de acceso para completar la vinculación">
                   <Link className="nx-btn nx-join__action" to="/login">Iniciar sesión</Link>
-                  <Link className="nx-btn-secondary nx-join__action" to="/register">Crear cuenta</Link>
+                  <p className="nx-join__status">Si todavía no tenés acceso, continuá desde el link o QR provisto por el centro.</p>
                 </div>
               ) : (
                 <p className="nx-join__status">Resolviendo vinculación...</p>
