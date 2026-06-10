@@ -88,8 +88,11 @@ export class NotificationService {
     const patientProfile = await this.patientProfiles.findById(appointment.patientProfileId);
     if (!patientProfile) return;
 
+    const targetUserId = (patientProfile.ownerUserId ?? patientProfile.userId)?.toString();
+    if (!targetUserId) return;
+
     await this.create({
-      userId: (patientProfile.ownerUserId ?? patientProfile.userId).toString(),
+      userId: targetUserId,
       organizationId: appointment.organizationId,
       patientProfileId: appointment.patientProfileId,
       type,

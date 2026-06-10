@@ -339,6 +339,7 @@ export class OrganizationService {
       email: row.user?.email ?? null,
       insuranceProvider: row.profile.insuranceProvider ?? null,
       insuranceMemberId: row.profile.insuranceMemberId ?? null,
+      source: row.profile.source ?? null,
       totalAppointments: Number(row.appointmentStats.totalAppointments ?? 0),
       lastAppointmentAt: row.appointmentStats.lastAppointmentAt ? new Date(row.appointmentStats.lastAppointmentAt).toISOString() : null,
       relationshipToOwner: row.profile.relationshipToOwner ?? null,
@@ -383,7 +384,7 @@ export class OrganizationService {
         phone: profile.phone ?? null, dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString().slice(0, 10) : null, documentId: profile.documentId ?? null,
         sex: profile.sex ?? null, nationality: profile.nationality ?? null, address: profile.address ?? null, city: profile.city ?? null, province: profile.province ?? null,
         emergencyContactName: profile.emergencyContactName ?? null, emergencyContactPhone: profile.emergencyContactPhone ?? null, emergencyContactRelationship: profile.emergencyContactRelationship ?? null,
-        insuranceProvider: profile.insuranceProvider ?? null, insuranceMemberId: profile.insuranceMemberId ?? null, insurancePlan: profile.insurancePlan ?? null,
+        insuranceProvider: profile.insuranceProvider ?? null, insuranceMemberId: profile.insuranceMemberId ?? null, insurancePlan: profile.insurancePlan ?? null, source: profile.source ?? null, normalizedPhone: profile.normalizedPhone ?? null,
         bloodType: profile.bloodType ?? null, allergies: profile.allergies ?? null, regularMedication: profile.regularMedication ?? null, preexistingConditions: profile.preexistingConditions ?? null,
         previousSurgeries: profile.previousSurgeries ?? null, medicalNotes: profile.medicalNotes ?? null, contactPreference: profile.contactPreference ?? null,
         acceptsNotifications: profile.acceptsNotifications ?? false, acceptsReminders: profile.acceptsReminders ?? false, acceptsEmailCommunications: profile.acceptsEmailCommunications ?? false, acceptsWhatsAppCommunications: profile.acceptsWhatsAppCommunications ?? false,
@@ -395,6 +396,9 @@ export class OrganizationService {
       linkStatus: link.status,
       totalAppointments: stats[0]?.totalAppointments ?? 0,
       lastAppointmentAt: stats[0]?.lastAppointmentAt ? new Date(stats[0].lastAppointmentAt).toISOString() : null,
+      defaultCoverageType: profile.insuranceProvider ? (profile.insuranceProvider === 'Particular' ? 'private' : 'health_insurance') : null,
+      defaultHealthInsuranceName: profile.insuranceProvider ?? null,
+      defaultInsuranceMemberNumber: profile.insuranceMemberId ?? null,
       ownerName: (profile.isPrimaryProfile ?? true) ? null : `${ownerUser?.firstName ?? ''} ${ownerUser?.lastName ?? ''}`.trim() || null
     };
   }

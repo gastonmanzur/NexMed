@@ -12,6 +12,7 @@ import { professionalAvailabilityRouter } from '../availability/availability.rou
 import { appointmentsRouter } from '../appointments/appointments.routes.js';
 import { organizationReminderRouter } from '../reminders/reminder.routes.js';
 import { analyticsRouter } from '../analytics/analytics.routes.js';
+import { organizationHealthInsuranceRouter } from './organization-health-insurance.routes.js';
 
 export const organizationsRouter = Router();
 
@@ -127,6 +128,7 @@ organizationsRouter.use('/:organizationId/professionals', professionalsRouter);
 organizationsRouter.use('/:organizationId/specialties', specialtiesRouter);
 organizationsRouter.use('/:organizationId/professionals/:professionalId', professionalAvailabilityRouter);
 organizationsRouter.use('/:organizationId/appointments', appointmentsRouter);
+organizationsRouter.use('/:organizationId/health-insurances', organizationHealthInsuranceRouter);
 
 organizationsRouter.use('/:organizationId/reminder-rules', organizationReminderRouter);
 organizationsRouter.use('/:organizationId/analytics', analyticsRouter);

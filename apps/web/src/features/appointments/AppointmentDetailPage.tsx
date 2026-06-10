@@ -111,6 +111,26 @@ export const AppointmentDetailPage = (): ReactElement => {
                   <dt className="nx-appointment-detail__label">Fin</dt>
                   <dd className="nx-appointment-detail__value">{formatArgentinaTime(appointment.endAt)}</dd>
                 </div>
+                <div className="nx-appointment-detail__item">
+                  <dt className="nx-appointment-detail__label">Cobertura</dt>
+                  <dd className="nx-appointment-detail__value">{appointment.healthInsuranceName ?? 'Particular'}</dd>
+                </div>
+                {appointment.insuranceMemberNumber ? (
+                  <div className="nx-appointment-detail__item">
+                    <dt className="nx-appointment-detail__label">N° afiliado</dt>
+                    <dd className="nx-appointment-detail__value">{appointment.insuranceMemberNumber}</dd>
+                  </div>
+                ) : null}
+                {appointment.notes ? (
+                  <div className="nx-appointment-detail__item">
+                    <dt className="nx-appointment-detail__label">Motivo</dt>
+                    <dd className="nx-appointment-detail__value">{appointment.notes}</dd>
+                  </div>
+                ) : null}
+                <div className="nx-appointment-detail__item">
+                  <dt className="nx-appointment-detail__label">Origen</dt>
+                  <dd className="nx-appointment-detail__value">{appointment.source === 'express_booking' ? 'Reserva express' : appointment.source}</dd>
+                </div>
               </dl>
 
               <div className="nx-appointment-detail__actions">

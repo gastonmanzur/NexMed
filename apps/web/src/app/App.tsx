@@ -54,6 +54,7 @@ import { OrganizationPatientsPage } from '../features/organizations/Organization
 import { FeedbackPage } from '../features/feedback/FeedbackPage';
 import { AppShell } from '../components/AppShell';
 import { OrganizationInvitePage } from '../features/organizations/OrganizationInvitePage';
+import { OrganizationHealthInsurancesPage } from '../features/organizations/OrganizationHealthInsurancesPage';
 import { OrganizationSubscriptionPage } from '../features/subscription/OrganizationSubscriptionPage';
 import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
 
@@ -268,6 +269,15 @@ export const App = (): ReactElement => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/app/health-insurances"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
+            {shell(<OrganizationHealthInsurancesPage />)}
+          </ProtectedRoute>
+        }
+      />
+      
       <Route
         path="/app/patients"
         element={

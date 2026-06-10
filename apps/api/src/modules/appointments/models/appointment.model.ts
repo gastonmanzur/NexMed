@@ -11,7 +11,7 @@ export const appointmentStatuses = [
   'no_show'
 ] as const;
 
-export const appointmentSources = ['staff_manual', 'admin_manual', 'patient_self_service'] as const;
+export const appointmentSources = ['staff_manual', 'admin_manual', 'patient_self_service', 'express_booking'] as const;
 export const appointmentBeneficiaryTypes = ['self', 'family_member'] as const;
 
 const appointmentSchema = new mongoose.Schema(
@@ -29,12 +29,17 @@ const appointmentSchema = new mongoose.Schema(
     status: { type: String, enum: appointmentStatuses, default: 'booked', index: true },
     source: { type: String, enum: appointmentSources, required: true, index: true },
     notes: { type: String, required: false, trim: true, default: null },
-    createdByUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
-    bookedByUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+    createdByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', index: true, default: null },
+    bookedByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', index: true, default: null },
     beneficiaryType: { type: String, enum: appointmentBeneficiaryTypes, required: true, default: 'self', index: true },
     familyMemberId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'PatientFamilyMember', default: null, index: true },
     beneficiaryDisplayName: { type: String, required: false, trim: true, default: null },
     beneficiaryRelationship: { type: String, required: false, trim: true, default: null },
+    paymentCoverageType: { type: String, enum: ['private', 'health_insurance'], required: true, default: 'private', index: true },
+    healthInsuranceId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'OrganizationHealthInsurance', default: null, index: true },
+    healthInsuranceName: { type: String, required: false, trim: true, maxlength: 120, default: 'Particular' },
+    insuranceMemberNumber: { type: String, required: false, trim: true, maxlength: 60, default: null },
+    insurancePlan: { type: String, required: false, trim: true, maxlength: 60, default: null },
     canceledByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
     canceledAt: { type: Date, required: false, default: null },
     cancelReason: { type: String, required: false, trim: true, default: null },

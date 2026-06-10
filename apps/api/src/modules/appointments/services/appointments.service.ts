@@ -46,6 +46,11 @@ interface CreateAppointmentInput {
   familyMemberId?: string | undefined;
   beneficiaryDisplayName?: string | undefined;
   beneficiaryRelationship?: string | undefined;
+  paymentCoverageType?: 'private' | 'health_insurance' | undefined;
+  healthInsuranceId?: string | null | undefined;
+  healthInsuranceName?: string | null | undefined;
+  insuranceMemberNumber?: string | null | undefined;
+  insurancePlan?: string | null | undefined;
 }
 
 interface CancelAppointmentInput {
@@ -249,6 +254,60 @@ export class AppointmentsService {
         throw new AppError('APPOINTMENT_SLOT_TAKEN', 409, 'El horario acaba de ocuparse. Elegí otro slot.');
       }
 
+      throw error;
+    }
+  }
+
+
+  async createExpressAppointment(
+    organizationId: string,
+    input: Omit<CreateAppointmentInput, 'source'>
+  ): Promise<AppointmentDto> {
+    const normalized = await this.validateCreateInput(organizationId, {
+      ...input,
+      source: 'express_booking'
+    });
+
+    await this.assertSlotAvailable(
+      organizationId,
+      normalized.professionalId,
+      normalized.startAt,
+      normalized.endAt,
+      normalized.durationMultiplier
+    );
+
+    try {
+      const created = await this.appointments.create({
+        organizationId,
+        professionalId: normalized.professionalId,
+        ...(normalized.specialtyId ? { specialtyId: normalized.specialtyId } : {}),
+        ...(normalized.patientProfileId ? { patientProfileId: normalized.patientProfileId } : {}),
+        patientName: normalized.patientName,
+        ...(normalized.patientEmail ? { patientEmail: normalized.patientEmail } : {}),
+        ...(normalized.patientPhone ? { patientPhone: normalized.patientPhone } : {}),
+        startAt: normalized.startAt,
+        endAt: normalized.endAt,
+        durationMultiplier: normalized.durationMultiplier,
+        status: 'booked',
+        source: 'express_booking',
+        ...(normalized.notes ? { notes: normalized.notes } : {}),
+        createdByUserId: null,
+        bookedByUserId: null,
+        beneficiaryType: normalized.beneficiaryType,
+        beneficiaryDisplayName: normalized.beneficiaryDisplayName,
+        paymentCoverageType: input.paymentCoverageType ?? 'private',
+        healthInsuranceId: input.healthInsuranceId ?? null,
+        healthInsuranceName: input.healthInsuranceName ?? 'Particular',
+        insuranceMemberNumber: input.insuranceMemberNumber ?? null,
+        insurancePlan: input.insurancePlan ?? null
+      });
+
+      await this.reminders.scheduleForAppointment(created);
+      return this.toDto(created);
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+        throw new AppError('APPOINTMENT_SLOT_TAKEN', 409, 'El horario acaba de ocuparse. Elegí otro slot.');
+      }
       throw error;
     }
   }
@@ -866,12 +925,17 @@ export class AppointmentsService {
       status: document.status,
       source: document.source,
       notes: document.notes ?? null,
-      createdByUserId: document.createdByUserId.toString(),
-      bookedByUserId: (document.bookedByUserId ?? document.createdByUserId).toString(),
+      createdByUserId: document.createdByUserId ? document.createdByUserId.toString() : null,
+      bookedByUserId: document.bookedByUserId ? document.bookedByUserId.toString() : (document.createdByUserId ? document.createdByUserId.toString() : null),
       beneficiaryType: document.beneficiaryType ?? 'self',
       familyMemberId: document.familyMemberId ? document.familyMemberId.toString() : null,
       beneficiaryDisplayName: document.beneficiaryDisplayName ?? document.patientName,
       beneficiaryRelationship: document.beneficiaryRelationship ?? null,
+      paymentCoverageType: document.paymentCoverageType ?? 'private',
+      healthInsuranceId: document.healthInsuranceId ? document.healthInsuranceId.toString() : null,
+      healthInsuranceName: document.healthInsuranceName ?? 'Particular',
+      insuranceMemberNumber: document.insuranceMemberNumber ?? null,
+      insurancePlan: document.insurancePlan ?? null,
       canceledByUserId: document.canceledByUserId ? document.canceledByUserId.toString() : null,
       canceledAt: document.canceledAt ? document.canceledAt.toISOString() : null,
       cancelReason: document.cancelReason ?? null,

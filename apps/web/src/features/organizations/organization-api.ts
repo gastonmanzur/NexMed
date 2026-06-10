@@ -5,7 +5,8 @@ import type {
   OrganizationMembershipDto,
   OrganizationOnboardingStatusDto,
   OrganizationProfileDto,
-  ReminderRuleDto
+  ReminderRuleDto,
+  OrganizationHealthInsuranceDto
 } from '@starter/shared-types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
@@ -192,6 +193,19 @@ export const organizationApi = {
     return result.data;
   },
 
+
+  listHealthInsurances: async (accessToken: string, organizationId: string): Promise<OrganizationHealthInsuranceDto[]> => {
+    const result = await request<{ success: true; data: OrganizationHealthInsuranceDto[] }>(`/organizations/${organizationId}/health-insurances`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+  createHealthInsurance: async (accessToken: string, organizationId: string, input: { name: string; status?: 'active' | 'inactive'; requiresMemberNumber?: boolean; requiresPlan?: boolean; notes?: string }): Promise<OrganizationHealthInsuranceDto> => {
+    const result = await request<{ success: true; data: OrganizationHealthInsuranceDto }>(`/organizations/${organizationId}/health-insurances`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });
+    return result.data;
+  },
+  updateHealthInsurance: async (accessToken: string, organizationId: string, id: string, input: Partial<OrganizationHealthInsuranceDto>): Promise<OrganizationHealthInsuranceDto> => {
+    const result = await request<{ success: true; data: OrganizationHealthInsuranceDto }>(`/organizations/${organizationId}/health-insurances/${id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });
+    return result.data;
+  },
   listReminderRules: async (accessToken: string, organizationId: string): Promise<ReminderRuleDto[]> => {
     const result = await request<{ success: true; data: ReminderRuleDto[] }>(`/organizations/${organizationId}/reminder-rules`, {
       method: 'GET',

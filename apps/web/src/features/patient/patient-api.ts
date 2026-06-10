@@ -1,9 +1,9 @@
-import type { AppointmentDto, AppointmentDurationMultiplier, AppointmentStatus, CalculatedAvailabilityDto, JoinOrganizationPreviewDto, NotificationDto, PatientFamilyMemberDto, PatientMeDto, PatientOrganizationSummaryDto, PatientProfileDto, UserEventDto, WaitlistRequestDto } from '@starter/shared-types';
+import type { AppointmentDto, AppointmentDurationMultiplier, AppointmentStatus, CalculatedAvailabilityDto, JoinOrganizationPreviewDto, NotificationDto, PatientFamilyMemberDto, PatientMeDto, PatientOrganizationSummaryDto, PatientProfileDto, UserEventDto, WaitlistRequestDto, OrganizationHealthInsuranceDto } from '@starter/shared-types';
 const rawApiUrl = import.meta.env.VITE_API_URL;
 if (!rawApiUrl) throw new Error('Missing required VITE_API_URL');
 const API_URL = rawApiUrl.replace(/\/$/, '');
 
-type PatientCatalog = {
+export type PatientCatalog = {
   professionals: Array<{ id: string; displayName: string; specialtyIds: string[] }>;
   specialties: Array<{ id: string; name: string; professionalIds: string[] }>;
 };
@@ -18,6 +18,11 @@ const request = async <T>(path: string, init: RequestInit): Promise<T> => {
   return payload ?? ({} as T);
 };
 export const patientApi = {
+
+  getPublicCatalog: async (tokenOrSlug: string): Promise<PatientCatalog> => (await request<{ success: true; data: PatientCatalog }>(`/join/${encodeURIComponent(tokenOrSlug)}/catalog`, { method: 'GET' })).data,
+  getPublicAvailability: async (tokenOrSlug: string, params: { professionalId: string; specialtyId: string; startDate: string; endDate: string }): Promise<CalculatedAvailabilityDto> => (await request<{ success: true; data: CalculatedAvailabilityDto }>(`/join/${encodeURIComponent(tokenOrSlug)}/availability?${new URLSearchParams(params).toString()}`, { method: 'GET' })).data,
+  getPublicHealthInsurances: async (tokenOrSlug: string): Promise<OrganizationHealthInsuranceDto[]> => (await request<{ success: true; data: OrganizationHealthInsuranceDto[] }>(`/join/${encodeURIComponent(tokenOrSlug)}/health-insurances`, { method: 'GET' })).data,
+  createExpressAppointment: async (tokenOrSlug: string, input: { professionalId: string; specialtyId: string; startAt: string; endAt?: string; appointmentType?: 'single' | 'double'; patient: { firstName: string; lastName: string; phone: string; email?: string; documentNumber?: string; birthDate?: string }; coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string; insuranceMemberNumber?: string; insurancePlan?: string }; reason?: string }): Promise<AppointmentDto> => (await request<{ success: true; data: AppointmentDto }>(`/join/${encodeURIComponent(tokenOrSlug)}/appointments/express`, { method: 'POST', body: JSON.stringify(input) })).data,
   getJoinPreview: async (tokenOrSlug: string): Promise<JoinOrganizationPreviewDto> => (await request<{ success: true; data: JoinOrganizationPreviewDto }>(`/join/${encodeURIComponent(tokenOrSlug)}`, { method: 'GET' })).data,
   resolveJoin: async (accessToken: string, tokenOrSlug: string): Promise<PatientOrganizationSummaryDto> => (await request<{ success: true; data: PatientOrganizationSummaryDto }>(`/patient/join`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ tokenOrSlug }) })).data,
   getMe: async (accessToken: string): Promise<PatientMeDto> => (await request<{ success: true; data: PatientMeDto }>('/patient/me', { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } })).data,
