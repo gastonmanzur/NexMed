@@ -44,7 +44,7 @@ export const demoTourSteps: DemoTourStep[] = [
     id: 'demo-invite',
     title: 'Vinculá pacientes fácilmente',
     description:
-      'Compartí un link o código QR para que tus pacientes se registren y queden asociados al centro.'
+      'Compartí un link o código QR para que tus pacientes ingresen y queden asociados al centro.'
   },
   {
     id: 'demo-settings',

@@ -14,15 +14,15 @@ import { patientApi } from '../patient/patient-api';
 const viewStyle = { maxWidth: 560, margin: '2rem auto', padding: '1rem' };
 const authSurfaceStyle = { maxWidth: 480 };
 const ACCOUNT_INTENT_STORAGE_KEY = 'nexmed.accountIntent';
-type AccountIntent = 'patient' | 'organization';
+type AccountIntent = 'organization';
 
 const readAccountIntent = (): AccountIntent | null => {
   const value = localStorage.getItem(ACCOUNT_INTENT_STORAGE_KEY);
-  return value === 'patient' || value === 'organization' ? value : null;
+  return value === 'organization' ? value : null;
 };
 
-const writeAccountIntent = (intent: AccountIntent): void => {
-  localStorage.setItem(ACCOUNT_INTENT_STORAGE_KEY, intent);
+const writeOrganizationAccountIntent = (): void => {
+  localStorage.setItem(ACCOUNT_INTENT_STORAGE_KEY, 'organization');
 };
 
 const clearAccountIntent = (): void => {
@@ -104,16 +104,22 @@ export const RegisterPage = (): ReactElement => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountIntent, setAccountIntent] = useState<AccountIntent>('organization');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [params] = useSearchParams();
+  const requestedType = params.get('type')?.toLowerCase() ?? params.get('role')?.toLowerCase() ?? '';
+
+  if (requestedType === 'patient' || requestedType === 'paciente') {
+    return <PatientRegistrationUnavailablePage />;
+  }
 
   return (
     <AuthLayout
       title={t('auth.register.title')}
-      subtitle="Creá tu cuenta para gestionar centros, pacientes y turnos desde un único lugar."
+      subtitle="Gestioná turnos, profesionales y pacientes desde una sola plataforma para tu centro."
     >
-      <Card title="Datos de acceso">
+      <Card title="Creá la cuenta de tu centro">
         <div className="nx-form-grid">
           <label className="nx-field">
             <span>Nombre</span>
@@ -134,16 +140,6 @@ export const RegisterPage = (): ReactElement => {
           <label className="nx-field">
             <span>Confirmar contraseña</span>
             <input placeholder="Repetí tu contraseña" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
-          </label>
-        </div>
-
-        <div className="nx-form-grid">
-          <label className="nx-field">
-            <span>Tipo de cuenta</span>
-            <select value={accountIntent} onChange={(event) => setAccountIntent(event.target.value as AccountIntent)}>
-              <option value="organization">Centro / consultorio</option>
-              <option value="patient">Paciente</option>
-            </select>
           </label>
         </div>
 
@@ -168,7 +164,7 @@ export const RegisterPage = (): ReactElement => {
                   password,
                 });
 
-                writeAccountIntent(accountIntent);
+                writeOrganizationAccountIntent();
                 setSession(session);
                 navigate('/post-login');
               } catch (cause) {
@@ -189,7 +185,7 @@ export const RegisterPage = (): ReactElement => {
               try {
                 setLoading(true);
                 setError('');
-                writeAccountIntent(accountIntent);
+                writeOrganizationAccountIntent();
                 await loginWithGoogle();
               } catch (cause) {
                 setError(getGoogleLoginErrorMessage(cause));
@@ -210,6 +206,23 @@ export const RegisterPage = (): ReactElement => {
     </AuthLayout>
   );
 };
+
+export const PatientRegistrationUnavailablePage = (): ReactElement => (
+  <AuthLayout
+    title="Registro de pacientes"
+    subtitle="El registro público de NexMed es exclusivo para centros médicos y estéticos."
+  >
+    <Card title="Ingresá desde el centro">
+      <p className="nx-auth-message">
+        Para reservar un turno, ingresá desde el link o QR del centro, o iniciá sesión si ya tenés una cuenta de paciente.
+      </p>
+      <div className="nx-auth-actions">
+        <Link className="nx-btn" to="/login">Iniciar sesión</Link>
+        <Link className="nx-btn-secondary" to="/">Volver al inicio</Link>
+      </div>
+    </Card>
+  </AuthLayout>
+);
 
 export const LoginPage = (): ReactElement => {
   const { t } = useTranslation();
@@ -284,7 +297,7 @@ export const LoginPage = (): ReactElement => {
         {error ? <p className="nx-auth-message nx-auth-message--error">{error}</p> : null}
 
         <div className="nx-auth-links">
-          <Link to="/register">Crear cuenta</Link>
+          <Link to="/register">Registrar mi centro</Link>
           <Link to="/forgot-password">{t('auth.login.forgot')}</Link>
         </div>
       </Card>
@@ -405,7 +418,7 @@ export const PostLoginResolverPage = (): ReactElement => {
   const shouldGoToPatient =
     activePatientMemberships.length > 0 ||
     hasPatientOrganizations ||
-    (activeCenterMemberships.length === 0 && (hasExistingPatientProfile || accountIntent === 'patient'));
+    (activeCenterMemberships.length === 0 && hasExistingPatientProfile);
   const routeReason = shouldGoToPatient
     ? 'patient-role-or-profile'
     : activeCenterMemberships.length > 0

@@ -44,7 +44,7 @@ const resolveInitialTheme = (): LandingTheme => {
   return window.localStorage.getItem(LANDING_THEME_KEY) === 'light' ? 'light' : 'dark';
 };
 
-const fallbackContent: any = { hero: { eyebrow: 'NexMed | Agenda, turnos y pacientes para centros de salud y estética', title: 'Organizá turnos, automatizá recordatorios y ordená la agenda de tu centro en un solo sistema.', subtitle: 'NexMed te ayuda a reducir trabajo manual en recepción y a sostener una atención más clara para pacientes y equipo.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Ver demo', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrarse', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
+const fallbackContent: any = { hero: { eyebrow: 'NexMed | Agenda, turnos y pacientes para centros de salud y estética', title: 'Organizá turnos, automatizá recordatorios y ordená la agenda de tu centro en un solo sistema.', subtitle: 'NexMed te ayuda a reducir trabajo manual en recepción y a sostener una atención más clara para pacientes y equipo.', media: { url: HERO_FALLBACK_IMAGE }, ctas: { demo: { label: 'Ver demo', visible: true }, whatsapp: { label: 'Hablar por WhatsApp', visible: true }, login: { label: 'Ingresar', href: '/login', visible: true }, register: { label: 'Registrar mi centro', href: '/register', visible: true } }, whatsapp: { number: '541122626516', message: 'Hola, quiero una demo de NexMed' } }, features: [] };
 
 
 
@@ -101,7 +101,7 @@ export const HomePage = (): ReactElement => {
             <span className="nx-theme-toggle__label">{isDarkMode ? 'Modo oscuro' : 'Modo claro'}</span>
           </button>
           <Link to="/login" className="nx-btn-tertiary">Ingresar</Link>
-          <Link to="/register" className="nx-btn-tertiary">Registrarse</Link>
+          <Link to="/register" className="nx-btn-tertiary">Registrar mi centro</Link>
         </div>
       </header>
 
@@ -149,7 +149,7 @@ export const HomePage = (): ReactElement => {
 
               <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
               <Link className="nx-btn-tertiary" to="/login">Ingresar</Link>
-              <Link className="nx-btn-tertiary" to="/register">Registrarse</Link>
+              <Link className="nx-btn-tertiary" to="/register">Registrar mi centro</Link>
             </div>
           </div>
         </section>
@@ -257,7 +257,7 @@ export const HomePage = (): ReactElement => {
 
             <a className="nx-btn-secondary" href={whatsappUrl} target="_blank" rel="noreferrer">Hablar por WhatsApp</a>
             <Link className="nx-btn-tertiary" to="/login">Ingresar</Link>
-            <Link className="nx-btn-tertiary" to="/register">Registrarse</Link>
+            <Link className="nx-btn-tertiary" to="/register">Registrar mi centro</Link>
           </div>
         </section>
       </main>
