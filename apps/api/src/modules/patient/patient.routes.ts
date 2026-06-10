@@ -8,6 +8,10 @@ export const joinRouter = Router();
 export const patientRouter = Router();
 
 joinRouter.get('/:tokenOrSlug', asyncHandler(patientController.joinPreview));
+joinRouter.get('/:tokenOrSlug/catalog', asyncHandler(patientController.publicCatalog));
+joinRouter.get('/:tokenOrSlug/availability', asyncHandler(patientController.publicAvailability));
+joinRouter.get('/:tokenOrSlug/health-insurances', asyncHandler(patientController.publicHealthInsurances));
+joinRouter.post('/:tokenOrSlug/appointments/express', asyncHandler(patientController.createExpressAppointment));
 
 patientRouter.use(requireAuth);
 

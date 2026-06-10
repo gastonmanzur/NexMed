@@ -86,6 +86,7 @@ export const PatientDetailModal = ({ patient, isOpen = false, loading = false, e
             <article className="nx-patient-block">
               <h3>Datos personales</h3>
               <DetailRow label="Tipo de perfil" value={patient.patientProfile.isPrimaryProfile ? 'Titular' : 'Familiar'} />
+              <DetailRow label="Origen" value={patient.patientProfile.source === 'express_booking' ? 'Reserva express' : patient.patientProfile.source} />
               <DetailRow label="Relación con titular" value={patient.patientProfile.relationshipToOwner} />
               <DetailRow label="Documento" value={patient.patientProfile.documentId} />
               <DetailRow label="Nacimiento" value={formatDate(patient.patientProfile.dateOfBirth)} />

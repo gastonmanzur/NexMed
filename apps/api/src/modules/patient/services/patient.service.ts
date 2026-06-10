@@ -5,6 +5,7 @@ import type {
   CalculatedAvailabilityDto,
   JoinOrganizationPreviewDto,
   OrganizationDto,
+  OrganizationHealthInsuranceDto,
   PatientFamilyMemberDto,
   PatientMeDto,
   PatientOrganizationSummaryDto,
@@ -24,6 +25,9 @@ import { SpecialtyRepository } from '../../professionals/repositories/specialty.
 import { ProfessionalSpecialtyRepository } from '../../professionals/repositories/professional-specialty.repository.js';
 import { PatientOrganizationLinkRepository } from '../repositories/patient-organization-link.repository.js';
 import { PatientFamilyMemberRepository } from '../repositories/patient-family-member.repository.js';
+import { PatientIdentityRepository } from '../repositories/patient-identity.repository.js';
+import { OrganizationPatientProfileRepository } from '../repositories/organization-patient-profile.repository.js';
+import { OrganizationHealthInsuranceRepository } from '../../organizations/repositories/organization-health-insurance.repository.js';
 import { PatientProfileRepository } from '../repositories/patient-profile.repository.js';
 import { UserEventRepository } from '../repositories/user-event.repository.js';
 import type { PatientProfileDocument } from '../models/patient-profile.model.js';
@@ -90,7 +94,10 @@ export class PatientService {
     private readonly specialties = new SpecialtyRepository(),
     private readonly professionalSpecialties = new ProfessionalSpecialtyRepository(),
     private readonly userEvents = new UserEventRepository(),
-    private readonly familyMembers = new PatientFamilyMemberRepository()
+    private readonly familyMembers = new PatientFamilyMemberRepository(),
+    private readonly patientIdentities = new PatientIdentityRepository(),
+    private readonly organizationPatientProfiles = new OrganizationPatientProfileRepository(),
+    private readonly healthInsurances = new OrganizationHealthInsuranceRepository()
   ) {}
 
   async getJoinPreview(tokenOrSlug: string): Promise<JoinOrganizationPreviewDto> {
@@ -112,9 +119,176 @@ export class PatientService {
         displayName: organization.displayName ?? null,
         slug: organization.slug ?? null,
         status: organization.status,
-        type: organization.type
+        type: organization.type,
+        phone: organization.phone ?? null,
+        address: organization.address ?? null,
+        city: organization.city ?? null,
+        province: organization.province ?? null,
+        latitude: organization.latitude ?? null,
+        longitude: organization.longitude ?? null,
+        locationLabel: organization.locationLabel ?? null
       }
     };
+  }
+
+
+  async getPublicCatalog(tokenOrSlug: string): Promise<{
+    professionals: Array<{ id: string; displayName: string; specialtyIds: string[] }>;
+    specialties: Array<{ id: string; name: string; professionalIds: string[] }>;
+  }> {
+    const organization = await this.resolveAvailableOrganization(tokenOrSlug);
+    return this.buildOrganizationCatalog(organization._id.toString());
+  }
+
+  async getPublicAvailability(tokenOrSlug: string, input: { professionalId: string; specialtyId: string; startDate: string; endDate: string }): Promise<CalculatedAvailabilityDto> {
+    const organization = await this.resolveAvailableOrganization(tokenOrSlug);
+    if (!isValidObjectId(input.professionalId)) throw new AppError('INVALID_PROFESSIONAL_ID', 400, 'professionalId is invalid');
+    if (!isValidObjectId(input.specialtyId)) throw new AppError('INVALID_SPECIALTY_ID', 400, 'specialtyId is invalid');
+    return this.availability.getCalculatedAvailability(organization._id.toString(), input.professionalId, {
+      startDate: input.startDate,
+      endDate: input.endDate,
+      specialtyId: input.specialtyId
+    });
+  }
+
+  async listPublicHealthInsurances(tokenOrSlug: string): Promise<OrganizationHealthInsuranceDto[]> {
+    const organization = await this.resolveAvailableOrganization(tokenOrSlug);
+    const rows = await this.healthInsurances.listByOrganization(organization._id.toString(), true);
+    return rows.map((row) => ({
+      id: row._id.toString(),
+      organizationId: row.organizationId.toString(),
+      name: row.name,
+      status: row.status,
+      requiresMemberNumber: row.requiresMemberNumber,
+      requiresPlan: row.requiresPlan,
+      notes: row.notes ?? null,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString()
+    }));
+  }
+
+  async createExpressAppointment(tokenOrSlug: string, input: {
+    professionalId: string;
+    specialtyId: string;
+    startAt: string;
+    endAt?: string | undefined;
+    appointmentType?: 'single' | 'double' | undefined;
+    patient: { firstName: string; lastName: string; phone: string; email?: string | undefined; documentNumber?: string | undefined; birthDate?: string | undefined };
+    coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | undefined; insuranceMemberNumber?: string | undefined; insurancePlan?: string | undefined };
+    reason?: string | undefined;
+  }): Promise<AppointmentDto> {
+    const organization = await this.resolveAvailableOrganization(tokenOrSlug);
+    const organizationId = organization._id.toString();
+    const firstName = normalizeOptionalText(input.patient.firstName);
+    const lastName = normalizeOptionalText(input.patient.lastName);
+    const phone = normalizePhone(input.patient.phone);
+    const normalizedPhone = this.normalizePhoneIdentity(input.patient.phone);
+    if (!firstName) throw new AppError('INVALID_PATIENT_FIRST_NAME', 400, 'Nombre es obligatorio');
+    if (!lastName) throw new AppError('INVALID_PATIENT_LAST_NAME', 400, 'Apellido es obligatorio');
+    if (!phone || !normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'Teléfono / WhatsApp es obligatorio');
+    const email = normalizeOptionalText(input.patient.email)?.toLowerCase();
+    const documentNumber = normalizeOptionalText(input.patient.documentNumber)?.replace(/\s+/g, '');
+    let birthDate: Date | null = null;
+    if (input.patient.birthDate) {
+      if (!isValidDateOnly(input.patient.birthDate)) throw new AppError('INVALID_BIRTH_DATE', 400, 'birthDate must be YYYY-MM-DD');
+      birthDate = new Date(`${input.patient.birthDate}T00:00:00.000Z`);
+    }
+
+    let paymentCoverageType: 'private' | 'health_insurance' = 'private';
+    let healthInsuranceId: string | null = null;
+    let healthInsuranceName = 'Particular';
+    const insuranceMemberNumber = normalizeOptionalText(input.coverage.insuranceMemberNumber) ?? null;
+    const insurancePlan = normalizeOptionalText(input.coverage.insurancePlan) ?? null;
+    if (input.coverage.type === 'health_insurance') {
+      if (!input.coverage.healthInsuranceId || !isValidObjectId(input.coverage.healthInsuranceId)) {
+        throw new AppError('INVALID_HEALTH_INSURANCE_ID', 400, 'Seleccioná una obra social válida');
+      }
+      const healthInsurance = await this.healthInsurances.findByIdInOrganization(organizationId, input.coverage.healthInsuranceId);
+      if (!healthInsurance || healthInsurance.status !== 'active') throw new AppError('HEALTH_INSURANCE_NOT_AVAILABLE', 400, 'La cobertura seleccionada no está disponible');
+      if (healthInsurance.requiresMemberNumber && !insuranceMemberNumber) throw new AppError('INSURANCE_MEMBER_NUMBER_REQUIRED', 400, 'Ingresá el número de afiliado');
+      if (healthInsurance.requiresPlan && !insurancePlan) throw new AppError('INSURANCE_PLAN_REQUIRED', 400, 'Ingresá el plan de la cobertura');
+      paymentCoverageType = 'health_insurance';
+      healthInsuranceId = healthInsurance._id.toString();
+      healthInsuranceName = healthInsurance.name;
+    }
+
+    const identity = await this.patientIdentities.upsertByNormalizedPhone({ normalizedPhone, firstName, lastName, email: email ?? null, documentNumber: documentNumber ?? null, birthDate });
+    const existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString());
+    const existingCompatProfile = existingOrgProfile?.patientProfileId ? await this.patientProfiles.findById(existingOrgProfile.patientProfileId.toString()) : null;
+    const compatProfile = existingCompatProfile
+      ? await this.patientProfiles.updateById(existingCompatProfile._id.toString(), {
+        firstName,
+        lastName,
+        phone,
+        normalizedPhone,
+        dateOfBirth: birthDate,
+        documentId: documentNumber ?? null,
+        insuranceProvider: healthInsuranceName,
+        insuranceMemberId: insuranceMemberNumber,
+        insurancePlan,
+        source: 'express_booking'
+      }) ?? existingCompatProfile
+      : await this.patientProfiles.create({
+        userId: null,
+        ownerUserId: null,
+        isPrimaryProfile: true,
+        firstName,
+        lastName,
+        phone,
+        normalizedPhone,
+        dateOfBirth: birthDate,
+        documentId: documentNumber ?? null,
+        insuranceProvider: healthInsuranceName,
+        insuranceMemberId: insuranceMemberNumber,
+        insurancePlan,
+        source: 'express_booking'
+      });
+
+    const orgProfile = await this.organizationPatientProfiles.upsertByOrganizationAndIdentity({
+      organizationId,
+      patientIdentityId: identity._id.toString(),
+      patientProfileId: compatProfile._id.toString(),
+      firstName,
+      lastName,
+      phone,
+      normalizedPhone,
+      email: email ?? null,
+      documentNumber: documentNumber ?? null,
+      birthDate,
+      defaultCoverageType: paymentCoverageType,
+      defaultHealthInsuranceId: healthInsuranceId,
+      defaultHealthInsuranceName: healthInsuranceName,
+      defaultInsuranceMemberNumber: insuranceMemberNumber,
+      source: 'express_booking',
+      ownerUserId: null
+    });
+
+    await this.links.upsertActive({
+      patientProfileId: compatProfile._id.toString(),
+      organizationId,
+      status: 'active',
+      source: 'express_booking'
+    });
+
+    return this.appointmentsService.createExpressAppointment(organizationId, {
+      professionalId: input.professionalId,
+      specialtyId: input.specialtyId,
+      startAt: input.startAt,
+      ...(input.endAt ? { endAt: input.endAt } : {}),
+      durationMultiplier: input.appointmentType === 'double' ? 2 : 1,
+      patientProfileId: compatProfile._id.toString(),
+      patientName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
+      patientEmail: email,
+      patientPhone: phone,
+      notes: normalizeOptionalText(input.reason),
+      beneficiaryType: 'self',
+      beneficiaryDisplayName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
+      paymentCoverageType,
+      healthInsuranceId,
+      healthInsuranceName,
+      insuranceMemberNumber,
+      insurancePlan
+    });
   }
 
   async ensurePatientProfile(userId: string): Promise<PatientProfileDocument> {
@@ -495,6 +669,13 @@ export class PatientService {
   }> {
     await this.assertActiveLink(userId, organizationId);
 
+    return this.buildOrganizationCatalog(organizationId);
+  }
+
+  private async buildOrganizationCatalog(organizationId: string): Promise<{
+    professionals: Array<{ id: string; displayName: string; specialtyIds: string[] }>;
+    specialties: Array<{ id: string; name: string; professionalIds: string[] }>;
+  }> {
     const [professionals, specialties] = await Promise.all([
       this.professionals.findByOrganization(organizationId),
       this.specialties.findByOrganization(organizationId)
@@ -915,6 +1096,22 @@ export class PatientService {
     }
   }
 
+
+  private normalizePhoneIdentity(value: string): string | undefined {
+    const compact = value.replace(/\D/g, '');
+    return compact.length >= 8 ? compact : undefined;
+  }
+
+  private async resolveAvailableOrganization(tokenOrSlug: string) {
+    const normalized = tokenOrSlug.trim();
+    if (!normalized) throw new AppError('INVALID_JOIN_TOKEN', 400, 'Join token is required');
+    const organization = await this.resolveOrganizationByToken(normalized);
+    if (!organization || organization.status === 'blocked' || organization.status === 'suspended') {
+      throw new AppError('ORGANIZATION_NOT_FOUND', 404, 'Organization not available');
+    }
+    return organization;
+  }
+
   private async resolveOrganizationByToken(tokenOrSlug: string) {
     if (isValidObjectId(tokenOrSlug)) {
       const byId = await this.organizations.findById(tokenOrSlug);
@@ -943,6 +1140,7 @@ export class PatientService {
       firstName: profile.firstName ?? null,
       lastName: profile.lastName ?? null,
       phone: profile.phone ?? null,
+      normalizedPhone: profile.normalizedPhone ?? null,
       dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.toISOString().slice(0, 10) : null,
       documentId: profile.documentId ?? null,
       sex: profile.sex ?? null,
@@ -956,6 +1154,7 @@ export class PatientService {
       insuranceProvider: profile.insuranceProvider ?? null,
       insuranceMemberId: profile.insuranceMemberId ?? null,
       insurancePlan: profile.insurancePlan ?? null,
+      source: profile.source ?? null,
       bloodType: profile.bloodType ?? null,
       allergies: profile.allergies ?? null,
       regularMedication: profile.regularMedication ?? null,

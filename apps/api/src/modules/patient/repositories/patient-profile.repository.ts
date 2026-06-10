@@ -2,7 +2,7 @@ import { PatientProfileModel, type PatientProfileDocument } from '../models/pati
 
 interface CreatePatientProfileInput {
   userId?: string | null;
-  ownerUserId: string;
+  ownerUserId?: string | null;
   relationshipToOwner?: string | null;
   isPrimaryProfile?: boolean;
   firstName?: string | null;
@@ -25,6 +25,8 @@ interface CreatePatientProfileInput {
   regularMedication?: string | null;
   preexistingConditions?: string | null;
   medicalNotes?: string | null;
+  normalizedPhone?: string | null;
+  source?: string | null;
 }
 
 export class PatientProfileRepository {

@@ -19,12 +19,17 @@ interface CreateAppointmentInput {
   status: AppointmentStatus;
   source: AppointmentDocument['source'];
   notes?: string | null;
-  createdByUserId: string;
-  bookedByUserId: string;
+  createdByUserId?: string | null;
+  bookedByUserId?: string | null;
   beneficiaryType: AppointmentDocument['beneficiaryType'];
   familyMemberId?: string | null;
   beneficiaryDisplayName?: string | null;
   beneficiaryRelationship?: string | null;
+  paymentCoverageType?: 'private' | 'health_insurance';
+  healthInsuranceId?: string | null;
+  healthInsuranceName?: string | null;
+  insuranceMemberNumber?: string | null;
+  insurancePlan?: string | null;
   rescheduledFromAppointmentId?: string | null;
 }
 

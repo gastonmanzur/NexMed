@@ -3,12 +3,13 @@ import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 const patientProfileSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', index: true, default: null },
-    ownerUserId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+    ownerUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', index: true, default: null },
     relationshipToOwner: { type: String, required: false, trim: true, maxlength: 80, default: null },
     isPrimaryProfile: { type: Boolean, required: true, default: true, index: true },
     firstName: { type: String, required: false, trim: true, maxlength: 80, default: null },
     lastName: { type: String, required: false, trim: true, maxlength: 80, default: null },
     phone: { type: String, required: false, trim: true, maxlength: 40, default: null },
+    normalizedPhone: { type: String, required: false, trim: true, maxlength: 40, default: null, index: true },
     dateOfBirth: { type: Date, required: false, default: null },
     documentId: { type: String, required: false, trim: true, maxlength: 30, default: null },
     sex: { type: String, required: false, trim: true, maxlength: 20, default: null },
@@ -22,6 +23,7 @@ const patientProfileSchema = new mongoose.Schema(
     insuranceProvider: { type: String, required: false, trim: true, maxlength: 120, default: null },
     insuranceMemberId: { type: String, required: false, trim: true, maxlength: 60, default: null },
     insurancePlan: { type: String, required: false, trim: true, maxlength: 60, default: null },
+    source: { type: String, required: false, trim: true, maxlength: 40, default: null },
     bloodType: { type: String, required: false, trim: true, maxlength: 8, default: null },
     allergies: { type: String, required: false, trim: true, maxlength: 1200, default: null },
     regularMedication: { type: String, required: false, trim: true, maxlength: 1200, default: null },

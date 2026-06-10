@@ -15,6 +15,30 @@ const availabilityQuerySchema = z.object({
   endDate: z.string().trim().min(1)
 });
 
+
+const expressAppointmentSchema = z.object({
+  professionalId: z.string().trim().min(1),
+  specialtyId: z.string().trim().min(1),
+  startAt: z.string().trim().min(1),
+  endAt: z.string().trim().min(1).optional(),
+  appointmentType: z.enum(['single', 'double']).optional(),
+  patient: z.object({
+    firstName: z.string().trim().min(1).max(80),
+    lastName: z.string().trim().min(1).max(80),
+    phone: z.string().trim().min(1).max(40),
+    email: z.string().trim().max(160).optional(),
+    documentNumber: z.string().trim().max(30).optional(),
+    birthDate: z.string().trim().optional()
+  }),
+  coverage: z.object({
+    type: z.enum(['private', 'health_insurance']),
+    healthInsuranceId: z.string().trim().min(1).optional(),
+    insuranceMemberNumber: z.string().trim().max(60).optional(),
+    insurancePlan: z.string().trim().max(60).optional()
+  }),
+  reason: z.string().trim().max(500).optional()
+});
+
 const updateMeSchema = z.object({
   firstName: z.string().trim().min(1).max(80).optional(),
   lastName: z.string().trim().min(1).max(80).optional(),
@@ -138,6 +162,33 @@ export const patientController = {
     const { tokenOrSlug } = joinParamsSchema.parse(req.params);
     const data = await service.getJoinPreview(tokenOrSlug);
     res.status(200).json({ success: true, data });
+  },
+
+
+  publicCatalog: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const data = await service.getPublicCatalog(tokenOrSlug);
+    res.status(200).json({ success: true, data });
+  },
+
+  publicAvailability: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const input = availabilityQuerySchema.parse(req.query);
+    const data = await service.getPublicAvailability(tokenOrSlug, input);
+    res.status(200).json({ success: true, data });
+  },
+
+  publicHealthInsurances: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const data = await service.listPublicHealthInsurances(tokenOrSlug);
+    res.status(200).json({ success: true, data });
+  },
+
+  createExpressAppointment: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const input = expressAppointmentSchema.parse(req.body);
+    const data = await service.createExpressAppointment(tokenOrSlug, input);
+    res.status(201).json({ success: true, data });
   },
 
   joinResolve: async (req: AuthenticatedRequest, res: Response): Promise<void> => {

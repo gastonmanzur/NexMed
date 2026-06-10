@@ -243,9 +243,10 @@ export interface CalculatedAvailabilityDto {
 
 
 export type AppointmentStatus = 'booked' | 'confirmed_by_patient' | 'arrived' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
-export type AppointmentSource = 'staff_manual' | 'admin_manual' | 'patient_self_service';
+export type AppointmentSource = 'staff_manual' | 'admin_manual' | 'patient_self_service' | 'express_booking';
 export type AppointmentBeneficiaryType = 'self' | 'family_member';
 export type AppointmentDurationMultiplier = 1 | 2;
+export type PaymentCoverageType = 'private' | 'health_insurance';
 
 export interface AppointmentStatusHistoryItemDto {
   status: AppointmentStatus;
@@ -270,12 +271,17 @@ export interface AppointmentDto {
   status: AppointmentStatus;
   source: AppointmentSource;
   notes: string | null;
-  createdByUserId: string;
-  bookedByUserId: string;
+  createdByUserId: string | null;
+  bookedByUserId: string | null;
   beneficiaryType: AppointmentBeneficiaryType;
   familyMemberId: string | null;
   beneficiaryDisplayName: string | null;
   beneficiaryRelationship: string | null;
+  paymentCoverageType: PaymentCoverageType;
+  healthInsuranceId: string | null;
+  healthInsuranceName: string | null;
+  insuranceMemberNumber: string | null;
+  insurancePlan: string | null;
   canceledByUserId: string | null;
   canceledAt: string | null;
   cancelReason: string | null;
@@ -292,7 +298,7 @@ export interface AppointmentDto {
 
 export interface PatientFamilyMemberDto {
   id: string;
-  ownerUserId: string;
+  ownerUserId: string | null;
   patientProfileId: string;
   firstName: string;
   lastName: string;
@@ -311,6 +317,7 @@ export interface PatientFamilyMemberDto {
   insuranceProvider: string | null;
   insuranceMemberId: string | null;
   insurancePlan: string | null;
+  source?: string | null;
   bloodType: string | null;
   allergies: string | null;
   regularMedication: string | null;
@@ -327,12 +334,13 @@ export type PatientOrganizationLinkStatus = 'active' | 'blocked' | 'archived';
 export interface PatientProfileDto {
   id: string;
   userId: string | null;
-  ownerUserId: string;
+  ownerUserId: string | null;
   relationshipToOwner: string | null;
   isPrimaryProfile: boolean;
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
+  normalizedPhone?: string | null;
   dateOfBirth: string | null;
   documentId: string | null;
   sex: string | null;
@@ -346,6 +354,7 @@ export interface PatientProfileDto {
   insuranceProvider: string | null;
   insuranceMemberId: string | null;
   insurancePlan: string | null;
+  source?: string | null;
   bloodType: string | null;
   allergies: string | null;
   regularMedication: string | null;
@@ -395,11 +404,29 @@ export interface OrganizationPatientListItemDto {
   email: string | null;
   insuranceProvider: string | null;
   insuranceMemberId: string | null;
+  source?: string | null;
   totalAppointments: number;
   lastAppointmentAt: string | null;
   relationshipToOwner: string | null;
   isPrimaryProfile: boolean;
   ownerName: string | null;
+  defaultCoverageType?: PaymentCoverageType | null;
+  defaultHealthInsuranceName?: string | null;
+  defaultInsuranceMemberNumber?: string | null;
+}
+
+export type OrganizationHealthInsuranceStatus = 'active' | 'inactive';
+
+export interface OrganizationHealthInsuranceDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  status: OrganizationHealthInsuranceStatus;
+  requiresMemberNumber: boolean;
+  requiresPlan: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface OrganizationPatientDetailDto {
@@ -411,11 +438,14 @@ export interface OrganizationPatientDetailDto {
   totalAppointments: number;
   lastAppointmentAt: string | null;
   ownerName: string | null;
+  defaultCoverageType?: PaymentCoverageType | null;
+  defaultHealthInsuranceName?: string | null;
+  defaultInsuranceMemberNumber?: string | null;
 }
 
 export interface JoinOrganizationPreviewDto {
   tokenOrSlug: string;
-  organization: Pick<OrganizationDto, 'id' | 'name' | 'displayName' | 'slug' | 'status' | 'type'>;
+  organization: Pick<OrganizationDto, 'id' | 'name' | 'displayName' | 'slug' | 'status' | 'type' | 'phone' | 'address' | 'city' | 'province' | 'latitude' | 'longitude' | 'locationLabel'>;
 }
 
 export type UserEventType =

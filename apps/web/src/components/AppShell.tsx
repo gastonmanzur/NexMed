@@ -19,6 +19,7 @@ const centerItems: NavItem[] = [
   { id: 'center-specialties', label: 'Especialidades', to: '/app/specialties' },
   { id: 'center-appointments', label: 'Agenda', to: '/app/appointments' },
   { id: 'center-patients', label: 'Pacientes', to: '/app/patients' },
+  { id: 'center-health-insurances', label: 'Obras sociales', to: '/app/health-insurances' },
   { id: 'center-analytics', label: 'Métricas', to: '/app/analytics' },
   { id: 'center-invite', label: 'Invitación', to: '/app/invite' },
   { id: 'center-subscription', label: 'Suscripción', to: '/app/subscription' },

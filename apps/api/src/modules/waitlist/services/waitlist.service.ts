@@ -116,8 +116,10 @@ export class WaitlistService {
       const patientProfile = await this.patientProfiles.findById(item.patientProfileId.toString());
       if (!patientProfile) continue;
 
+      const targetUserId = (patientProfile.ownerUserId ?? patientProfile.userId)?.toString();
+      if (!targetUserId) continue;
       await this.notifications.create({
-        userId: (patientProfile.ownerUserId ?? patientProfile.userId).toString(),
+        userId: targetUserId,
         organizationId: item.organizationId.toString(),
         patientProfileId: item.patientProfileId.toString(),
         type: 'availability_alert',
