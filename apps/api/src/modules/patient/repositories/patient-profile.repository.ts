@@ -3,6 +3,7 @@ import { PatientProfileModel, type PatientProfileDocument } from '../models/pati
 interface CreatePatientProfileInput {
   userId?: string | null;
   ownerUserId?: string | null;
+  organizationId?: string | null;
   relationshipToOwner?: string | null;
   isPrimaryProfile?: boolean;
   firstName?: string | null;
@@ -40,6 +41,10 @@ export class PatientProfileRepository {
 
   async findById(id: string): Promise<PatientProfileDocument | null> {
     return PatientProfileModel.findById(id).exec();
+  }
+
+  async findByOrganizationAndNormalizedPhone(organizationId: string, normalizedPhone: string): Promise<PatientProfileDocument | null> {
+    return PatientProfileModel.findOne({ organizationId, normalizedPhone }).exec();
   }
 
   async findByIdForOwner(id: string, ownerUserId: string): Promise<PatientProfileDocument | null> {

@@ -100,6 +100,17 @@ export class PatientService {
     private readonly healthInsurances = new OrganizationHealthInsuranceRepository()
   ) {}
 
+
+  private isDuplicateOrganizationPhoneProfileError(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('code' in error) || (error as { code?: unknown }).code !== 11000) return false;
+    const mongoError = error as { keyPattern?: Record<string, unknown>; index?: string; message?: string };
+    return Boolean(
+      (mongoError.keyPattern?.organizationId && mongoError.keyPattern?.normalizedPhone)
+      || mongoError.index === 'organizationId_1_normalizedPhone_1_partial_unique'
+      || mongoError.message?.includes('organizationId_1_normalizedPhone_1_partial_unique')
+    );
+  }
+
   async getJoinPreview(tokenOrSlug: string): Promise<JoinOrganizationPreviewDto> {
     const normalized = tokenOrSlug.trim();
     if (!normalized) {
@@ -216,35 +227,40 @@ export class PatientService {
     const existingOrgProfile =
       await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
       ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
-    const existingCompatProfile = existingOrgProfile?.patientProfileId ? await this.patientProfiles.findById(existingOrgProfile.patientProfileId.toString()) : null;
-    const compatProfile = existingCompatProfile
-      ? await this.patientProfiles.updateById(existingCompatProfile._id.toString(), {
-        firstName,
-        lastName,
-        phone,
-        normalizedPhone,
-        dateOfBirth: birthDate,
-        documentId: documentNumber ?? null,
-        insuranceProvider: healthInsuranceName,
-        insuranceMemberId: insuranceMemberNumber,
-        insurancePlan,
-        source: 'express_booking'
-      }) ?? existingCompatProfile
-      : await this.patientProfiles.create({
-        userId: null,
-        ownerUserId: null,
-        isPrimaryProfile: true,
-        firstName,
-        lastName,
-        phone,
-        normalizedPhone,
-        dateOfBirth: birthDate,
-        documentId: documentNumber ?? null,
-        insuranceProvider: healthInsuranceName,
-        insuranceMemberId: insuranceMemberNumber,
-        insurancePlan,
-        source: 'express_booking'
-      });
+    const existingLinkedCompatProfile = existingOrgProfile?.patientProfileId ? await this.patientProfiles.findById(existingOrgProfile.patientProfileId.toString()) : null;
+    const existingPhoneCompatProfile = existingLinkedCompatProfile ?? await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
+    const compatProfileUpdate = {
+      organizationId,
+      firstName,
+      lastName,
+      phone,
+      normalizedPhone,
+      dateOfBirth: birthDate,
+      documentId: documentNumber ?? null,
+      insuranceProvider: healthInsuranceName,
+      insuranceMemberId: insuranceMemberNumber,
+      insurancePlan,
+      source: 'express_booking'
+    };
+    let compatProfile: PatientProfileDocument;
+    if (existingPhoneCompatProfile) {
+      compatProfile = await this.patientProfiles.updateById(existingPhoneCompatProfile._id.toString(), compatProfileUpdate) ?? existingPhoneCompatProfile;
+    } else {
+      try {
+        compatProfile = await this.patientProfiles.create({
+          userId: null,
+          ownerUserId: null,
+          isPrimaryProfile: true,
+          ...compatProfileUpdate
+        });
+      } catch (error: unknown) {
+        if (!this.isDuplicateOrganizationPhoneProfileError(error)) throw error;
+
+        const racedProfile = await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
+        if (!racedProfile) throw error;
+        compatProfile = await this.patientProfiles.updateById(racedProfile._id.toString(), compatProfileUpdate) ?? racedProfile;
+      }
+    }
 
     const orgProfile = await this.organizationPatientProfiles.upsertByOrganizationAndIdentity({
       organizationId,
