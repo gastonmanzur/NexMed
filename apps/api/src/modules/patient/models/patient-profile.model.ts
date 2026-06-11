@@ -2,7 +2,8 @@ import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 const patientProfileSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', index: true, default: null },
+    userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
+    organizationId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'Organization', index: true, default: null },
     ownerUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', index: true, default: null },
     relationshipToOwner: { type: String, required: false, trim: true, maxlength: 80, default: null },
     isPrimaryProfile: { type: Boolean, required: true, default: true, index: true },
@@ -40,8 +41,16 @@ const patientProfileSchema = new mongoose.Schema(
 );
 
 patientProfileSchema.index(
-  { userId: 1, isPrimaryProfile: 1 },
-  { unique: true, partialFilterExpression: { userId: { $type: 'objectId' }, isPrimaryProfile: true } }
+  { userId: 1 },
+  { unique: true, name: 'userId_1_partial_unique', partialFilterExpression: { userId: { $type: 'objectId' } } }
+);
+patientProfileSchema.index(
+  { organizationId: 1, normalizedPhone: 1 },
+  {
+    unique: true,
+    name: 'organizationId_1_normalizedPhone_1_partial_unique',
+    partialFilterExpression: { organizationId: { $type: 'objectId' }, normalizedPhone: { $type: 'string' } }
+  }
 );
 patientProfileSchema.index({ ownerUserId: 1, isPrimaryProfile: 1, lastName: 1, firstName: 1 });
 

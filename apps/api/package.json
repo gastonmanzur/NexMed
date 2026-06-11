@@ -9,7 +9,8 @@
     "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "fix:patient-profile-indexes": "node scripts/fix-patient-profile-indexes.mjs"
   },
   "dependencies": {
     "@starter/shared-types": "0.1.0",
