@@ -32,9 +32,9 @@ const expressAppointmentSchema = z.object({
   }),
   coverage: z.object({
     type: z.enum(['private', 'health_insurance']),
-    healthInsuranceId: z.string().trim().min(1).optional(),
-    insuranceMemberNumber: z.string().trim().max(60).optional(),
-    insurancePlan: z.string().trim().max(60).optional()
+    healthInsuranceId: z.string().trim().min(1).nullable().optional(),
+    insuranceMemberNumber: z.string().trim().max(60).nullable().optional(),
+    insurancePlan: z.string().trim().max(60).nullable().optional()
   }),
   reason: z.string().trim().max(500).optional()
 });

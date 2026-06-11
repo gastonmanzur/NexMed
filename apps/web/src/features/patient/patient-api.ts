@@ -8,13 +8,19 @@ export type PatientCatalog = {
   specialties: Array<{ id: string; name: string; professionalIds: string[] }>;
 };
 
-interface ApiErrorPayload { success?: boolean; error?: { message?: string } }
+interface ApiErrorPayload { success?: boolean; message?: string; error?: { message?: string } }
+
+export class PatientApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+  }
+}
 const request = async <T>(path: string, init: RequestInit): Promise<T> => {
   const headers = new Headers(init.headers ?? {}); if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const response = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include', headers });
   const rawBody = await response.text(); let payload: (T & ApiErrorPayload) | null = null;
   if (rawBody) { try { payload = JSON.parse(rawBody) as T & ApiErrorPayload; } catch { payload = null; } }
-  if (!response.ok) throw new Error(payload?.error?.message ?? `Request failed with status ${response.status}`);
+  if (!response.ok) throw new PatientApiError(payload?.error?.message ?? payload?.message ?? `Request failed with status ${response.status}`, response.status);
   return payload ?? ({} as T);
 };
 export const patientApi = {
@@ -22,7 +28,7 @@ export const patientApi = {
   getPublicCatalog: async (tokenOrSlug: string): Promise<PatientCatalog> => (await request<{ success: true; data: PatientCatalog }>(`/join/${encodeURIComponent(tokenOrSlug)}/catalog`, { method: 'GET' })).data,
   getPublicAvailability: async (tokenOrSlug: string, params: { professionalId: string; specialtyId: string; startDate: string; endDate: string }): Promise<CalculatedAvailabilityDto> => (await request<{ success: true; data: CalculatedAvailabilityDto }>(`/join/${encodeURIComponent(tokenOrSlug)}/availability?${new URLSearchParams(params).toString()}`, { method: 'GET' })).data,
   getPublicHealthInsurances: async (tokenOrSlug: string): Promise<OrganizationHealthInsuranceDto[]> => (await request<{ success: true; data: OrganizationHealthInsuranceDto[] }>(`/join/${encodeURIComponent(tokenOrSlug)}/health-insurances`, { method: 'GET' })).data,
-  createExpressAppointment: async (tokenOrSlug: string, input: { professionalId: string; specialtyId: string; startAt: string; endAt?: string; appointmentType?: 'single' | 'double'; patient: { firstName: string; lastName: string; phone: string; email?: string; documentNumber?: string; birthDate?: string }; coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string; insuranceMemberNumber?: string; insurancePlan?: string }; reason?: string }): Promise<AppointmentDto> => (await request<{ success: true; data: AppointmentDto }>(`/join/${encodeURIComponent(tokenOrSlug)}/appointments/express`, { method: 'POST', body: JSON.stringify(input) })).data,
+  createExpressAppointment: async (tokenOrSlug: string, input: { professionalId: string; specialtyId: string; startAt: string; endAt?: string; appointmentType?: 'single' | 'double'; patient: { firstName: string; lastName: string; phone: string; email?: string; documentNumber?: string; birthDate?: string }; coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null; insuranceMemberNumber?: string | null; insurancePlan?: string | null }; reason?: string }): Promise<AppointmentDto> => (await request<{ success: true; data: AppointmentDto }>(`/join/${encodeURIComponent(tokenOrSlug)}/appointments/express`, { method: 'POST', body: JSON.stringify(input) })).data,
   getJoinPreview: async (tokenOrSlug: string): Promise<JoinOrganizationPreviewDto> => (await request<{ success: true; data: JoinOrganizationPreviewDto }>(`/join/${encodeURIComponent(tokenOrSlug)}`, { method: 'GET' })).data,
   resolveJoin: async (accessToken: string, tokenOrSlug: string): Promise<PatientOrganizationSummaryDto> => (await request<{ success: true; data: PatientOrganizationSummaryDto }>(`/patient/join`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ tokenOrSlug }) })).data,
   getMe: async (accessToken: string): Promise<PatientMeDto> => (await request<{ success: true; data: PatientMeDto }>('/patient/me', { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } })).data,

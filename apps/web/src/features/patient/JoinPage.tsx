@@ -3,9 +3,16 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AppointmentDto, AvailabilitySlotDto, JoinOrganizationPreviewDto, OrganizationHealthInsuranceDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useParams } from 'react-router-dom';
-import { patientApi, type PatientCatalog } from './patient-api';
+import { PatientApiError, patientApi, type PatientCatalog } from './patient-api';
 
-const todayKey = (): string => new Date().toISOString().slice(0, 10);
+const toDateInputValue = (value: Date): string => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const todayKey = (): string => toDateInputValue(new Date());
+const toApiDate = (dateInputValue: string): string => dateInputValue;
 const formatTime = (iso: string): string => new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 const formatDate = (iso: string): string => new Date(iso).toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' });
 
@@ -103,10 +110,13 @@ export const JoinPage = (): ReactElement => {
       setError('');
       setSelectedSlot(null);
       try {
-        const availability = await patientApi.getPublicAvailability(tokenOrSlug, { professionalId, specialtyId, startDate: date, endDate: date });
+        const apiDate = toApiDate(date);
+        const availability = await patientApi.getPublicAvailability(tokenOrSlug, { professionalId, specialtyId, startDate: apiDate, endDate: apiDate });
         setSlots(availability.days.flatMap((day) => day.slots).filter((slot) => slot.available));
       } catch (cause) {
-        setError((cause as Error).message);
+        setError(cause instanceof PatientApiError && cause.status === 400
+          ? 'No pudimos cargar la disponibilidad para esa fecha. Revisá especialidad, profesional y fecha.'
+          : (cause as Error).message || 'No pudimos cargar la disponibilidad para esa fecha. Revisá especialidad, profesional y fecha.');
         setSlots([]);
       } finally {
         setLoadingAvailability(false);
@@ -139,12 +149,19 @@ export const JoinPage = (): ReactElement => {
           ...(form.documentNumber ? { documentNumber: form.documentNumber } : {}),
           ...(form.birthDate ? { birthDate: form.birthDate } : {})
         },
-        coverage: {
-          type: form.coverageType,
-          ...(form.coverageType === 'health_insurance' ? { healthInsuranceId: form.healthInsuranceId } : {}),
-          ...(form.insuranceMemberNumber ? { insuranceMemberNumber: form.insuranceMemberNumber } : {}),
-          ...(form.insurancePlan ? { insurancePlan: form.insurancePlan } : {})
-        },
+        coverage: form.coverageType === 'health_insurance'
+          ? {
+            type: 'health_insurance',
+            healthInsuranceId: form.healthInsuranceId,
+            insuranceMemberNumber: form.insuranceMemberNumber || null,
+            insurancePlan: form.insurancePlan || null
+          }
+          : {
+            type: 'private',
+            healthInsuranceId: null,
+            insuranceMemberNumber: null,
+            insurancePlan: null
+          },
         ...(form.reason ? { reason: form.reason } : {})
       });
       setConfirmation(appointment);

@@ -5,6 +5,10 @@ export class OrganizationPatientProfileRepository {
     return OrganizationPatientProfileModel.findOne({ organizationId, patientIdentityId }).exec();
   }
 
+  async findByOrganizationAndNormalizedPhone(organizationId: string, normalizedPhone: string): Promise<OrganizationPatientProfileDocument | null> {
+    return OrganizationPatientProfileModel.findOne({ organizationId, normalizedPhone }).exec();
+  }
+
   async upsertByOrganizationAndIdentity(input: {
     organizationId: string;
     patientIdentityId: string;
@@ -24,9 +28,10 @@ export class OrganizationPatientProfileRepository {
     ownerUserId?: string | null;
   }): Promise<OrganizationPatientProfileDocument> {
     return OrganizationPatientProfileModel.findOneAndUpdate(
-      { organizationId: input.organizationId, patientIdentityId: input.patientIdentityId },
+      { organizationId: input.organizationId, normalizedPhone: input.normalizedPhone },
       {
         $set: {
+          patientIdentityId: input.patientIdentityId,
           patientProfileId: input.patientProfileId ?? null,
           firstName: input.firstName,
           lastName: input.lastName,
