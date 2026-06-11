@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import mongoose from 'mongoose';
 import type {
   AppointmentDto,
@@ -29,10 +30,13 @@ import { PatientFamilyMemberRepository } from '../repositories/patient-family-me
 import { PatientIdentityRepository } from '../repositories/patient-identity.repository.js';
 import { OrganizationPatientProfileRepository } from '../repositories/organization-patient-profile.repository.js';
 import { OrganizationHealthInsuranceRepository } from '../../organizations/repositories/organization-health-insurance.repository.js';
+import { PatientExpressSessionRepository } from '../repositories/patient-express-session.repository.js';
 import { PatientProfileRepository } from '../repositories/patient-profile.repository.js';
 import { UserEventRepository } from '../repositories/user-event.repository.js';
 import type { PatientProfileDocument } from '../models/patient-profile.model.js';
 import type { PatientFamilyMemberDocument } from '../models/patient-family-member.model.js';
+import type { PatientIdentityDocument } from '../models/patient-identity.model.js';
+import type { OrganizationPatientProfileDocument } from '../models/organization-patient-profile.model.js';
 
 const normalizeOptionalText = (value?: string | null): string | undefined => {
   const normalized = value?.trim();
@@ -52,6 +56,39 @@ const isValidObjectId = (value: string): boolean => mongoose.isValidObjectId(val
 const hoursUntil = (iso: string): number => {
   const date = new Date(iso);
   return (date.getTime() - Date.now()) / 3600000;
+};
+
+
+export interface ExpressMaskedPatientDto {
+  displayName: string;
+  maskedPhone: string;
+}
+
+export interface ExpressSessionPatientDto extends ExpressMaskedPatientDto {
+  patientIdentityId: string;
+}
+
+export interface PatientExpressSessionResult {
+  authenticated: boolean;
+  patient?: ExpressSessionPatientDto;
+}
+
+export interface PatientLookupResult {
+  found: boolean;
+  maskedPatient?: ExpressMaskedPatientDto;
+  requiresVerification?: boolean;
+}
+
+export interface PatientConfirmResult {
+  confirmed: boolean;
+  patient: ExpressMaskedPatientDto;
+  expressSessionToken: string;
+  expiresAt: Date;
+}
+
+export type ExpressAppointmentResult = AppointmentDto & {
+  expressSessionToken?: string;
+  expressSessionExpiresAt?: Date;
 };
 
 interface FamilyMemberWriteInput {
@@ -98,7 +135,8 @@ export class PatientService {
     private readonly familyMembers = new PatientFamilyMemberRepository(),
     private readonly patientIdentities = new PatientIdentityRepository(),
     private readonly organizationPatientProfiles = new OrganizationPatientProfileRepository(),
-    private readonly healthInsurances = new OrganizationHealthInsuranceRepository()
+    private readonly healthInsurances = new OrganizationHealthInsuranceRepository(),
+    private readonly expressSessions = new PatientExpressSessionRepository()
   ) {}
 
 
@@ -183,158 +221,93 @@ export class PatientService {
     }));
   }
 
+  async getExpressSession(token?: string, userAgent?: string): Promise<PatientExpressSessionResult> {
+    const identity = await this.resolveIdentityFromExpressSession(token, userAgent);
+    if (!identity) return { authenticated: false };
+
+    return {
+      authenticated: true,
+      patient: {
+        patientIdentityId: identity._id.toString(),
+        ...this.toMaskedPatient(identity)
+      }
+    };
+  }
+
+  async lookupExpressPatient(tokenOrSlug: string, input: { phone: string }): Promise<PatientLookupResult> {
+    await this.resolveAvailableOrganization(tokenOrSlug);
+    const normalizedPhone = this.normalizePhoneIdentity(input.phone);
+    if (!normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'Ingresá un WhatsApp válido');
+
+    const identity = await this.patientIdentities.findByNormalizedPhone(normalizedPhone);
+    if (!identity) return { found: false };
+
+    return {
+      found: true,
+      maskedPatient: this.toMaskedPatient(identity),
+      requiresVerification: false
+    };
+  }
+
+  async confirmExpressPatient(tokenOrSlug: string, input: { phone: string; confirm?: boolean | undefined; code?: string | undefined }, userAgent?: string): Promise<PatientConfirmResult> {
+    await this.resolveAvailableOrganization(tokenOrSlug);
+    const normalizedPhone = this.normalizePhoneIdentity(input.phone);
+    if (!normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'Ingresá un WhatsApp válido');
+    if (input.confirm !== true && !input.code) throw new AppError('PATIENT_CONFIRMATION_REQUIRED', 400, 'Confirmá tu identidad para continuar');
+
+    const identity = await this.patientIdentities.findByNormalizedPhone(normalizedPhone);
+    if (!identity) throw new AppError('PATIENT_IDENTITY_NOT_FOUND', 404, 'No encontramos un paciente con ese WhatsApp');
+
+    const session = await this.issueExpressSession(identity._id.toString(), userAgent);
+    return {
+      confirmed: true,
+      patient: this.toMaskedPatient(identity),
+      expressSessionToken: session.token,
+      expiresAt: session.expiresAt
+    };
+  }
+
   async createExpressAppointment(tokenOrSlug: string, input: {
     professionalId: string;
     specialtyId: string;
     startAt: string;
     endAt?: string | undefined;
     appointmentType?: 'single' | 'double' | undefined;
-    patient: { firstName: string; lastName: string; phone: string; email?: string | undefined; documentNumber?: string | undefined; birthDate?: string | undefined };
+    useCurrentExpressPatient?: boolean | undefined;
+    patient?: { firstName: string; lastName: string; phone: string; email?: string | undefined; documentNumber?: string | undefined; birthDate?: string | undefined } | undefined;
     coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null | undefined; insuranceMemberNumber?: string | null | undefined; insurancePlan?: string | null | undefined };
     reason?: string | undefined;
-  }): Promise<AppointmentDto> {
+  }, expressSessionToken?: string, userAgent?: string): Promise<ExpressAppointmentResult> {
     const organization = await this.resolveAvailableOrganization(tokenOrSlug);
     const organizationId = organization._id.toString();
-    const firstName = normalizeOptionalText(input.patient.firstName);
-    const lastName = normalizeOptionalText(input.patient.lastName);
-    const phone = normalizePhone(input.patient.phone);
-    const normalizedPhone = this.normalizePhoneIdentity(input.patient.phone);
-    if (!firstName) throw new AppError('INVALID_PATIENT_FIRST_NAME', 400, 'Nombre es obligatorio');
-    if (!lastName) throw new AppError('INVALID_PATIENT_LAST_NAME', 400, 'Apellido es obligatorio');
-    if (!phone || !normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'El teléfono del paciente es obligatorio.');
-    const email = normalizeOptionalText(input.patient.email)?.toLowerCase();
-    const documentNumber = normalizeOptionalText(input.patient.documentNumber)?.replace(/\s+/g, '');
-    let birthDate: Date | null = null;
-    if (input.patient.birthDate) {
-      if (!isValidDateOnly(input.patient.birthDate)) throw new AppError('INVALID_BIRTH_DATE', 400, 'birthDate must be YYYY-MM-DD');
-      birthDate = new Date(`${input.patient.birthDate}T00:00:00.000Z`);
-    }
-
-    let paymentCoverageType: 'private' | 'health_insurance' = 'private';
-    let healthInsuranceId: string | null = null;
-    let healthInsuranceName = 'Particular';
-    const insuranceMemberNumber = normalizeOptionalText(input.coverage.insuranceMemberNumber) ?? null;
-    const insurancePlan = normalizeOptionalText(input.coverage.insurancePlan) ?? null;
-    if (input.coverage.type === 'health_insurance') {
-      if (!input.coverage.healthInsuranceId || !isValidObjectId(input.coverage.healthInsuranceId)) {
-        throw new AppError('INVALID_HEALTH_INSURANCE_ID', 400, 'Seleccioná una obra social válida');
-      }
-      const healthInsurance = await this.healthInsurances.findByIdInOrganization(organizationId, input.coverage.healthInsuranceId);
-      if (!healthInsurance || healthInsurance.status !== 'active') throw new AppError('HEALTH_INSURANCE_NOT_AVAILABLE', 400, 'La cobertura seleccionada no está disponible');
-      if (healthInsurance.requiresMemberNumber && !insuranceMemberNumber) throw new AppError('INSURANCE_MEMBER_NUMBER_REQUIRED', 400, 'Ingresá el número de afiliado');
-      if (healthInsurance.requiresPlan && !insurancePlan) throw new AppError('INSURANCE_PLAN_REQUIRED', 400, 'Ingresá el plan de la cobertura');
-      paymentCoverageType = 'health_insurance';
-      healthInsuranceId = healthInsurance._id.toString();
-      healthInsuranceName = healthInsurance.name;
-    }
+    const coverage = await this.resolveExpressCoverage(organizationId, input.coverage);
 
     let step: 'patient_identity' | 'patient_profile' | 'appointment' = 'patient_identity';
     try {
-      let identity = await this.patientIdentities.findByNormalizedPhone(normalizedPhone);
-    if (!identity) {
-      try {
-        identity = await this.patientIdentities.create({ normalizedPhone, firstName, lastName, phone, email: email ?? null, documentNumber: documentNumber ?? null, birthDate });
-      } catch (error: unknown) {
-        if (!this.isDuplicateKeyError(error)) throw error;
-        identity = await this.patientIdentities.findByNormalizedPhone(normalizedPhone);
-        if (!identity) throw error;
+      let identity: PatientIdentityDocument;
+
+      if (input.useCurrentExpressPatient === true) {
+        const sessionIdentity = await this.resolveIdentityFromExpressSession(expressSessionToken, userAgent);
+        if (!sessionIdentity) throw new AppError('EXPRESS_SESSION_REQUIRED', 401, 'Confirmá tu identidad para reservar rápido');
+        identity = sessionIdentity;
+      } else {
+        if (!input.patient) throw new AppError('PATIENT_DATA_REQUIRED', 400, 'Completá los datos del paciente');
+        const identityData = this.normalizeExpressPatientInput(input.patient);
+        identity = await this.createOrUpdatePatientIdentity(identityData);
       }
-    } else {
-      const identityUpdate: Record<string, unknown> = {};
-      if (firstName) identityUpdate.firstName = firstName;
-      if (lastName) identityUpdate.lastName = lastName;
-      if (phone) identityUpdate.phone = phone;
-      if (email) identityUpdate.email = email;
-      if (documentNumber) identityUpdate.documentNumber = documentNumber;
-      if (birthDate) identityUpdate.birthDate = birthDate;
-      if (Object.keys(identityUpdate).length > 0) {
-        identity = await this.patientIdentities.updateById(identity._id.toString(), identityUpdate) ?? identity;
-      }
-    }
 
       step = 'patient_profile';
-    let existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString());
-    if (!existingOrgProfile) {
-      existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
-    }
+      const { compatProfile, orgProfile } = await this.createOrUpdateOrganizationPatientProfile(organizationId, identity, coverage, input.useCurrentExpressPatient === true);
 
-    const existingLinkedCompatProfile = existingOrgProfile?.patientProfileId ? await this.patientProfiles.findById(existingOrgProfile.patientProfileId.toString()) : null;
-    const existingPhoneCompatProfile = existingLinkedCompatProfile ?? await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
-    const compatProfileUpdate = {
-      organizationId,
-      firstName,
-      lastName,
-      phone,
-      normalizedPhone,
-      dateOfBirth: birthDate,
-      documentId: documentNumber ?? null,
-      insuranceProvider: healthInsuranceName,
-      insuranceMemberId: insuranceMemberNumber,
-      insurancePlan,
-      source: 'express_booking'
-    };
-    let compatProfile: PatientProfileDocument;
-    if (existingPhoneCompatProfile) {
-      compatProfile = await this.patientProfiles.updateById(existingPhoneCompatProfile._id.toString(), compatProfileUpdate) ?? existingPhoneCompatProfile;
-    } else {
-      try {
-        compatProfile = await this.patientProfiles.create({
-          userId: null,
-          ownerUserId: null,
-          isPrimaryProfile: true,
-          ...compatProfileUpdate
-        });
-      } catch (error: unknown) {
-        if (!this.isDuplicateOrganizationPhoneProfileError(error)) throw error;
-
-        const racedProfile = await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
-        if (!racedProfile) throw error;
-        compatProfile = await this.patientProfiles.updateById(racedProfile._id.toString(), compatProfileUpdate) ?? racedProfile;
-      }
-    }
-
-    const orgProfileInput = {
-      patientIdentityId: identity._id.toString(),
-      patientProfileId: compatProfile._id.toString(),
-      firstName,
-      lastName,
-      phone,
-      normalizedPhone,
-      email: email ?? null,
-      documentNumber: documentNumber ?? null,
-      birthDate,
-      defaultCoverageType: paymentCoverageType,
-      defaultHealthInsuranceId: healthInsuranceId,
-      defaultHealthInsuranceName: healthInsuranceName,
-      defaultInsuranceMemberNumber: insuranceMemberNumber,
-      source: 'express_booking' as const,
-      ownerUserId: null
-    };
-
-    let orgProfile;
-    if (existingOrgProfile) {
-      orgProfile = await this.organizationPatientProfiles.updateById(existingOrgProfile._id.toString(), orgProfileInput) ?? existingOrgProfile;
-    } else {
-      try {
-        orgProfile = await this.organizationPatientProfiles.create({ organizationId, ...orgProfileInput });
-      } catch (error: unknown) {
-        if (!this.isDuplicateKeyError(error)) throw error;
-        const racedProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
-          ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
-        if (!racedProfile) throw error;
-        orgProfile = await this.organizationPatientProfiles.updateById(racedProfile._id.toString(), orgProfileInput) ?? racedProfile;
-      }
-    }
-
-    await this.links.upsertActive({
-      patientProfileId: compatProfile._id.toString(),
-      organizationId,
-      status: 'active',
-      source: 'express_booking'
-    });
+      await this.links.upsertActive({
+        patientProfileId: compatProfile._id.toString(),
+        organizationId,
+        status: 'active',
+        source: 'express_booking'
+      });
 
       step = 'appointment';
-      return await this.appointmentsService.createExpressAppointment(organizationId, {
+      const appointment = await this.appointmentsService.createExpressAppointment(organizationId, {
         professionalId: input.professionalId,
         specialtyId: input.specialtyId,
         startAt: input.startAt,
@@ -342,23 +315,26 @@ export class PatientService {
         durationMultiplier: input.appointmentType === 'double' ? 2 : 1,
         patientProfileId: compatProfile._id.toString(),
         patientName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
-        patientEmail: email,
-        patientPhone: phone,
+        patientEmail: orgProfile.email ?? identity.email ?? undefined,
+        patientPhone: orgProfile.phone ?? identity.phone ?? undefined,
         notes: normalizeOptionalText(input.reason),
         beneficiaryType: 'self',
         beneficiaryDisplayName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
-        paymentCoverageType,
-        healthInsuranceId,
-        healthInsuranceName,
-        insuranceMemberNumber,
-        insurancePlan
+        paymentCoverageType: coverage.paymentCoverageType,
+        healthInsuranceId: coverage.healthInsuranceId,
+        healthInsuranceName: coverage.healthInsuranceName,
+        insuranceMemberNumber: coverage.insuranceMemberNumber,
+        insurancePlan: coverage.insurancePlan
       });
+
+      const session = await this.issueExpressSession(identity._id.toString(), userAgent);
+      return Object.assign(appointment, { expressSessionToken: session.token, expressSessionExpiresAt: session.expiresAt });
     } catch (error: unknown) {
       if (error instanceof AppError && ['APPOINTMENT_SLOT_TAKEN', 'APPOINTMENT_OVERLAP', 'SLOT_NOT_AVAILABLE', 'SLOT_BLOCKED_BY_PROGRESSIVE_RELEASE'].includes(error.code)) {
         throw new AppError(error.code, 400, 'El horario seleccionado ya no está disponible.');
       }
       if (!(error instanceof AppError)) {
-        logger.error({ err: error, tokenOrSlug, organizationId, professionalId: input.professionalId, specialtyId: input.specialtyId, normalizedPhone, step }, 'Unexpected express appointment error');
+        logger.error({ err: error, tokenOrSlug, organizationId, professionalId: input.professionalId, specialtyId: input.specialtyId, step }, 'Unexpected express appointment error');
       }
       throw error;
     }
@@ -1169,6 +1145,226 @@ export class PatientService {
     }
   }
 
+
+  private normalizeExpressPatientInput(patient: { firstName: string; lastName: string; phone: string; email?: string | undefined; documentNumber?: string | undefined; birthDate?: string | undefined }): {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    normalizedPhone: string;
+    email?: string | undefined;
+    documentNumber?: string | undefined;
+    birthDate: Date | null;
+  } {
+    const firstName = normalizeOptionalText(patient.firstName);
+    const lastName = normalizeOptionalText(patient.lastName);
+    const phone = normalizePhone(patient.phone);
+    const normalizedPhone = this.normalizePhoneIdentity(patient.phone);
+    if (!firstName) throw new AppError('INVALID_PATIENT_FIRST_NAME', 400, 'Nombre es obligatorio');
+    if (!lastName) throw new AppError('INVALID_PATIENT_LAST_NAME', 400, 'Apellido es obligatorio');
+    if (!phone || !normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'El teléfono del paciente es obligatorio.');
+    const email = normalizeOptionalText(patient.email)?.toLowerCase();
+    const documentNumber = normalizeOptionalText(patient.documentNumber)?.replace(/\s+/g, '');
+    let birthDate: Date | null = null;
+    if (patient.birthDate) {
+      if (!isValidDateOnly(patient.birthDate)) throw new AppError('INVALID_BIRTH_DATE', 400, 'birthDate must be YYYY-MM-DD');
+      birthDate = new Date(`${patient.birthDate}T00:00:00.000Z`);
+    }
+    return { firstName, lastName, phone, normalizedPhone, email, documentNumber, birthDate };
+  }
+
+  private async createOrUpdatePatientIdentity(input: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    normalizedPhone: string;
+    email?: string | undefined;
+    documentNumber?: string | undefined;
+    birthDate: Date | null;
+  }): Promise<PatientIdentityDocument> {
+    let identity = await this.patientIdentities.findByNormalizedPhone(input.normalizedPhone);
+    if (!identity) {
+      try {
+        return await this.patientIdentities.create({
+          normalizedPhone: input.normalizedPhone,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          phone: input.phone,
+          email: input.email ?? null,
+          documentNumber: input.documentNumber ?? null,
+          birthDate: input.birthDate
+        });
+      } catch (error: unknown) {
+        if (!this.isDuplicateKeyError(error)) throw error;
+        identity = await this.patientIdentities.findByNormalizedPhone(input.normalizedPhone);
+        if (!identity) throw error;
+      }
+    }
+
+    const identityUpdate: Record<string, unknown> = {};
+    if (input.firstName) identityUpdate.firstName = input.firstName;
+    if (input.lastName) identityUpdate.lastName = input.lastName;
+    if (input.phone) identityUpdate.phone = input.phone;
+    if (input.email) identityUpdate.email = input.email;
+    if (input.documentNumber) identityUpdate.documentNumber = input.documentNumber;
+    if (input.birthDate) identityUpdate.birthDate = input.birthDate;
+    if (Object.keys(identityUpdate).length > 0) {
+      identity = await this.patientIdentities.updateById(identity._id.toString(), identityUpdate) ?? identity;
+    }
+    return identity;
+  }
+
+  private async resolveExpressCoverage(organizationId: string, coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null | undefined; insuranceMemberNumber?: string | null | undefined; insurancePlan?: string | null | undefined }): Promise<{
+    paymentCoverageType: 'private' | 'health_insurance';
+    healthInsuranceId: string | null;
+    healthInsuranceName: string;
+    insuranceMemberNumber: string | null;
+    insurancePlan: string | null;
+  }> {
+    let paymentCoverageType: 'private' | 'health_insurance' = 'private';
+    let healthInsuranceId: string | null = null;
+    let healthInsuranceName = 'Particular';
+    const insuranceMemberNumber = normalizeOptionalText(coverage.insuranceMemberNumber) ?? null;
+    const insurancePlan = normalizeOptionalText(coverage.insurancePlan) ?? null;
+    if (coverage.type === 'health_insurance') {
+      if (!coverage.healthInsuranceId || !isValidObjectId(coverage.healthInsuranceId)) {
+        throw new AppError('INVALID_HEALTH_INSURANCE_ID', 400, 'Seleccioná una obra social válida');
+      }
+      const healthInsurance = await this.healthInsurances.findByIdInOrganization(organizationId, coverage.healthInsuranceId);
+      if (!healthInsurance || healthInsurance.status !== 'active') throw new AppError('HEALTH_INSURANCE_NOT_AVAILABLE', 400, 'La cobertura seleccionada no está disponible');
+      if (healthInsurance.requiresMemberNumber && !insuranceMemberNumber) throw new AppError('INSURANCE_MEMBER_NUMBER_REQUIRED', 400, 'Ingresá el número de afiliado');
+      if (healthInsurance.requiresPlan && !insurancePlan) throw new AppError('INSURANCE_PLAN_REQUIRED', 400, 'Ingresá el plan de la cobertura');
+      paymentCoverageType = 'health_insurance';
+      healthInsuranceId = healthInsurance._id.toString();
+      healthInsuranceName = healthInsurance.name;
+    }
+    return { paymentCoverageType, healthInsuranceId, healthInsuranceName, insuranceMemberNumber, insurancePlan };
+  }
+
+  private async createOrUpdateOrganizationPatientProfile(
+    organizationId: string,
+    identity: PatientIdentityDocument,
+    coverage: { paymentCoverageType: 'private' | 'health_insurance'; healthInsuranceId: string | null; healthInsuranceName: string; insuranceMemberNumber: string | null; insurancePlan: string | null },
+    preserveExistingPersonalData: boolean
+  ): Promise<{ compatProfile: PatientProfileDocument; orgProfile: OrganizationPatientProfileDocument }> {
+    let existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString());
+    if (!existingOrgProfile) existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, identity.normalizedPhone);
+
+    const firstName = preserveExistingPersonalData ? (existingOrgProfile?.firstName ?? identity.firstName) : identity.firstName;
+    const lastName = preserveExistingPersonalData ? (existingOrgProfile?.lastName ?? identity.lastName) : identity.lastName;
+    const phone = preserveExistingPersonalData ? (existingOrgProfile?.phone ?? identity.phone ?? identity.normalizedPhone) : (identity.phone ?? identity.normalizedPhone);
+    const email = preserveExistingPersonalData ? (existingOrgProfile?.email ?? identity.email ?? null) : (identity.email ?? null);
+    const documentNumber = preserveExistingPersonalData ? (existingOrgProfile?.documentNumber ?? identity.documentNumber ?? null) : (identity.documentNumber ?? null);
+    const birthDate = preserveExistingPersonalData ? (existingOrgProfile?.birthDate ?? identity.birthDate ?? null) : (identity.birthDate ?? null);
+
+    const existingLinkedCompatProfile = existingOrgProfile?.patientProfileId ? await this.patientProfiles.findById(existingOrgProfile.patientProfileId.toString()) : null;
+    const existingPhoneCompatProfile = existingLinkedCompatProfile ?? await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, identity.normalizedPhone);
+    const compatProfileUpdate = {
+      organizationId,
+      firstName,
+      lastName,
+      phone,
+      normalizedPhone: identity.normalizedPhone,
+      dateOfBirth: birthDate,
+      documentId: documentNumber,
+      insuranceProvider: coverage.healthInsuranceName,
+      insuranceMemberId: coverage.insuranceMemberNumber,
+      insurancePlan: coverage.insurancePlan,
+      source: 'express_booking'
+    };
+
+    let compatProfile: PatientProfileDocument;
+    if (existingPhoneCompatProfile) {
+      compatProfile = await this.patientProfiles.updateById(existingPhoneCompatProfile._id.toString(), compatProfileUpdate) ?? existingPhoneCompatProfile;
+    } else {
+      try {
+        compatProfile = await this.patientProfiles.create({ userId: null, ownerUserId: null, isPrimaryProfile: true, ...compatProfileUpdate });
+      } catch (error: unknown) {
+        if (!this.isDuplicateOrganizationPhoneProfileError(error)) throw error;
+        const racedProfile = await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, identity.normalizedPhone);
+        if (!racedProfile) throw error;
+        compatProfile = await this.patientProfiles.updateById(racedProfile._id.toString(), compatProfileUpdate) ?? racedProfile;
+      }
+    }
+
+    const orgProfileInput = {
+      patientIdentityId: identity._id.toString(),
+      patientProfileId: compatProfile._id.toString(),
+      firstName,
+      lastName,
+      phone,
+      normalizedPhone: identity.normalizedPhone,
+      email,
+      documentNumber,
+      birthDate,
+      defaultCoverageType: coverage.paymentCoverageType,
+      defaultHealthInsuranceId: coverage.healthInsuranceId,
+      defaultHealthInsuranceName: coverage.healthInsuranceName,
+      defaultInsuranceMemberNumber: coverage.insuranceMemberNumber,
+      source: 'express_booking' as const,
+      ownerUserId: null
+    };
+
+    let orgProfile: OrganizationPatientProfileDocument;
+    if (existingOrgProfile) {
+      orgProfile = await this.organizationPatientProfiles.updateById(existingOrgProfile._id.toString(), orgProfileInput) ?? existingOrgProfile;
+    } else {
+      try {
+        orgProfile = await this.organizationPatientProfiles.create({ organizationId, ...orgProfileInput });
+      } catch (error: unknown) {
+        if (!this.isDuplicateKeyError(error)) throw error;
+        const racedProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
+          ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, identity.normalizedPhone);
+        if (!racedProfile) throw error;
+        orgProfile = await this.organizationPatientProfiles.updateById(racedProfile._id.toString(), orgProfileInput) ?? racedProfile;
+      }
+    }
+
+    return { compatProfile, orgProfile };
+  }
+
+  private async issueExpressSession(patientIdentityId: string, userAgent?: string): Promise<{ token: string; expiresAt: Date }> {
+    const token = crypto.randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 120);
+    await this.expressSessions.create({
+      patientIdentityId,
+      tokenHash: this.hashExpressToken(token),
+      expiresAt,
+      userAgentHash: userAgent ? this.hashExpressToken(userAgent) : null
+    });
+    return { token, expiresAt };
+  }
+
+  private async resolveIdentityFromExpressSession(token?: string, _userAgent?: string): Promise<PatientIdentityDocument | null> {
+    const normalizedToken = normalizeOptionalText(token);
+    if (!normalizedToken) return null;
+    const session = await this.expressSessions.findValidByTokenHash(this.hashExpressToken(normalizedToken));
+    if (!session) return null;
+    await this.expressSessions.touch(session._id.toString());
+    return this.patientIdentities.findById(session.patientIdentityId.toString());
+  }
+
+  private hashExpressToken(value: string): string {
+    return crypto.createHash('sha256').update(value).digest('hex');
+  }
+
+  private toMaskedPatient(identity: PatientIdentityDocument): ExpressMaskedPatientDto {
+    return {
+      displayName: this.maskDisplayName(identity.firstName, identity.lastName),
+      maskedPhone: this.maskPhone(identity.phone ?? identity.normalizedPhone)
+    };
+  }
+
+  private maskDisplayName(firstName?: string | null, lastName?: string | null): string {
+    const safeFirstName = normalizeOptionalText(firstName ?? '') ?? 'Paciente';
+    const safeLastName = normalizeOptionalText(lastName ?? '');
+    return safeLastName ? `${safeFirstName} ${safeLastName.charAt(0).toUpperCase()}.` : safeFirstName;
+  }
+
+  private maskPhone(phone?: string | null): string {
+    const digits = (phone ?? '').replace(/\D/g, '');
+    const suffix = digits.slice(-4);
+    return suffix ? `******${suffix}` : '******';
+  }
 
   private normalizePhoneIdentity(value: string): string | undefined {
     const compact = value.replace(/\D/g, '');

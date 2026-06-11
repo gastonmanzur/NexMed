@@ -11,6 +11,10 @@ interface PatientIdentityWriteInput {
 }
 
 export class PatientIdentityRepository {
+  async findById(id: string): Promise<PatientIdentityDocument | null> {
+    return PatientIdentityModel.findById(id).exec();
+  }
+
   async findByNormalizedPhone(normalizedPhone: string): Promise<PatientIdentityDocument | null> {
     return PatientIdentityModel.findOne({ normalizedPhone }).exec();
   }

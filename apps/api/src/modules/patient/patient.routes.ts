@@ -5,13 +5,18 @@ import { patientController } from './controllers/patient.controller.js';
 import { waitlistRouter } from '../waitlist/waitlist.routes.js';
 
 export const joinRouter = Router();
+export const publicPatientRouter = Router();
 export const patientRouter = Router();
 
 joinRouter.get('/:tokenOrSlug', asyncHandler(patientController.joinPreview));
 joinRouter.get('/:tokenOrSlug/catalog', asyncHandler(patientController.publicCatalog));
 joinRouter.get('/:tokenOrSlug/availability', asyncHandler(patientController.publicAvailability));
 joinRouter.get('/:tokenOrSlug/health-insurances', asyncHandler(patientController.publicHealthInsurances));
+joinRouter.post('/:tokenOrSlug/patient-lookup', asyncHandler(patientController.patientLookup));
+joinRouter.post('/:tokenOrSlug/patient-confirm', asyncHandler(patientController.patientConfirm));
 joinRouter.post('/:tokenOrSlug/appointments/express', asyncHandler(patientController.createExpressAppointment));
+
+publicPatientRouter.get('/patient-express-session/me', asyncHandler(patientController.expressSessionMe));
 
 patientRouter.use(requireAuth);
 
