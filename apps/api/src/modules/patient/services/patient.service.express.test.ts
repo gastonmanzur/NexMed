@@ -9,6 +9,7 @@ const createService = (overrides: {
   organizationPatientProfiles?: Record<string, unknown>;
   appointmentsService?: Record<string, unknown>;
   organization?: Record<string, unknown>;
+  expressSessions?: Record<string, unknown>;
 } = {}) => {
   const organizationId = new mongoose.Types.ObjectId();
   const organization = { _id: organizationId, status: 'active', name: 'Centro Demo', displayName: 'Centro Demo', slug: 'centro-demo', type: 'clinic', ...overrides.organization };
@@ -18,6 +19,7 @@ const createService = (overrides: {
   const orgProfilesByPhone = new Map<string, Record<string, unknown>>();
 
   const patientIdentities = {
+    findById: vi.fn(async (id: string) => [...identitiesByPhone.values()].find((item) => String(item._id) === id) ?? null),
     findByNormalizedPhone: vi.fn(async (normalizedPhone: string) => identitiesByPhone.get(normalizedPhone) ?? null),
     create: vi.fn(async (input: Record<string, unknown>) => {
       const identity = { _id: new mongoose.Types.ObjectId(), ...input };
@@ -77,6 +79,13 @@ const createService = (overrides: {
     ...overrides.appointmentsService
   };
 
+  const expressSessions = {
+    create: vi.fn(async (input: Record<string, unknown>) => ({ _id: new mongoose.Types.ObjectId(), ...input })),
+    findValidByTokenHash: vi.fn(async () => null),
+    touch: vi.fn(async () => undefined),
+    ...overrides.expressSessions
+  };
+
   const service = new PatientService(
     {} as never,
     { findById: vi.fn(), findBySlug: vi.fn().mockResolvedValue(organization) } as never,
@@ -93,10 +102,11 @@ const createService = (overrides: {
     {} as never,
     patientIdentities as never,
     organizationPatientProfiles as never,
-    { findByIdInOrganization: vi.fn() } as never
+    { findByIdInOrganization: vi.fn() } as never,
+    expressSessions as never
   );
 
-  return { service, organizationId: organizationId.toString(), patientIdentities, patientProfiles, organizationPatientProfiles, appointmentsService, identitiesByPhone, compatProfilesByPhone, orgProfilesByIdentity };
+  return { service, organizationId: organizationId.toString(), patientIdentities, patientProfiles, organizationPatientProfiles, appointmentsService, expressSessions, identitiesByPhone, compatProfilesByPhone, orgProfilesByIdentity };
 };
 
 const baseInput = (phone: string, startAt = '2026-07-01T14:00:00.000Z') => ({
@@ -164,6 +174,42 @@ describe('PatientService createExpressAppointment express identity/profile/appoi
     expect(patientIdentities.create).toHaveBeenCalledTimes(1);
     expect(findByNormalizedPhone).toHaveBeenCalledTimes(2);
     expect(appointmentsService.createExpressAppointment).toHaveBeenCalledTimes(1);
+  });
+
+
+
+  it('returns only masked data when looking up an existing phone', async () => {
+    const { service } = createService();
+    await service.createExpressAppointment('centro-demo', baseInput('+54 11 3333-6516'));
+
+    const result = await service.lookupExpressPatient('centro-demo', { phone: '+54 11 3333-6516' });
+
+    expect(result).toEqual({
+      found: true,
+      maskedPatient: { displayName: 'Ana P.', maskedPhone: '******6516' },
+      requiresVerification: false
+    });
+  });
+
+  it('creates an appointment with the current express patient without requiring personal data again', async () => {
+    const { service, expressSessions, identitiesByPhone, patientIdentities, appointmentsService } = createService();
+    await service.createExpressAppointment('centro-demo', baseInput('+54 11 4444-6516'));
+    const identity = identitiesByPhone.get('541144446516');
+    expect(identity).toBeTruthy();
+    vi.mocked(expressSessions.findValidByTokenHash).mockResolvedValueOnce({ _id: new mongoose.Types.ObjectId(), patientIdentityId: identity!._id } as never);
+    patientIdentities.create.mockClear();
+
+    const appointment = await service.createExpressAppointment('centro-demo', {
+      professionalId: new mongoose.Types.ObjectId().toString(),
+      specialtyId: new mongoose.Types.ObjectId().toString(),
+      startAt: '2026-07-02T15:00:00.000Z',
+      useCurrentExpressPatient: true,
+      coverage: { type: 'private' }
+    }, 'browser-token');
+
+    expect(patientIdentities.create).not.toHaveBeenCalled();
+    expect(appointment.patientName).toBe('Ana Paz');
+    expect(appointmentsService.createExpressAppointment).toHaveBeenCalledTimes(2);
   });
 
   it('returns a 400 message when the selected slot is no longer available', async () => {

@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { env } from '../../../config/env.js';
 import { z } from 'zod';
 import type { AuthenticatedRequest } from '../../auth/types/auth-request.js';
 import { PatientService } from '../services/patient.service.js';
@@ -16,27 +17,52 @@ const availabilityQuerySchema = z.object({
 });
 
 
+const expressPatientSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  phone: z.string().trim().min(1).max(40),
+  email: z.string().trim().max(160).optional(),
+  documentNumber: z.string().trim().max(30).optional(),
+  birthDate: z.string().trim().optional()
+});
+
+const expressCoverageSchema = z.object({
+  type: z.enum(['private', 'health_insurance']),
+  healthInsuranceId: z.string().trim().min(1).nullable().optional(),
+  insuranceMemberNumber: z.string().trim().max(60).nullable().optional(),
+  insurancePlan: z.string().trim().max(60).nullable().optional()
+});
+
 const expressAppointmentSchema = z.object({
   professionalId: z.string().trim().min(1),
   specialtyId: z.string().trim().min(1),
   startAt: z.string().trim().min(1),
   endAt: z.string().trim().min(1).optional(),
   appointmentType: z.enum(['single', 'double']).optional(),
-  patient: z.object({
-    firstName: z.string().trim().min(1).max(80),
-    lastName: z.string().trim().min(1).max(80),
-    phone: z.string().trim().min(1).max(40),
-    email: z.string().trim().max(160).optional(),
-    documentNumber: z.string().trim().max(30).optional(),
-    birthDate: z.string().trim().optional()
-  }),
-  coverage: z.object({
-    type: z.enum(['private', 'health_insurance']),
-    healthInsuranceId: z.string().trim().min(1).nullable().optional(),
-    insuranceMemberNumber: z.string().trim().max(60).nullable().optional(),
-    insurancePlan: z.string().trim().max(60).nullable().optional()
-  }),
+  useCurrentExpressPatient: z.boolean().optional(),
+  patient: expressPatientSchema.optional(),
+  coverage: expressCoverageSchema,
   reason: z.string().trim().max(500).optional()
+}).superRefine((value, ctx) => {
+  if (value.useCurrentExpressPatient !== true && !value.patient) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patient'], message: 'patient is required unless useCurrentExpressPatient is true' });
+  }
+});
+
+const patientLookupSchema = z.object({ phone: z.string().trim().min(1).max(40) });
+const patientConfirmSchema = z.object({
+  phone: z.string().trim().min(1).max(40),
+  confirm: z.boolean().optional(),
+  code: z.string().trim().max(12).optional()
+});
+
+const expressSessionCookieName = 'patientExpressSession';
+const expressSessionCookieOptions = (expiresAt?: Date) => ({
+  httpOnly: true,
+  sameSite: env.AUTH_COOKIE_SAME_SITE,
+  secure: env.AUTH_COOKIE_SECURE,
+  path: '/api',
+  ...(expiresAt ? { expires: expiresAt } : {})
 });
 
 const updateMeSchema = z.object({
@@ -158,6 +184,26 @@ const rescheduleSchema = z.object({
 });
 
 export const patientController = {
+  expressSessionMe: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const data = await service.getExpressSession(req.cookies?.[expressSessionCookieName], req.get('user-agent'));
+    res.status(200).json(data);
+  },
+
+  patientLookup: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const input = patientLookupSchema.parse(req.body);
+    const data = await service.lookupExpressPatient(tokenOrSlug, input);
+    res.status(200).json({ success: true, data });
+  },
+
+  patientConfirm: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const input = patientConfirmSchema.parse(req.body);
+    const data = await service.confirmExpressPatient(tokenOrSlug, input, req.get('user-agent'));
+    res.cookie(expressSessionCookieName, data.expressSessionToken, expressSessionCookieOptions(data.expiresAt));
+    res.status(200).json({ success: true, data: { confirmed: data.confirmed, patient: data.patient } });
+  },
+
   joinPreview: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { tokenOrSlug } = joinParamsSchema.parse(req.params);
     const data = await service.getJoinPreview(tokenOrSlug);
@@ -187,8 +233,12 @@ export const patientController = {
   createExpressAppointment: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { tokenOrSlug } = joinParamsSchema.parse(req.params);
     const input = expressAppointmentSchema.parse(req.body);
-    const data = await service.createExpressAppointment(tokenOrSlug, input);
-    res.status(201).json({ success: true, data });
+    const data = await service.createExpressAppointment(tokenOrSlug, input, req.cookies?.[expressSessionCookieName], req.get('user-agent'));
+    if (data.expressSessionToken) {
+      res.cookie(expressSessionCookieName, data.expressSessionToken, expressSessionCookieOptions(data.expressSessionExpiresAt));
+    }
+    const { expressSessionToken: _token, expressSessionExpiresAt: _expiresAt, ...appointment } = data;
+    res.status(201).json({ success: true, data: appointment });
   },
 
   joinResolve: async (req: AuthenticatedRequest, res: Response): Promise<void> => {

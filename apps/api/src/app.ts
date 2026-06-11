@@ -15,7 +15,7 @@ import { pushRouter } from './modules/push/push.routes.js';
 import { paymentsRouter } from './modules/payments/payments.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { organizationsRouter } from './modules/organizations/organizations.routes.js';
-import { joinRouter, patientRouter } from './modules/patient/patient.routes.js';
+import { joinRouter, patientRouter, publicPatientRouter } from './modules/patient/patient.routes.js';
 import { notificationsRouter } from './modules/notifications/notifications.routes.js';
 import { reminderAdminRouter } from './modules/reminders/reminder.routes.js';
 import { feedbackRouter } from './modules/feedback/feedback.routes.js';
@@ -67,6 +67,7 @@ export const createApp = () => {
   app.use('/api/admin/reminders', reminderAdminRouter);
   app.use('/api/organizations', organizationsRouter);
   app.use('/api/join', joinRouter);
+  app.use('/api/public', publicPatientRouter);
   app.use('/api/patient', patientRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/feedback', feedbackRouter);
