@@ -122,6 +122,17 @@ export const AuthProvider = ({
   );
 
   useEffect(() => {
+    if (window.location.pathname.startsWith('/join/')) {
+      setUser(null);
+      setAccessToken(null);
+      setOrganizations([]);
+      setMemberships([]);
+      setPatientProfile(null);
+      setActiveOrganizationId(null);
+      setLoading(false);
+      return;
+    }
+
     void (async () => {
       try {
         const session = await authApi.refresh();

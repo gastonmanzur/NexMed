@@ -33,7 +33,7 @@ import { UserEventRepository } from '../repositories/user-event.repository.js';
 import type { PatientProfileDocument } from '../models/patient-profile.model.js';
 import type { PatientFamilyMemberDocument } from '../models/patient-family-member.model.js';
 
-const normalizeOptionalText = (value?: string): string | undefined => {
+const normalizeOptionalText = (value?: string | null): string | undefined => {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : undefined;
 };
@@ -174,7 +174,7 @@ export class PatientService {
     endAt?: string | undefined;
     appointmentType?: 'single' | 'double' | undefined;
     patient: { firstName: string; lastName: string; phone: string; email?: string | undefined; documentNumber?: string | undefined; birthDate?: string | undefined };
-    coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | undefined; insuranceMemberNumber?: string | undefined; insurancePlan?: string | undefined };
+    coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null | undefined; insuranceMemberNumber?: string | null | undefined; insurancePlan?: string | null | undefined };
     reason?: string | undefined;
   }): Promise<AppointmentDto> {
     const organization = await this.resolveAvailableOrganization(tokenOrSlug);
@@ -213,7 +213,9 @@ export class PatientService {
     }
 
     const identity = await this.patientIdentities.upsertByNormalizedPhone({ normalizedPhone, firstName, lastName, email: email ?? null, documentNumber: documentNumber ?? null, birthDate });
-    const existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString());
+    const existingOrgProfile =
+      await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
+      ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
     const existingCompatProfile = existingOrgProfile?.patientProfileId ? await this.patientProfiles.findById(existingOrgProfile.patientProfileId.toString()) : null;
     const compatProfile = existingCompatProfile
       ? await this.patientProfiles.updateById(existingCompatProfile._id.toString(), {
