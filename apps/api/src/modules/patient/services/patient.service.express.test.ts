@@ -1,31 +1,70 @@
 import mongoose from 'mongoose';
 import { describe, expect, it, vi } from 'vitest';
+import { AppError } from '../../../core/errors.js';
 import { PatientService } from './patient.service.js';
 
 const createService = (overrides: {
+  patientIdentities?: Record<string, unknown>;
   patientProfiles?: Record<string, unknown>;
   organizationPatientProfiles?: Record<string, unknown>;
+  appointmentsService?: Record<string, unknown>;
+  organization?: Record<string, unknown>;
 } = {}) => {
   const organizationId = new mongoose.Types.ObjectId();
-  const organization = { _id: organizationId, status: 'active', name: 'Centro Demo', displayName: 'Centro Demo', slug: 'centro-demo', type: 'clinic' };
-  const createdProfiles: unknown[] = [];
+  const organization = { _id: organizationId, status: 'active', name: 'Centro Demo', displayName: 'Centro Demo', slug: 'centro-demo', type: 'clinic', ...overrides.organization };
+  const identitiesByPhone = new Map<string, Record<string, unknown>>();
+  const compatProfilesByPhone = new Map<string, Record<string, unknown>>();
+  const orgProfilesByIdentity = new Map<string, Record<string, unknown>>();
+  const orgProfilesByPhone = new Map<string, Record<string, unknown>>();
+
+  const patientIdentities = {
+    findByNormalizedPhone: vi.fn(async (normalizedPhone: string) => identitiesByPhone.get(normalizedPhone) ?? null),
+    create: vi.fn(async (input: Record<string, unknown>) => {
+      const identity = { _id: new mongoose.Types.ObjectId(), ...input };
+      identitiesByPhone.set(String(input.normalizedPhone), identity);
+      return identity;
+    }),
+    updateById: vi.fn(async (id: string, update: Record<string, unknown>) => {
+      const identity = [...identitiesByPhone.values()].find((item) => String(item._id) === id);
+      if (!identity) return null;
+      Object.assign(identity, update);
+      return identity;
+    }),
+    ...overrides.patientIdentities
+  };
 
   const patientProfiles = {
-    findById: vi.fn(),
-    findByOrganizationAndNormalizedPhone: vi.fn().mockResolvedValue(null),
-    updateById: vi.fn(),
+    findById: vi.fn(async (id: string) => [...compatProfilesByPhone.values()].find((item) => String(item._id) === id) ?? null),
+    findByOrganizationAndNormalizedPhone: vi.fn(async (_organizationId: string, normalizedPhone: string) => compatProfilesByPhone.get(normalizedPhone) ?? null),
+    updateById: vi.fn(async (id: string, update: Record<string, unknown>) => {
+      const profile = [...compatProfilesByPhone.values()].find((item) => String(item._id) === id);
+      if (!profile) return null;
+      Object.assign(profile, update);
+      return profile;
+    }),
     create: vi.fn(async (input: Record<string, unknown>) => {
       const profile = { _id: new mongoose.Types.ObjectId(), ...input };
-      createdProfiles.push(profile);
+      compatProfilesByPhone.set(String(input.normalizedPhone), profile);
       return profile;
     }),
     ...overrides.patientProfiles
   };
 
   const organizationPatientProfiles = {
-    findByOrganizationAndIdentity: vi.fn().mockResolvedValue(null),
-    findByOrganizationAndNormalizedPhone: vi.fn().mockResolvedValue(null),
-    upsertByOrganizationAndIdentity: vi.fn(async (input: Record<string, unknown>) => ({ _id: new mongoose.Types.ObjectId(), ...input })),
+    findByOrganizationAndIdentity: vi.fn(async (_organizationId: string, patientIdentityId: string) => orgProfilesByIdentity.get(patientIdentityId) ?? null),
+    findByOrganizationAndNormalizedPhone: vi.fn(async (_organizationId: string, normalizedPhone: string) => orgProfilesByPhone.get(normalizedPhone) ?? null),
+    updateById: vi.fn(async (id: string, update: Record<string, unknown>) => {
+      const profile = [...orgProfilesByIdentity.values()].find((item) => String(item._id) === id);
+      if (!profile) return null;
+      Object.assign(profile, update);
+      return profile;
+    }),
+    create: vi.fn(async (input: Record<string, unknown>) => {
+      const profile = { _id: new mongoose.Types.ObjectId(), ...input };
+      orgProfilesByIdentity.set(String(input.patientIdentityId), profile);
+      orgProfilesByPhone.set(String(input.normalizedPhone), profile);
+      return profile;
+    }),
     ...overrides.organizationPatientProfiles
   };
 
@@ -34,7 +73,8 @@ const createService = (overrides: {
       id: new mongoose.Types.ObjectId().toString(),
       organizationId: _organizationId,
       ...input
-    }))
+    })),
+    ...overrides.appointmentsService
   };
 
   const service = new PatientService(
@@ -51,75 +91,91 @@ const createService = (overrides: {
     {} as never,
     {} as never,
     {} as never,
-    { upsertByNormalizedPhone: vi.fn(async (input: Record<string, unknown>) => ({ _id: new mongoose.Types.ObjectId(), ...input })) } as never,
+    patientIdentities as never,
     organizationPatientProfiles as never,
     { findByIdInOrganization: vi.fn() } as never
   );
 
-  return { service, organizationId: organizationId.toString(), patientProfiles, organizationPatientProfiles, appointmentsService, createdProfiles };
+  return { service, organizationId: organizationId.toString(), patientIdentities, patientProfiles, organizationPatientProfiles, appointmentsService, identitiesByPhone, compatProfilesByPhone, orgProfilesByIdentity };
 };
 
-const baseInput = (phone: string) => ({
+const baseInput = (phone: string, startAt = '2026-07-01T14:00:00.000Z') => ({
   professionalId: new mongoose.Types.ObjectId().toString(),
   specialtyId: new mongoose.Types.ObjectId().toString(),
-  startAt: '2026-07-01T14:00:00.000Z',
+  startAt,
   patient: { firstName: 'Ana', lastName: 'Paz', phone },
   coverage: { type: 'private' as const }
 });
 
-describe('PatientService createExpressAppointment patient profile reuse', () => {
-  it('creates different express PatientProfiles with userId null for different phones in the same organization', async () => {
-    const { service, organizationId, patientProfiles, appointmentsService } = createService();
+describe('PatientService createExpressAppointment express identity/profile/appointment chain', () => {
+  it('creates separate PatientIdentities and profiles for two different normalized phones without overwriting the first patient', async () => {
+    const { service, organizationId, patientIdentities, patientProfiles, organizationPatientProfiles, appointmentsService, identitiesByPhone } = createService();
 
     await service.createExpressAppointment('centro-demo', baseInput('+54 11 1111-1111'));
-    await service.createExpressAppointment('centro-demo', baseInput('+54 11 2222-2222'));
+    await service.createExpressAppointment('centro-demo', baseInput('+54 11 2222-2222', '2026-07-01T15:00:00.000Z'));
 
-    expect(patientProfiles.create).toHaveBeenCalledTimes(2);
+    expect(patientIdentities.findByNormalizedPhone).toHaveBeenNthCalledWith(1, '541111111111');
+    expect(patientIdentities.findByNormalizedPhone).toHaveBeenNthCalledWith(2, '541122222222');
+    expect(patientIdentities.create).toHaveBeenCalledTimes(2);
+    expect(patientIdentities.updateById).not.toHaveBeenCalled();
+    expect(identitiesByPhone.get('541111111111')).toEqual(expect.objectContaining({ normalizedPhone: '541111111111', firstName: 'Ana' }));
+    expect(identitiesByPhone.get('541122222222')).toEqual(expect.objectContaining({ normalizedPhone: '541122222222', firstName: 'Ana' }));
     expect(patientProfiles.create).toHaveBeenNthCalledWith(1, expect.objectContaining({ organizationId, userId: null, normalizedPhone: '541111111111' }));
     expect(patientProfiles.create).toHaveBeenNthCalledWith(2, expect.objectContaining({ organizationId, userId: null, normalizedPhone: '541122222222' }));
+    expect(organizationPatientProfiles.create).toHaveBeenCalledTimes(2);
     expect(appointmentsService.createExpressAppointment).toHaveBeenCalledTimes(2);
   });
 
-  it('reuses the existing express PatientProfile for the same organization and normalized phone', async () => {
-    const existingProfile = { _id: new mongoose.Types.ObjectId(), organizationId: new mongoose.Types.ObjectId(), userId: null, normalizedPhone: '541133333333' };
-    const { service, patientProfiles, appointmentsService } = createService({
-      patientProfiles: {
-        findByOrganizationAndNormalizedPhone: vi.fn().mockResolvedValue(existingProfile),
-        updateById: vi.fn().mockResolvedValue({ ...existingProfile, firstName: 'Ana', lastName: 'Paz' })
-      }
-    });
+  it('reuses PatientIdentity and PatientProfile for the same phone in the same organization and still creates another appointment', async () => {
+    const { service, patientIdentities, patientProfiles, organizationPatientProfiles, appointmentsService } = createService();
 
-    await service.createExpressAppointment('centro-demo', baseInput('+54 11 3333-3333'));
-    await service.createExpressAppointment('centro-demo', baseInput('+54 11 3333-3333'));
+    const firstAppointment = await service.createExpressAppointment('centro-demo', baseInput('+54 11 3333-3333'));
+    const secondAppointment = await service.createExpressAppointment('centro-demo', baseInput('+54 11 3333-3333', '2026-07-01T16:00:00.000Z'));
 
-    expect(patientProfiles.create).not.toHaveBeenCalled();
-    expect(patientProfiles.updateById).toHaveBeenCalledTimes(2);
-    expect(appointmentsService.createExpressAppointment).toHaveBeenCalledTimes(2);
-    expect(appointmentsService.createExpressAppointment).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ patientProfileId: existingProfile._id.toString() }));
-  });
-
-  it('recovers from a duplicate organization + normalizedPhone race by re-reading and reusing the existing profile', async () => {
-    const racedProfile = { _id: new mongoose.Types.ObjectId(), userId: null, normalizedPhone: '541144444444' };
-    const duplicateKeyError = Object.assign(new Error('E11000 duplicate key error organizationId_1_normalizedPhone_1_partial_unique'), {
-      code: 11000,
-      keyPattern: { organizationId: 1, normalizedPhone: 1 },
-      index: 'organizationId_1_normalizedPhone_1_partial_unique'
-    });
-    const findByOrganizationAndNormalizedPhone = vi.fn()
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(racedProfile);
-    const { service, patientProfiles, appointmentsService } = createService({
-      patientProfiles: {
-        findByOrganizationAndNormalizedPhone,
-        create: vi.fn().mockRejectedValue(duplicateKeyError),
-        updateById: vi.fn().mockResolvedValue({ ...racedProfile, firstName: 'Ana', lastName: 'Paz' })
-      }
-    });
-
-    await expect(service.createExpressAppointment('centro-demo', baseInput('+54 11 4444-4444'))).resolves.toEqual(expect.objectContaining({ patientProfileId: racedProfile._id.toString() }));
-
+    expect(patientIdentities.create).toHaveBeenCalledTimes(1);
+    expect(patientIdentities.updateById).toHaveBeenCalledTimes(1);
     expect(patientProfiles.create).toHaveBeenCalledTimes(1);
-    expect(findByOrganizationAndNormalizedPhone).toHaveBeenCalledTimes(2);
+    expect(patientProfiles.updateById).toHaveBeenCalledTimes(1);
+    expect(organizationPatientProfiles.create).toHaveBeenCalledTimes(1);
+    expect(organizationPatientProfiles.updateById).toHaveBeenCalledTimes(1);
+    expect(appointmentsService.createExpressAppointment).toHaveBeenCalledTimes(2);
+    expect(secondAppointment.patientProfileId).toBe(firstAppointment.patientProfileId);
+  });
+
+  it('recovers from a duplicate PatientIdentity race by re-reading the identity by normalizedPhone', async () => {
+    const racedIdentity = { _id: new mongoose.Types.ObjectId(), normalizedPhone: '541144444444', firstName: 'Ana', lastName: 'Paz' };
+    const duplicateKeyError = Object.assign(new Error('E11000 duplicate key error normalizedPhone_1_unique'), {
+      code: 11000,
+      keyPattern: { normalizedPhone: 1 },
+      index: 'normalizedPhone_1_unique'
+    });
+    const findByNormalizedPhone = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(racedIdentity);
+    const { service, patientIdentities, appointmentsService } = createService({
+      patientIdentities: {
+        findByNormalizedPhone,
+        create: vi.fn().mockRejectedValue(duplicateKeyError)
+      }
+    });
+
+    await expect(service.createExpressAppointment('centro-demo', baseInput('+54 11 4444-4444'))).resolves.toEqual(expect.objectContaining({ patientProfileId: expect.any(String) }));
+
+    expect(patientIdentities.create).toHaveBeenCalledTimes(1);
+    expect(findByNormalizedPhone).toHaveBeenCalledTimes(2);
     expect(appointmentsService.createExpressAppointment).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a 400 message when the selected slot is no longer available', async () => {
+    const { service } = createService({
+      appointmentsService: {
+        createExpressAppointment: vi.fn().mockRejectedValue(new AppError('SLOT_NOT_AVAILABLE', 409, 'Requested slot is not available'))
+      }
+    });
+
+    await expect(service.createExpressAppointment('centro-demo', baseInput('+54 11 5555-5555'))).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'El horario seleccionado ya no está disponible.'
+    });
   });
 });

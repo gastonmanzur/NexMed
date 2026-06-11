@@ -1,31 +1,34 @@
 import { PatientIdentityModel, type PatientIdentityDocument } from '../models/patient-identity.model.js';
 
+interface PatientIdentityWriteInput {
+  normalizedPhone: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string | null;
+  documentNumber?: string | null;
+  birthDate?: Date | null;
+}
+
 export class PatientIdentityRepository {
   async findByNormalizedPhone(normalizedPhone: string): Promise<PatientIdentityDocument | null> {
     return PatientIdentityModel.findOne({ normalizedPhone }).exec();
   }
 
-  async upsertByNormalizedPhone(input: {
-    normalizedPhone: string;
-    firstName: string;
-    lastName: string;
-    email?: string | null;
-    documentNumber?: string | null;
-    birthDate?: Date | null;
-  }): Promise<PatientIdentityDocument> {
-    return PatientIdentityModel.findOneAndUpdate(
-      { normalizedPhone: input.normalizedPhone },
-      {
-        $set: {
-          firstName: input.firstName,
-          lastName: input.lastName,
-          email: input.email ?? null,
-          documentNumber: input.documentNumber ?? null,
-          birthDate: input.birthDate ?? null
-        },
-        $setOnInsert: { normalizedPhone: input.normalizedPhone }
-      },
-      { new: true, upsert: true }
-    ).exec();
+  async create(input: PatientIdentityWriteInput): Promise<PatientIdentityDocument> {
+    return PatientIdentityModel.create({
+      normalizedPhone: input.normalizedPhone,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      phone: input.phone,
+      email: input.email ?? null,
+      documentNumber: input.documentNumber ?? null,
+      birthDate: input.birthDate ?? null,
+      verifiedPhoneAt: null
+    });
+  }
+
+  async updateById(id: string, update: Partial<Omit<PatientIdentityWriteInput, 'normalizedPhone'>>): Promise<PatientIdentityDocument | null> {
+    return PatientIdentityModel.findOneAndUpdate({ _id: id }, { $set: update }, { new: true }).exec();
   }
 }

@@ -13,6 +13,7 @@ import type {
   UserEventDto
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import { logger } from '../../../config/logger.js';
 import { formatAppointmentDateTimeArgentina } from '../../../core/argentina-date-time.js';
 import { AppointmentsService } from '../../appointments/services/appointments.service.js';
 import { AvailabilityService } from '../../availability/services/availability.service.js';
@@ -100,6 +101,10 @@ export class PatientService {
     private readonly healthInsurances = new OrganizationHealthInsuranceRepository()
   ) {}
 
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === 11000);
+  }
 
   private isDuplicateOrganizationPhoneProfileError(error: unknown): boolean {
     if (!error || typeof error !== 'object' || !('code' in error) || (error as { code?: unknown }).code !== 11000) return false;
@@ -196,7 +201,7 @@ export class PatientService {
     const normalizedPhone = this.normalizePhoneIdentity(input.patient.phone);
     if (!firstName) throw new AppError('INVALID_PATIENT_FIRST_NAME', 400, 'Nombre es obligatorio');
     if (!lastName) throw new AppError('INVALID_PATIENT_LAST_NAME', 400, 'Apellido es obligatorio');
-    if (!phone || !normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'Teléfono / WhatsApp es obligatorio');
+    if (!phone || !normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'El teléfono del paciente es obligatorio.');
     const email = normalizeOptionalText(input.patient.email)?.toLowerCase();
     const documentNumber = normalizeOptionalText(input.patient.documentNumber)?.replace(/\s+/g, '');
     let birthDate: Date | null = null;
@@ -223,10 +228,36 @@ export class PatientService {
       healthInsuranceName = healthInsurance.name;
     }
 
-    const identity = await this.patientIdentities.upsertByNormalizedPhone({ normalizedPhone, firstName, lastName, email: email ?? null, documentNumber: documentNumber ?? null, birthDate });
-    const existingOrgProfile =
-      await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
-      ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
+    let step: 'patient_identity' | 'patient_profile' | 'appointment' = 'patient_identity';
+    try {
+      let identity = await this.patientIdentities.findByNormalizedPhone(normalizedPhone);
+    if (!identity) {
+      try {
+        identity = await this.patientIdentities.create({ normalizedPhone, firstName, lastName, phone, email: email ?? null, documentNumber: documentNumber ?? null, birthDate });
+      } catch (error: unknown) {
+        if (!this.isDuplicateKeyError(error)) throw error;
+        identity = await this.patientIdentities.findByNormalizedPhone(normalizedPhone);
+        if (!identity) throw error;
+      }
+    } else {
+      const identityUpdate: Record<string, unknown> = {};
+      if (firstName) identityUpdate.firstName = firstName;
+      if (lastName) identityUpdate.lastName = lastName;
+      if (phone) identityUpdate.phone = phone;
+      if (email) identityUpdate.email = email;
+      if (documentNumber) identityUpdate.documentNumber = documentNumber;
+      if (birthDate) identityUpdate.birthDate = birthDate;
+      if (Object.keys(identityUpdate).length > 0) {
+        identity = await this.patientIdentities.updateById(identity._id.toString(), identityUpdate) ?? identity;
+      }
+    }
+
+      step = 'patient_profile';
+    let existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString());
+    if (!existingOrgProfile) {
+      existingOrgProfile = await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
+    }
+
     const existingLinkedCompatProfile = existingOrgProfile?.patientProfileId ? await this.patientProfiles.findById(existingOrgProfile.patientProfileId.toString()) : null;
     const existingPhoneCompatProfile = existingLinkedCompatProfile ?? await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
     const compatProfileUpdate = {
@@ -262,8 +293,7 @@ export class PatientService {
       }
     }
 
-    const orgProfile = await this.organizationPatientProfiles.upsertByOrganizationAndIdentity({
-      organizationId,
+    const orgProfileInput = {
       patientIdentityId: identity._id.toString(),
       patientProfileId: compatProfile._id.toString(),
       firstName,
@@ -277,9 +307,24 @@ export class PatientService {
       defaultHealthInsuranceId: healthInsuranceId,
       defaultHealthInsuranceName: healthInsuranceName,
       defaultInsuranceMemberNumber: insuranceMemberNumber,
-      source: 'express_booking',
+      source: 'express_booking' as const,
       ownerUserId: null
-    });
+    };
+
+    let orgProfile;
+    if (existingOrgProfile) {
+      orgProfile = await this.organizationPatientProfiles.updateById(existingOrgProfile._id.toString(), orgProfileInput) ?? existingOrgProfile;
+    } else {
+      try {
+        orgProfile = await this.organizationPatientProfiles.create({ organizationId, ...orgProfileInput });
+      } catch (error: unknown) {
+        if (!this.isDuplicateKeyError(error)) throw error;
+        const racedProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
+          ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
+        if (!racedProfile) throw error;
+        orgProfile = await this.organizationPatientProfiles.updateById(racedProfile._id.toString(), orgProfileInput) ?? racedProfile;
+      }
+    }
 
     await this.links.upsertActive({
       patientProfileId: compatProfile._id.toString(),
@@ -288,25 +333,35 @@ export class PatientService {
       source: 'express_booking'
     });
 
-    return this.appointmentsService.createExpressAppointment(organizationId, {
-      professionalId: input.professionalId,
-      specialtyId: input.specialtyId,
-      startAt: input.startAt,
-      ...(input.endAt ? { endAt: input.endAt } : {}),
-      durationMultiplier: input.appointmentType === 'double' ? 2 : 1,
-      patientProfileId: compatProfile._id.toString(),
-      patientName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
-      patientEmail: email,
-      patientPhone: phone,
-      notes: normalizeOptionalText(input.reason),
-      beneficiaryType: 'self',
-      beneficiaryDisplayName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
-      paymentCoverageType,
-      healthInsuranceId,
-      healthInsuranceName,
-      insuranceMemberNumber,
-      insurancePlan
-    });
+      step = 'appointment';
+      return await this.appointmentsService.createExpressAppointment(organizationId, {
+        professionalId: input.professionalId,
+        specialtyId: input.specialtyId,
+        startAt: input.startAt,
+        ...(input.endAt ? { endAt: input.endAt } : {}),
+        durationMultiplier: input.appointmentType === 'double' ? 2 : 1,
+        patientProfileId: compatProfile._id.toString(),
+        patientName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
+        patientEmail: email,
+        patientPhone: phone,
+        notes: normalizeOptionalText(input.reason),
+        beneficiaryType: 'self',
+        beneficiaryDisplayName: `${orgProfile.firstName} ${orgProfile.lastName}`.trim(),
+        paymentCoverageType,
+        healthInsuranceId,
+        healthInsuranceName,
+        insuranceMemberNumber,
+        insurancePlan
+      });
+    } catch (error: unknown) {
+      if (error instanceof AppError && ['APPOINTMENT_SLOT_TAKEN', 'APPOINTMENT_OVERLAP', 'SLOT_NOT_AVAILABLE', 'SLOT_BLOCKED_BY_PROGRESSIVE_RELEASE'].includes(error.code)) {
+        throw new AppError(error.code, 400, 'El horario seleccionado ya no está disponible.');
+      }
+      if (!(error instanceof AppError)) {
+        logger.error({ err: error, tokenOrSlug, organizationId, professionalId: input.professionalId, specialtyId: input.specialtyId, normalizedPhone, step }, 'Unexpected express appointment error');
+      }
+      throw error;
+    }
   }
 
   async ensurePatientProfile(userId: string): Promise<PatientProfileDocument> {
