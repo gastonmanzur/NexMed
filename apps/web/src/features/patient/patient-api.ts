@@ -6,7 +6,27 @@ const API_URL = rawApiUrl.replace(/\/$/, '');
 
 export type ExpressMaskedPatient = { displayName: string; maskedPhone: string };
 export type ExpressSessionMe = { authenticated: false } | { authenticated: true; patient: ExpressMaskedPatient & { patientIdentityId: string } };
-export type ExpressPatientLookup = { found: false } | { found: true; maskedPatient: ExpressMaskedPatient; requiresVerification: boolean };
+export type ExpressPatientLookup = { found: false } | { found: true; maskedPatient: ExpressMaskedPatient; requiresVerification: boolean; hasSavedData: boolean };
+export type ExpressPatientPrefill = {
+  found: false;
+} | {
+  found: true;
+  patient: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email: string | null;
+    documentNumber: string | null;
+    birthDate: string | null;
+    coverage: {
+      type: 'private' | 'health_insurance';
+      healthInsuranceId: string | null;
+      healthInsuranceName: string | null;
+      insuranceMemberNumber: string | null;
+      insurancePlan: string | null;
+    };
+  };
+};
 export type ExpressPatientConfirm = { confirmed: true; patient: ExpressMaskedPatient };
 export type ExpressAppointmentInput = {
   professionalId: string;
@@ -48,6 +68,7 @@ export const patientApi = {
   getExpressSessionMe: async (): Promise<ExpressSessionMe> => request<ExpressSessionMe>('/public/patient-express-session/me', { method: 'GET' }),
   getPatientSession: async (tokenOrSlug: string): Promise<ExpressSessionMe> => request<ExpressSessionMe>(`/join/${encodeURIComponent(tokenOrSlug)}/patient-session`, { method: 'GET' }),
   lookupExpressPatient: async (tokenOrSlug: string, input: { phone: string }): Promise<ExpressPatientLookup> => (await request<{ success: true; data: ExpressPatientLookup }>(`/join/${encodeURIComponent(tokenOrSlug)}/patient-lookup`, { method: 'POST', body: JSON.stringify(input) })).data,
+  prefillExpressPatient: async (tokenOrSlug: string, input: { phone: string; acceptSavedData: true }): Promise<ExpressPatientPrefill> => (await request<{ success: true; data: ExpressPatientPrefill }>(`/join/${encodeURIComponent(tokenOrSlug)}/patient-prefill`, { method: 'POST', body: JSON.stringify(input) })).data,
   confirmExpressPatient: async (tokenOrSlug: string, input: { phone: string; confirm?: boolean; code?: string }): Promise<ExpressPatientConfirm> => (await request<{ success: true; data: ExpressPatientConfirm }>(`/join/${encodeURIComponent(tokenOrSlug)}/patient-confirm`, { method: 'POST', body: JSON.stringify(input) })).data,
   createExpressAppointment: async (tokenOrSlug: string, input: ExpressAppointmentInput): Promise<AppointmentDto> => (await request<{ success: true; data: AppointmentDto }>(`/join/${encodeURIComponent(tokenOrSlug)}/appointments/express`, { method: 'POST', body: JSON.stringify(input) })).data,
   getJoinPreview: async (tokenOrSlug: string): Promise<JoinOrganizationPreviewDto> => (await request<{ success: true; data: JoinOrganizationPreviewDto }>(`/join/${encodeURIComponent(tokenOrSlug)}`, { method: 'GET' })).data,
