@@ -19,6 +19,10 @@ export class PatientExpressSessionRepository {
     });
   }
 
+  async findByTokenHash(tokenHash: string): Promise<PatientExpressSessionDocument | null> {
+    return PatientExpressSessionModel.findOne({ tokenHash, revokedAt: null }).exec();
+  }
+
   async findValidByTokenHash(tokenHash: string, now = new Date()): Promise<PatientExpressSessionDocument | null> {
     return PatientExpressSessionModel.findOne({ tokenHash, revokedAt: null, expiresAt: { $gt: now } }).exec();
   }

@@ -57,8 +57,8 @@ export const JoinPage = (): ReactElement => {
   const [form, setForm] = useState<ExpressForm>(emptyForm);
   const [confirmation, setConfirmation] = useState<AppointmentDto | null>(null);
   const [expressPatient, setExpressPatient] = useState<ExpressMaskedPatient | null>(null);
-  const [useExpressPatient, setUseExpressPatient] = useState(false);
-  const [useOtherData, setUseOtherData] = useState(false);
+  const [selectedPatientMode, setSelectedPatientMode] = useState<'lookup' | 'known' | 'other'>('lookup');
+  const [expressSessionLoading, setExpressSessionLoading] = useState(true);
   const [lookupPhone, setLookupPhone] = useState('');
   const [lookupResult, setLookupResult] = useState<ExpressMaskedPatient | null>(null);
   const [lookupMessage, setLookupMessage] = useState('');
@@ -73,16 +73,23 @@ export const JoinPage = (): ReactElement => {
       setLoading(true);
       setError('');
       try {
-        const [previewData, catalogData, coverageData] = await Promise.all([
+        setExpressSessionLoading(true);
+        const [previewData, catalogData, coverageData, sessionData] = await Promise.all([
           patientApi.getJoinPreview(tokenOrSlug),
           patientApi.getPublicCatalog(tokenOrSlug),
-          patientApi.getPublicHealthInsurances(tokenOrSlug)
+          patientApi.getPublicHealthInsurances(tokenOrSlug),
+          patientApi.getPatientSession(tokenOrSlug).catch(() => ({ authenticated: false as const }))
         ]);
-        const sessionData = await patientApi.getExpressSessionMe().catch(() => ({ authenticated: false as const }));
         setPreview(previewData);
         setCatalog(catalogData);
         setHealthInsurances(coverageData);
-        if (sessionData.authenticated) setExpressPatient(sessionData.patient);
+        if (sessionData.authenticated) {
+          setExpressPatient(sessionData.patient);
+          setSelectedPatientMode('known');
+        } else {
+          setExpressPatient(null);
+          setSelectedPatientMode('lookup');
+        }
         const firstSpecialty = catalogData.specialties[0];
         if (firstSpecialty) {
           setSpecialtyId(firstSpecialty.id);
@@ -92,6 +99,7 @@ export const JoinPage = (): ReactElement => {
         setError((cause as Error).message);
       } finally {
         setLoading(false);
+        setExpressSessionLoading(false);
       }
     })();
   }, [tokenOrSlug]);
@@ -138,9 +146,8 @@ export const JoinPage = (): ReactElement => {
   const selectedProfessional = catalog.professionals.find((item) => item.id === professionalId);
   const selectedSpecialty = catalog.specialties.find((item) => item.id === specialtyId);
   const coverageLabel = form.coverageType === 'private' ? 'Particular' : selectedHealthInsurance?.name ?? 'Obra social';
-  const usingKnownExpressPatient = useExpressPatient && !useOtherData && Boolean(expressPatient);
+  const usingKnownExpressPatient = selectedPatientMode === 'known' && Boolean(expressPatient);
   const showFullPatientForm = !usingKnownExpressPatient;
-  const expressFirstName = expressPatient?.displayName.split(' ')[0] ?? 'paciente';
 
   const buildCoverageInput = () => form.coverageType === 'health_insurance'
     ? {
@@ -165,7 +172,7 @@ export const JoinPage = (): ReactElement => {
       const result = await patientApi.lookupExpressPatient(tokenOrSlug, { phone: lookupPhone });
       if (!result.found) {
         setLookupMessage('No encontramos datos con ese WhatsApp. Podés completar el formulario.');
-        setUseOtherData(true);
+        setSelectedPatientMode('other');
         return;
       }
       setLookupResult(result.maskedPatient);
@@ -182,8 +189,7 @@ export const JoinPage = (): ReactElement => {
     try {
       const result = await patientApi.confirmExpressPatient(tokenOrSlug, { phone: lookupPhone, confirm: true });
       setExpressPatient(result.patient);
-      setUseExpressPatient(true);
-      setUseOtherData(false);
+      setSelectedPatientMode('known');
       setLookupResult(null);
       setLookupMessage('Identidad confirmada. Ya podés reservar sin completar tus datos nuevamente.');
     } catch (cause) {
@@ -291,20 +297,26 @@ export const JoinPage = (): ReactElement => {
 
             {selectedSlot ? (
               <form onSubmit={(event) => void submit(event)} style={{ display: 'grid', gap: '1rem' }}>
-                {expressPatient && !useOtherData ? (
+                {expressSessionLoading ? (
+                  <section style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '1rem' }}>
+                    <p>Buscando si ya tenemos tus datos en este dispositivo...</p>
+                  </section>
+                ) : null}
+
+                {!expressSessionLoading && expressPatient && selectedPatientMode !== 'other' ? (
                   <section style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '1rem', display: 'grid', gap: '.75rem' }}>
                     <div>
                       <h2>Detectamos tus datos</h2>
                       <p>{expressPatient.displayName} · WhatsApp terminado en {expressPatient.maskedPhone.slice(-4)}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
-                      <button type="button" className="nx-btn" onClick={() => { setUseExpressPatient(true); setUseOtherData(false); }}>Reservar como {expressFirstName}</button>
-                      <button type="button" className="nx-btn nx-btn--secondary" onClick={() => { setUseExpressPatient(false); setUseOtherData(true); }}>Usar otros datos</button>
+                      <button type="button" className="nx-btn" onClick={() => setSelectedPatientMode('known')}>Sí, soy yo</button>
+                      <button type="button" className="nx-btn nx-btn--secondary" onClick={() => setSelectedPatientMode('other')}>Usar otros datos</button>
                     </div>
                   </section>
                 ) : null}
 
-                {!expressPatient && !useOtherData ? (
+                {!expressSessionLoading && !expressPatient && selectedPatientMode === 'lookup' ? (
                   <section style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '1rem', display: 'grid', gap: '.75rem' }}>
                     <h2>¿Ya reservaste antes?</h2>
                     <p>Ingresá tu WhatsApp para buscar tus datos.</p>
@@ -316,7 +328,7 @@ export const JoinPage = (): ReactElement => {
                         <p>Encontramos: {lookupResult.displayName} · WhatsApp terminado en {lookupResult.maskedPhone.slice(-4)}</p>
                         <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
                           <button type="button" className="nx-btn" disabled={lookupLoading} onClick={() => void confirmLookupPatient()}>Sí, soy yo</button>
-                          <button type="button" className="nx-btn nx-btn--secondary" onClick={() => { setLookupResult(null); setUseOtherData(true); }}>No soy yo</button>
+                          <button type="button" className="nx-btn nx-btn--secondary" onClick={() => { setLookupResult(null); setSelectedPatientMode('other'); }}>No soy yo</button>
                         </div>
                       </div>
                     ) : null}

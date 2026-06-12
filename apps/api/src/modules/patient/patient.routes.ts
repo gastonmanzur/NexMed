@@ -12,6 +12,7 @@ joinRouter.get('/:tokenOrSlug', asyncHandler(patientController.joinPreview));
 joinRouter.get('/:tokenOrSlug/catalog', asyncHandler(patientController.publicCatalog));
 joinRouter.get('/:tokenOrSlug/availability', asyncHandler(patientController.publicAvailability));
 joinRouter.get('/:tokenOrSlug/health-insurances', asyncHandler(patientController.publicHealthInsurances));
+joinRouter.get('/:tokenOrSlug/patient-session', asyncHandler(patientController.joinPatientSession));
 joinRouter.post('/:tokenOrSlug/patient-lookup', asyncHandler(patientController.patientLookup));
 joinRouter.post('/:tokenOrSlug/patient-confirm', asyncHandler(patientController.patientConfirm));
 joinRouter.post('/:tokenOrSlug/appointments/express', asyncHandler(patientController.createExpressAppointment));

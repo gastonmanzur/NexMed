@@ -222,7 +222,16 @@ export class PatientService {
   }
 
   async getExpressSession(token?: string, userAgent?: string): Promise<PatientExpressSessionResult> {
-    const identity = await this.resolveIdentityFromExpressSession(token, userAgent);
+    return this.getExpressSessionFromToken(token, userAgent);
+  }
+
+  async getJoinExpressSession(tokenOrSlug: string, token?: string, userAgent?: string): Promise<PatientExpressSessionResult> {
+    await this.resolveAvailableOrganization(tokenOrSlug);
+    return this.getExpressSessionFromToken(token, userAgent);
+  }
+
+  private async getExpressSessionFromToken(token?: string, userAgent?: string): Promise<PatientExpressSessionResult> {
+    const { identity } = await this.resolveIdentityFromExpressSessionWithDebug(token, userAgent);
     if (!identity) return { authenticated: false };
 
     return {
@@ -328,6 +337,15 @@ export class PatientService {
       });
 
       const session = await this.issueExpressSession(identity._id.toString(), userAgent);
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug({
+          step: 'express_booking_created',
+          patientIdentityId: identity._id.toString(),
+          appointmentId: appointment.id,
+          sessionCreated: true,
+          cookieSet: true
+        }, 'Express booking created and session issued');
+      }
       return Object.assign(appointment, { expressSessionToken: session.token, expressSessionExpiresAt: session.expiresAt });
     } catch (error: unknown) {
       if (error instanceof AppError && ['APPOINTMENT_SLOT_TAKEN', 'APPOINTMENT_OVERLAP', 'SLOT_NOT_AVAILABLE', 'SLOT_BLOCKED_BY_PROGRESSIVE_RELEASE'].includes(error.code)) {
@@ -1324,7 +1342,7 @@ export class PatientService {
 
   private async issueExpressSession(patientIdentityId: string, userAgent?: string): Promise<{ token: string; expiresAt: Date }> {
     const token = crypto.randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 120);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 180);
     await this.expressSessions.create({
       patientIdentityId,
       tokenHash: this.hashExpressToken(token),
@@ -1334,13 +1352,37 @@ export class PatientService {
     return { token, expiresAt };
   }
 
-  private async resolveIdentityFromExpressSession(token?: string, _userAgent?: string): Promise<PatientIdentityDocument | null> {
+  private async resolveIdentityFromExpressSession(token?: string, userAgent?: string): Promise<PatientIdentityDocument | null> {
+    const { identity } = await this.resolveIdentityFromExpressSessionWithDebug(token, userAgent);
+    return identity;
+  }
+
+  private async resolveIdentityFromExpressSessionWithDebug(token?: string, _userAgent?: string): Promise<{ identity: PatientIdentityDocument | null }> {
     const normalizedToken = normalizeOptionalText(token);
-    if (!normalizedToken) return null;
-    const session = await this.expressSessions.findValidByTokenHash(this.hashExpressToken(normalizedToken));
-    if (!session) return null;
+    const hasCookie = Boolean(normalizedToken);
+    let sessionFound = false;
+    let sessionExpired = false;
+    let patientIdentityId: string | undefined;
+
+    if (!normalizedToken) {
+      if (process.env.NODE_ENV === 'development') logger.debug({ step: 'patient_session_lookup', hasCookie, sessionFound, sessionExpired, patientIdentityId }, 'Express patient session lookup');
+      return { identity: null };
+    }
+
+    const session = await this.expressSessions.findByTokenHash(this.hashExpressToken(normalizedToken));
+    sessionFound = Boolean(session);
+    sessionExpired = Boolean(session && session.expiresAt <= new Date());
+    patientIdentityId = session?.patientIdentityId.toString();
+
+    if (!session || sessionExpired) {
+      if (process.env.NODE_ENV === 'development') logger.debug({ step: 'patient_session_lookup', hasCookie, sessionFound, sessionExpired, patientIdentityId }, 'Express patient session lookup');
+      return { identity: null };
+    }
+
     await this.expressSessions.touch(session._id.toString());
-    return this.patientIdentities.findById(session.patientIdentityId.toString());
+    const identity = await this.patientIdentities.findById(session.patientIdentityId.toString());
+    if (process.env.NODE_ENV === 'development') logger.debug({ step: 'patient_session_lookup', hasCookie, sessionFound, sessionExpired, patientIdentityId }, 'Express patient session lookup');
+    return { identity };
   }
 
   private hashExpressToken(value: string): string {
