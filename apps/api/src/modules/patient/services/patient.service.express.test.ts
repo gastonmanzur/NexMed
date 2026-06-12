@@ -81,6 +81,7 @@ const createService = (overrides: {
 
   const expressSessions = {
     create: vi.fn(async (input: Record<string, unknown>) => ({ _id: new mongoose.Types.ObjectId(), ...input })),
+    findByTokenHash: vi.fn(async () => null),
     findValidByTokenHash: vi.fn(async () => null),
     touch: vi.fn(async () => undefined),
     ...overrides.expressSessions
@@ -196,7 +197,7 @@ describe('PatientService createExpressAppointment express identity/profile/appoi
     await service.createExpressAppointment('centro-demo', baseInput('+54 11 4444-6516'));
     const identity = identitiesByPhone.get('541144446516');
     expect(identity).toBeTruthy();
-    vi.mocked(expressSessions.findValidByTokenHash).mockResolvedValueOnce({ _id: new mongoose.Types.ObjectId(), patientIdentityId: identity!._id } as never);
+    vi.mocked(expressSessions.findByTokenHash).mockResolvedValueOnce({ _id: new mongoose.Types.ObjectId(), patientIdentityId: identity!._id, expiresAt: new Date(Date.now() + 60_000) } as never);
     patientIdentities.create.mockClear();
 
     const appointment = await service.createExpressAppointment('centro-demo', {

@@ -56,12 +56,16 @@ const patientConfirmSchema = z.object({
   code: z.string().trim().max(12).optional()
 });
 
-const expressSessionCookieName = 'patientExpressSession';
+const expressSessionCookieName = 'patient_express_session';
+const legacyExpressSessionCookieName = 'patientExpressSession';
+const expressSessionMaxAgeMs = 1000 * 60 * 60 * 24 * 180;
+const getExpressSessionCookie = (req: AuthenticatedRequest): string | undefined => req.cookies?.[expressSessionCookieName] ?? req.cookies?.[legacyExpressSessionCookieName];
 const expressSessionCookieOptions = (expiresAt?: Date) => ({
   httpOnly: true,
-  sameSite: env.AUTH_COOKIE_SAME_SITE,
+  sameSite: 'lax' as const,
   secure: env.AUTH_COOKIE_SECURE,
-  path: '/api',
+  path: '/',
+  maxAge: expressSessionMaxAgeMs,
   ...(expiresAt ? { expires: expiresAt } : {})
 });
 
@@ -185,7 +189,13 @@ const rescheduleSchema = z.object({
 
 export const patientController = {
   expressSessionMe: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const data = await service.getExpressSession(req.cookies?.[expressSessionCookieName], req.get('user-agent'));
+    const data = await service.getExpressSession(getExpressSessionCookie(req), req.get('user-agent'));
+    res.status(200).json(data);
+  },
+
+  joinPatientSession: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const data = await service.getJoinExpressSession(tokenOrSlug, getExpressSessionCookie(req), req.get('user-agent'));
     res.status(200).json(data);
   },
 
@@ -233,7 +243,7 @@ export const patientController = {
   createExpressAppointment: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { tokenOrSlug } = joinParamsSchema.parse(req.params);
     const input = expressAppointmentSchema.parse(req.body);
-    const data = await service.createExpressAppointment(tokenOrSlug, input, req.cookies?.[expressSessionCookieName], req.get('user-agent'));
+    const data = await service.createExpressAppointment(tokenOrSlug, input, getExpressSessionCookie(req), req.get('user-agent'));
     if (data.expressSessionToken) {
       res.cookie(expressSessionCookieName, data.expressSessionToken, expressSessionCookieOptions(data.expressSessionExpiresAt));
     }
