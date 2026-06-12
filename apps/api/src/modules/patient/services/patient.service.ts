@@ -77,6 +77,26 @@ export interface PatientLookupResult {
   found: boolean;
   maskedPatient?: ExpressMaskedPatientDto;
   requiresVerification?: boolean;
+  hasSavedData?: boolean;
+}
+
+export interface ExpressPatientPrefillResult {
+  found: boolean;
+  patient?: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email: string | null;
+    documentNumber: string | null;
+    birthDate: string | null;
+    coverage: {
+      type: 'private' | 'health_insurance';
+      healthInsuranceId: string | null;
+      healthInsuranceName: string | null;
+      insuranceMemberNumber: string | null;
+      insurancePlan: string | null;
+    };
+  };
 }
 
 export interface PatientConfirmResult {
@@ -254,7 +274,31 @@ export class PatientService {
     return {
       found: true,
       maskedPatient: this.toMaskedPatient(identity),
-      requiresVerification: false
+      requiresVerification: false,
+      hasSavedData: true
+    };
+  }
+
+  async prefillExpressPatient(tokenOrSlug: string, input: { phone: string; acceptSavedData: true }): Promise<ExpressPatientPrefillResult> {
+    const organization = await this.resolveAvailableOrganization(tokenOrSlug);
+    if (input.acceptSavedData !== true) throw new AppError('SAVED_DATA_ACCEPTANCE_REQUIRED', 400, 'Aceptá traer tus datos guardados para continuar');
+
+    const normalizedPhone = this.normalizePhoneIdentity(input.phone);
+    if (!normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'Ingresá un WhatsApp válido');
+
+    const identity = await this.patientIdentities.findByNormalizedPhone(normalizedPhone);
+    if (!identity) return { found: false };
+
+    const organizationId = organization._id.toString();
+    const orgProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
+      ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
+    const compatProfile = orgProfile?.patientProfileId
+      ? await this.patientProfiles.findById(orgProfile.patientProfileId.toString())
+      : await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, normalizedPhone);
+
+    return {
+      found: true,
+      patient: this.toExpressPatientPrefill(identity, orgProfile, compatProfile)
     };
   }
 
@@ -1019,8 +1063,6 @@ export class PatientService {
     await this.userEvents.markAllRead(userId);
   }
 
-
-
   private async getManagedPatientProfileIds(userId: string): Promise<string[]> {
     await this.ensurePatientProfile(userId);
     const profiles = await this.patientProfiles.listByOwner(userId);
@@ -1338,6 +1380,32 @@ export class PatientService {
     }
 
     return { compatProfile, orgProfile };
+  }
+
+
+  private toExpressPatientPrefill(
+    identity: PatientIdentityDocument,
+    orgProfile: OrganizationPatientProfileDocument | null,
+    compatProfile: PatientProfileDocument | null
+  ): NonNullable<ExpressPatientPrefillResult['patient']> {
+    const birthDate = orgProfile?.birthDate ?? identity.birthDate ?? compatProfile?.dateOfBirth ?? null;
+    const coverageType = orgProfile?.defaultCoverageType === 'health_insurance' || (!orgProfile && Boolean(compatProfile?.insuranceProvider)) ? 'health_insurance' : 'private';
+    const healthInsuranceId = coverageType === 'health_insurance' && orgProfile?.defaultHealthInsuranceId ? orgProfile.defaultHealthInsuranceId.toString() : null;
+    return {
+      firstName: orgProfile?.firstName ?? compatProfile?.firstName ?? identity.firstName,
+      lastName: orgProfile?.lastName ?? compatProfile?.lastName ?? identity.lastName,
+      phone: orgProfile?.phone ?? compatProfile?.phone ?? identity.phone ?? identity.normalizedPhone,
+      email: orgProfile?.email ?? identity.email ?? null,
+      documentNumber: orgProfile?.documentNumber ?? compatProfile?.documentId ?? identity.documentNumber ?? null,
+      birthDate: birthDate ? birthDate.toISOString().slice(0, 10) : null,
+      coverage: {
+        type: coverageType,
+        healthInsuranceId,
+        healthInsuranceName: coverageType === 'health_insurance' ? (orgProfile?.defaultHealthInsuranceName ?? compatProfile?.insuranceProvider ?? null) : null,
+        insuranceMemberNumber: coverageType === 'health_insurance' ? (orgProfile?.defaultInsuranceMemberNumber ?? compatProfile?.insuranceMemberId ?? null) : null,
+        insurancePlan: coverageType === 'health_insurance' ? (compatProfile?.insurancePlan ?? null) : null
+      }
+    };
   }
 
   private async issueExpressSession(patientIdentityId: string, userAgent?: string): Promise<{ token: string; expiresAt: Date }> {

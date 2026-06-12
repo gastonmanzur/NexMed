@@ -10,6 +10,7 @@ const createService = (overrides: {
   appointmentsService?: Record<string, unknown>;
   organization?: Record<string, unknown>;
   expressSessions?: Record<string, unknown>;
+  healthInsurances?: Record<string, unknown>;
 } = {}) => {
   const organizationId = new mongoose.Types.ObjectId();
   const organization = { _id: organizationId, status: 'active', name: 'Centro Demo', displayName: 'Centro Demo', slug: 'centro-demo', type: 'clinic', ...overrides.organization };
@@ -79,6 +80,11 @@ const createService = (overrides: {
     ...overrides.appointmentsService
   };
 
+  const healthInsurances = {
+    findByIdInOrganization: vi.fn(),
+    ...overrides.healthInsurances
+  };
+
   const expressSessions = {
     create: vi.fn(async (input: Record<string, unknown>) => ({ _id: new mongoose.Types.ObjectId(), ...input })),
     findByTokenHash: vi.fn(async () => null),
@@ -103,11 +109,11 @@ const createService = (overrides: {
     {} as never,
     patientIdentities as never,
     organizationPatientProfiles as never,
-    { findByIdInOrganization: vi.fn() } as never,
+    healthInsurances as never,
     expressSessions as never
   );
 
-  return { service, organizationId: organizationId.toString(), patientIdentities, patientProfiles, organizationPatientProfiles, appointmentsService, expressSessions, identitiesByPhone, compatProfilesByPhone, orgProfilesByIdentity };
+  return { service, organizationId: organizationId.toString(), patientIdentities, patientProfiles, organizationPatientProfiles, appointmentsService, expressSessions, healthInsurances, identitiesByPhone, compatProfilesByPhone, orgProfilesByIdentity };
 };
 
 const baseInput = (phone: string, startAt = '2026-07-01T14:00:00.000Z') => ({
@@ -177,8 +183,6 @@ describe('PatientService createExpressAppointment express identity/profile/appoi
     expect(appointmentsService.createExpressAppointment).toHaveBeenCalledTimes(1);
   });
 
-
-
   it('returns only masked data when looking up an existing phone', async () => {
     const { service } = createService();
     await service.createExpressAppointment('centro-demo', baseInput('+54 11 3333-6516'));
@@ -188,7 +192,89 @@ describe('PatientService createExpressAppointment express identity/profile/appoi
     expect(result).toEqual({
       found: true,
       maskedPatient: { displayName: 'Ana P.', maskedPhone: '******6516' },
-      requiresVerification: false
+      requiresVerification: false,
+      hasSavedData: true
+    });
+  });
+
+  it('prefills safe saved patient data only after explicit acceptance', async () => {
+    const healthInsuranceId = new mongoose.Types.ObjectId().toString();
+    const { service } = createService({
+      healthInsurances: {
+        findByIdInOrganization: vi.fn(async () => ({ _id: healthInsuranceId, name: 'OSDE', status: 'active', requiresMemberNumber: false, requiresPlan: false }))
+      }
+    });
+
+    await service.createExpressAppointment('centro-demo', {
+      ...baseInput('+54 11 3333-6516'),
+      patient: {
+        firstName: 'Gaston',
+        lastName: 'Manzur',
+        phone: '+54 11 3333-6516',
+        email: 'test2@example.com',
+        documentNumber: '30609656',
+        birthDate: '1983-12-14'
+      },
+      coverage: { type: 'health_insurance', healthInsuranceId, insuranceMemberNumber: '123456', insurancePlan: '210' }
+    });
+
+    const prefill = await service.prefillExpressPatient('centro-demo', { phone: '+54 11 3333-6516', acceptSavedData: true });
+
+    expect(prefill).toEqual({
+      found: true,
+      patient: {
+        firstName: 'Gaston',
+        lastName: 'Manzur',
+        phone: '+54 11 3333-6516',
+        email: 'test2@example.com',
+        documentNumber: '30609656',
+        birthDate: '1983-12-14',
+        coverage: {
+          type: 'health_insurance',
+          healthInsuranceId,
+          healthInsuranceName: 'OSDE',
+          insuranceMemberNumber: '123456',
+          insurancePlan: '210'
+        }
+      }
+    });
+  });
+
+  it('requires explicit saved data acceptance before returning prefill data', async () => {
+    const { service } = createService();
+
+    await expect(service.prefillExpressPatient('centro-demo', { phone: '+54 11 3333-6516', acceptSavedData: false as true })).rejects.toMatchObject({
+      statusCode: 400,
+      code: 'SAVED_DATA_ACCEPTANCE_REQUIRED'
+    });
+  });
+
+  it('returns global identity data with private coverage when no organization profile exists', async () => {
+    const { service } = createService();
+    await service.createExpressAppointment('centro-demo', {
+      ...baseInput('+54 11 3333-6516'),
+      patient: { firstName: 'Gaston', lastName: 'Manzur', phone: '+54 11 3333-6516', email: 'test2@example.com', documentNumber: '30609656', birthDate: '1983-12-14' }
+    });
+
+    const otherOrganizationId = new mongoose.Types.ObjectId();
+    (service as unknown as { organizations: { findBySlug: ReturnType<typeof vi.fn> } }).organizations.findBySlug.mockResolvedValueOnce({ _id: otherOrganizationId, status: 'active', name: 'Otro Centro', displayName: 'Otro Centro', slug: 'otro-centro', type: 'clinic' });
+
+    await expect(service.prefillExpressPatient('otro-centro', { phone: '+54 11 3333-6516', acceptSavedData: true })).resolves.toEqual({
+      found: true,
+      patient: expect.objectContaining({
+        firstName: 'Gaston',
+        lastName: 'Manzur',
+        email: 'test2@example.com',
+        documentNumber: '30609656',
+        birthDate: '1983-12-14',
+        coverage: {
+          type: 'private',
+          healthInsuranceId: null,
+          healthInsuranceName: null,
+          insuranceMemberNumber: null,
+          insurancePlan: null
+        }
+      })
     });
   });
 

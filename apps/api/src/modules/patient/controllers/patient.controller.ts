@@ -50,6 +50,10 @@ const expressAppointmentSchema = z.object({
 });
 
 const patientLookupSchema = z.object({ phone: z.string().trim().min(1).max(40) });
+const patientPrefillSchema = z.object({
+  phone: z.string().trim().min(1).max(40),
+  acceptSavedData: z.literal(true)
+});
 const patientConfirmSchema = z.object({
   phone: z.string().trim().min(1).max(40),
   confirm: z.boolean().optional(),
@@ -203,6 +207,13 @@ export const patientController = {
     const { tokenOrSlug } = joinParamsSchema.parse(req.params);
     const input = patientLookupSchema.parse(req.body);
     const data = await service.lookupExpressPatient(tokenOrSlug, input);
+    res.status(200).json({ success: true, data });
+  },
+
+  patientPrefill: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { tokenOrSlug } = joinParamsSchema.parse(req.params);
+    const input = patientPrefillSchema.parse(req.body);
+    const data = await service.prefillExpressPatient(tokenOrSlug, input);
     res.status(200).json({ success: true, data });
   },
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AppointmentDto, AvailabilitySlotDto, JoinOrganizationPreviewDto, OrganizationHealthInsuranceDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useParams } from 'react-router-dom';
-import { PatientApiError, patientApi, type ExpressMaskedPatient, type PatientCatalog } from './patient-api';
+import { PatientApiError, patientApi, type ExpressMaskedPatient, type ExpressPatientPrefill, type PatientCatalog } from './patient-api';
 
 const toDateInputValue = (value: Date): string => {
   const year = value.getFullYear();
@@ -63,6 +63,10 @@ export const JoinPage = (): ReactElement => {
   const [lookupResult, setLookupResult] = useState<ExpressMaskedPatient | null>(null);
   const [lookupMessage, setLookupMessage] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [prefillAccepted, setPrefillAccepted] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(false);
+  const [prefillMessage, setPrefillMessage] = useState('');
+  const [inactiveCoverageMessage, setInactiveCoverageMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -166,16 +170,21 @@ export const JoinPage = (): ReactElement => {
   const lookupPatient = async (): Promise<void> => {
     setLookupLoading(true);
     setLookupMessage('');
+    setPrefillMessage('');
+    setInactiveCoverageMessage('');
+    setPrefillAccepted(false);
     setLookupResult(null);
     setError('');
     try {
       const result = await patientApi.lookupExpressPatient(tokenOrSlug, { phone: lookupPhone });
+      setForm({ ...emptyForm, phone: lookupPhone });
       if (!result.found) {
         setLookupMessage('No encontramos datos con ese WhatsApp. Podés completar el formulario.');
         setSelectedPatientMode('other');
         return;
       }
       setLookupResult(result.maskedPatient);
+      setLookupMessage('Encontramos datos guardados para este WhatsApp. Podés traerlos para completar la reserva más rápido.');
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -183,19 +192,55 @@ export const JoinPage = (): ReactElement => {
     }
   };
 
-  const confirmLookupPatient = async (): Promise<void> => {
-    setLookupLoading(true);
+  const applyPrefillResult = (result: Extract<ExpressPatientPrefill, { found: true }>): void => {
+    const savedCoverage = result.patient.coverage;
+    const activeSavedInsurance = savedCoverage.healthInsuranceId
+      ? healthInsurances.find((item) => item.id === savedCoverage.healthInsuranceId)
+      : undefined;
+    const canUseSavedInsurance = savedCoverage.type === 'health_insurance' && Boolean(activeSavedInsurance);
+    setInactiveCoverageMessage(savedCoverage.type === 'health_insurance' && !activeSavedInsurance
+      ? 'La obra social guardada ya no está activa en este centro. Te dejamos Particular para que puedas elegir una cobertura válida.'
+      : '');
+    setForm({
+      firstName: result.patient.firstName,
+      lastName: result.patient.lastName,
+      phone: result.patient.phone || lookupPhone,
+      email: result.patient.email ?? '',
+      documentNumber: result.patient.documentNumber ?? '',
+      birthDate: result.patient.birthDate ?? '',
+      coverageType: canUseSavedInsurance ? 'health_insurance' : 'private',
+      healthInsuranceId: canUseSavedInsurance ? savedCoverage.healthInsuranceId ?? '' : '',
+      insuranceMemberNumber: canUseSavedInsurance ? savedCoverage.insuranceMemberNumber ?? '' : '',
+      insurancePlan: canUseSavedInsurance ? savedCoverage.insurancePlan ?? '' : '',
+      reason: ''
+    });
+  };
+
+  const togglePrefill = async (checked: boolean): Promise<void> => {
+    setPrefillAccepted(checked);
+    setPrefillMessage('');
+    setInactiveCoverageMessage('');
     setError('');
+    if (!checked) {
+      setForm({ ...emptyForm, phone: lookupPhone });
+      return;
+    }
+    setPrefillLoading(true);
     try {
-      const result = await patientApi.confirmExpressPatient(tokenOrSlug, { phone: lookupPhone, confirm: true });
-      setExpressPatient(result.patient);
-      setSelectedPatientMode('known');
-      setLookupResult(null);
-      setLookupMessage('Identidad confirmada. Ya podés reservar sin completar tus datos nuevamente.');
+      const result = await patientApi.prefillExpressPatient(tokenOrSlug, { phone: lookupPhone, acceptSavedData: true });
+      if (!result.found) {
+        setPrefillAccepted(false);
+        setPrefillMessage('No pudimos encontrar datos guardados para ese WhatsApp. Podés completar el formulario manualmente.');
+        setForm({ ...emptyForm, phone: lookupPhone });
+        return;
+      }
+      applyPrefillResult(result);
+      setPrefillMessage('Listo: cargamos tus datos guardados. Vas a poder revisarlos y editarlos antes de confirmar el turno.');
     } catch (cause) {
+      setPrefillAccepted(false);
       setError((cause as Error).message);
     } finally {
-      setLookupLoading(false);
+      setPrefillLoading(false);
     }
   };
 
@@ -320,16 +365,31 @@ export const JoinPage = (): ReactElement => {
                   <section style={{ border: '1px solid #dbe4ef', borderRadius: 12, padding: '1rem', display: 'grid', gap: '.75rem' }}>
                     <h2>¿Ya reservaste antes?</h2>
                     <p>Ingresá tu WhatsApp para buscar tus datos.</p>
-                    <label>WhatsApp<input value={lookupPhone} onChange={(event) => setLookupPhone(event.target.value)} /></label>
+                    <label>WhatsApp<input value={lookupPhone} onChange={(event) => {
+                      const nextPhone = event.target.value;
+                      setLookupPhone(nextPhone);
+                      setLookupResult(null);
+                      setPrefillAccepted(false);
+                      setPrefillMessage('');
+                      setInactiveCoverageMessage('');
+                      setForm({ ...emptyForm, phone: nextPhone });
+                    }} /></label>
                     <button type="button" className="nx-btn" disabled={lookupLoading || !lookupPhone} onClick={() => void lookupPatient()}>{lookupLoading ? 'Buscando...' : 'Buscar mis datos'}</button>
                     {lookupMessage ? <p>{lookupMessage}</p> : null}
                     {lookupResult ? (
                       <div style={{ display: 'grid', gap: '.75rem' }}>
-                        <p>Encontramos: {lookupResult.displayName} · WhatsApp terminado en {lookupResult.maskedPhone.slice(-4)}</p>
-                        <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
-                          <button type="button" className="nx-btn" disabled={lookupLoading} onClick={() => void confirmLookupPatient()}>Sí, soy yo</button>
-                          <button type="button" className="nx-btn nx-btn--secondary" onClick={() => { setLookupResult(null); setSelectedPatientMode('other'); }}>No soy yo</button>
+                        <div>
+                          <p><strong>Encontramos datos guardados asociados a este WhatsApp.</strong></p>
+                          <p>{lookupResult.displayName} · WhatsApp terminado en {lookupResult.maskedPhone.slice(-4)}</p>
                         </div>
+                        <label style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
+                          <input type="checkbox" checked={prefillAccepted} disabled={prefillLoading} onChange={(event) => void togglePrefill(event.target.checked)} />
+                          <span>Traer mis datos guardados para completar el formulario</span>
+                        </label>
+                        <p>Vas a poder revisar y editar los datos antes de confirmar el turno.</p>
+                        {prefillLoading ? <p>Cargando datos guardados...</p> : null}
+                        {prefillMessage ? <p>{prefillMessage}</p> : null}
+                        {inactiveCoverageMessage ? <p>{inactiveCoverageMessage}</p> : null}
                       </div>
                     ) : null}
                   </section>
