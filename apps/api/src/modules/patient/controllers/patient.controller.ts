@@ -40,12 +40,21 @@ const expressAppointmentSchema = z.object({
   endAt: z.string().trim().min(1).optional(),
   appointmentType: z.enum(['single', 'double']).optional(),
   useCurrentExpressPatient: z.boolean().optional(),
+  useSavedPatientData: z.boolean().optional(),
+  patientLookupToken: z.string().trim().min(1).optional(),
   patient: expressPatientSchema.optional(),
-  coverage: expressCoverageSchema,
+  coverage: expressCoverageSchema.optional(),
   reason: z.string().trim().max(500).optional()
 }).superRefine((value, ctx) => {
-  if (value.useCurrentExpressPatient !== true && !value.patient) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patient'], message: 'patient is required unless useCurrentExpressPatient is true' });
+  const usesSavedPatient = value.useCurrentExpressPatient === true || value.useSavedPatientData === true;
+  if (value.useSavedPatientData === true && !value.patientLookupToken) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patientLookupToken'], message: 'patientLookupToken is required when useSavedPatientData is true' });
+  }
+  if (!usesSavedPatient && !value.patient) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['patient'], message: 'patient is required unless saved patient data is used' });
+  }
+  if (!usesSavedPatient && !value.coverage) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['coverage'], message: 'coverage is required unless saved patient data is used' });
   }
 });
 

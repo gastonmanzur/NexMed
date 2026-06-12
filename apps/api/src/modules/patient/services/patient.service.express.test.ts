@@ -193,7 +193,8 @@ describe('PatientService createExpressAppointment express identity/profile/appoi
       found: true,
       maskedPatient: { displayName: 'Ana P.', maskedPhone: '******6516' },
       requiresVerification: false,
-      hasSavedData: true
+      hasSavedData: true,
+      lookupToken: expect.any(String)
     });
   });
 
@@ -276,6 +277,67 @@ describe('PatientService createExpressAppointment express identity/profile/appoi
         }
       })
     });
+  });
+
+  it('creates an appointment from a WhatsApp lookup token without requiring manual patient data', async () => {
+    const { service, patientIdentities, appointmentsService } = createService();
+    await service.createExpressAppointment('centro-demo', {
+      ...baseInput('+54 11 3333-6516'),
+      patient: { firstName: 'Gaston', lastName: 'Manzur', phone: '+54 11 3333-6516', email: 'gaston@example.com' }
+    });
+
+    const lookup = await service.lookupExpressPatient('centro-demo', { phone: '+54 11 3333-6516' });
+    expect(lookup.found).toBe(true);
+    patientIdentities.create.mockClear();
+
+    const appointment = await service.createExpressAppointment('centro-demo', {
+      professionalId: new mongoose.Types.ObjectId().toString(),
+      specialtyId: new mongoose.Types.ObjectId().toString(),
+      startAt: '2026-07-03T15:00:00.000Z',
+      useSavedPatientData: true,
+      patientLookupToken: lookup.found ? lookup.lookupToken : undefined
+    });
+
+    expect(patientIdentities.create).not.toHaveBeenCalled();
+    expect(appointment.patientName).toBe('Gaston Manzur');
+    expect(appointmentsService.createExpressAppointment).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({
+      patientName: 'Gaston Manzur',
+      patientEmail: 'gaston@example.com',
+      paymentCoverageType: 'private',
+      healthInsuranceName: 'Particular'
+    }));
+  });
+
+  it('uses saved active health insurance coverage when booking with saved patient data', async () => {
+    const healthInsuranceId = new mongoose.Types.ObjectId().toString();
+    const { service, appointmentsService } = createService({
+      healthInsurances: {
+        findByIdInOrganization: vi.fn(async () => ({ _id: healthInsuranceId, name: 'OSDE', status: 'active', requiresMemberNumber: false, requiresPlan: false }))
+      }
+    });
+
+    await service.createExpressAppointment('centro-demo', {
+      ...baseInput('+54 11 3333-7777'),
+      patient: { firstName: 'Gaston', lastName: 'Manzur', phone: '+54 11 3333-7777' },
+      coverage: { type: 'health_insurance', healthInsuranceId, insuranceMemberNumber: '123456', insurancePlan: '210' }
+    });
+    const lookup = await service.lookupExpressPatient('centro-demo', { phone: '+54 11 3333-7777' });
+
+    await service.createExpressAppointment('centro-demo', {
+      professionalId: new mongoose.Types.ObjectId().toString(),
+      specialtyId: new mongoose.Types.ObjectId().toString(),
+      startAt: '2026-07-04T15:00:00.000Z',
+      useSavedPatientData: true,
+      patientLookupToken: lookup.found ? lookup.lookupToken : undefined
+    });
+
+    expect(appointmentsService.createExpressAppointment).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({
+      paymentCoverageType: 'health_insurance',
+      healthInsuranceId,
+      healthInsuranceName: 'OSDE',
+      insuranceMemberNumber: '123456',
+      insurancePlan: '210'
+    }));
   });
 
   it('creates an appointment with the current express patient without requiring personal data again', async () => {

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AppointmentDto, AvailabilitySlotDto, JoinOrganizationPreviewDto, OrganizationHealthInsuranceDto } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useParams } from 'react-router-dom';
-import { PatientApiError, patientApi, type ExpressMaskedPatient, type ExpressPatientPrefill, type PatientCatalog } from './patient-api';
+import { PatientApiError, patientApi, type ExpressMaskedPatient, type PatientCatalog } from './patient-api';
 
 const toDateInputValue = (value: Date): string => {
   const year = value.getFullYear();
@@ -58,9 +58,11 @@ export const JoinPage = (): ReactElement => {
   const [confirmation, setConfirmation] = useState<AppointmentDto | null>(null);
   const [expressPatient, setExpressPatient] = useState<ExpressMaskedPatient | null>(null);
   const [selectedPatientMode, setSelectedPatientMode] = useState<'lookup' | 'known' | 'other'>('lookup');
+  const [bookingMode, setBookingMode] = useState<'manual' | 'saved_by_lookup' | 'current_express_session'>('manual');
   const [expressSessionLoading, setExpressSessionLoading] = useState(true);
   const [lookupPhone, setLookupPhone] = useState('');
   const [lookupResult, setLookupResult] = useState<ExpressMaskedPatient | null>(null);
+  const [patientLookupToken, setPatientLookupToken] = useState('');
   const [lookupMessage, setLookupMessage] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [prefillAccepted, setPrefillAccepted] = useState(false);
@@ -90,9 +92,11 @@ export const JoinPage = (): ReactElement => {
         if (sessionData.authenticated) {
           setExpressPatient(sessionData.patient);
           setSelectedPatientMode('known');
+          setBookingMode('current_express_session');
         } else {
           setExpressPatient(null);
           setSelectedPatientMode('lookup');
+          setBookingMode('manual');
         }
         const firstSpecialty = catalogData.specialties[0];
         if (firstSpecialty) {
@@ -150,8 +154,9 @@ export const JoinPage = (): ReactElement => {
   const selectedProfessional = catalog.professionals.find((item) => item.id === professionalId);
   const selectedSpecialty = catalog.specialties.find((item) => item.id === specialtyId);
   const coverageLabel = form.coverageType === 'private' ? 'Particular' : selectedHealthInsurance?.name ?? 'Obra social';
-  const usingKnownExpressPatient = selectedPatientMode === 'known' && Boolean(expressPatient);
-  const showFullPatientForm = !usingKnownExpressPatient;
+  const usingKnownExpressPatient = bookingMode === 'current_express_session' && Boolean(expressPatient);
+  const usingSavedLookupPatient = bookingMode === 'saved_by_lookup' && Boolean(lookupResult) && Boolean(patientLookupToken);
+  const showFullPatientForm = bookingMode === 'manual';
 
   const buildCoverageInput = () => form.coverageType === 'health_insurance'
     ? {
@@ -174,6 +179,8 @@ export const JoinPage = (): ReactElement => {
     setInactiveCoverageMessage('');
     setPrefillAccepted(false);
     setLookupResult(null);
+    setPatientLookupToken('');
+    setBookingMode('manual');
     setError('');
     try {
       const result = await patientApi.lookupExpressPatient(tokenOrSlug, { phone: lookupPhone });
@@ -181,10 +188,12 @@ export const JoinPage = (): ReactElement => {
       if (!result.found) {
         setLookupMessage('No encontramos datos con ese WhatsApp. Podés completar el formulario.');
         setSelectedPatientMode('other');
+        setBookingMode('manual');
         return;
       }
       setLookupResult(result.maskedPatient);
-      setLookupMessage('Encontramos datos guardados para este WhatsApp. Podés traerlos para completar la reserva más rápido.');
+      setPatientLookupToken(result.lookupToken);
+      setLookupMessage('Encontramos tus datos guardados. Si aceptás usarlos, reservamos sin pedirte el formulario completo.');
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -192,55 +201,36 @@ export const JoinPage = (): ReactElement => {
     }
   };
 
-  const applyPrefillResult = (result: Extract<ExpressPatientPrefill, { found: true }>): void => {
-    const savedCoverage = result.patient.coverage;
-    const activeSavedInsurance = savedCoverage.healthInsuranceId
-      ? healthInsurances.find((item) => item.id === savedCoverage.healthInsuranceId)
-      : undefined;
-    const canUseSavedInsurance = savedCoverage.type === 'health_insurance' && Boolean(activeSavedInsurance);
-    setInactiveCoverageMessage(savedCoverage.type === 'health_insurance' && !activeSavedInsurance
-      ? 'La obra social guardada ya no está activa en este centro. Te dejamos Particular para que puedas elegir una cobertura válida.'
-      : '');
-    setForm({
-      firstName: result.patient.firstName,
-      lastName: result.patient.lastName,
-      phone: result.patient.phone || lookupPhone,
-      email: result.patient.email ?? '',
-      documentNumber: result.patient.documentNumber ?? '',
-      birthDate: result.patient.birthDate ?? '',
-      coverageType: canUseSavedInsurance ? 'health_insurance' : 'private',
-      healthInsuranceId: canUseSavedInsurance ? savedCoverage.healthInsuranceId ?? '' : '',
-      insuranceMemberNumber: canUseSavedInsurance ? savedCoverage.insuranceMemberNumber ?? '' : '',
-      insurancePlan: canUseSavedInsurance ? savedCoverage.insurancePlan ?? '' : '',
-      reason: ''
-    });
-  };
-
-  const togglePrefill = async (checked: boolean): Promise<void> => {
+  const toggleSavedLookupBooking = (checked: boolean): void => {
     setPrefillAccepted(checked);
     setPrefillMessage('');
     setInactiveCoverageMessage('');
     setError('');
-    if (!checked) {
-      setForm({ ...emptyForm, phone: lookupPhone });
+    setBookingMode(checked ? 'saved_by_lookup' : 'manual');
+    setForm({ ...emptyForm, phone: lookupPhone });
+  };
+
+  const bookCurrentExpressPatient = async (): Promise<void> => {
+    if (!selectedSlot) {
+      setError('Elegí un horario para reservar.');
       return;
     }
-    setPrefillLoading(true);
+    setSubmitting(true);
+    setError('');
     try {
-      const result = await patientApi.prefillExpressPatient(tokenOrSlug, { phone: lookupPhone, acceptSavedData: true });
-      if (!result.found) {
-        setPrefillAccepted(false);
-        setPrefillMessage('No pudimos encontrar datos guardados para ese WhatsApp. Podés completar el formulario manualmente.');
-        setForm({ ...emptyForm, phone: lookupPhone });
-        return;
-      }
-      applyPrefillResult(result);
-      setPrefillMessage('Listo: cargamos tus datos guardados. Vas a poder revisarlos y editarlos antes de confirmar el turno.');
+      const appointment = await patientApi.createExpressAppointment(tokenOrSlug, {
+        professionalId,
+        specialtyId,
+        startAt: selectedSlot.startsAtIso,
+        endAt: selectedSlot.endsAtIso,
+        useCurrentExpressPatient: true
+      });
+      setBookingMode('current_express_session');
+      setConfirmation(appointment);
     } catch (cause) {
-      setPrefillAccepted(false);
       setError((cause as Error).message);
     } finally {
-      setPrefillLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -250,14 +240,28 @@ export const JoinPage = (): ReactElement => {
     setSubmitting(true);
     setError('');
     try {
-      const appointment = await patientApi.createExpressAppointment(tokenOrSlug, {
-        professionalId,
-        specialtyId,
-        startAt: selectedSlot.startsAtIso,
-        endAt: selectedSlot.endsAtIso,
-        ...(usingKnownExpressPatient
-          ? { useCurrentExpressPatient: true }
+      const payload = usingKnownExpressPatient
+        ? {
+          professionalId,
+          specialtyId,
+          startAt: selectedSlot.startsAtIso,
+          endAt: selectedSlot.endsAtIso,
+          useCurrentExpressPatient: true
+        }
+        : usingSavedLookupPatient
+          ? {
+            professionalId,
+            specialtyId,
+            startAt: selectedSlot.startsAtIso,
+            endAt: selectedSlot.endsAtIso,
+            useSavedPatientData: true,
+            patientLookupToken
+          }
           : {
+            professionalId,
+            specialtyId,
+            startAt: selectedSlot.startsAtIso,
+            endAt: selectedSlot.endsAtIso,
             patient: {
               firstName: form.firstName,
               lastName: form.lastName,
@@ -265,11 +269,11 @@ export const JoinPage = (): ReactElement => {
               ...(form.email ? { email: form.email } : {}),
               ...(form.documentNumber ? { documentNumber: form.documentNumber } : {}),
               ...(form.birthDate ? { birthDate: form.birthDate } : {})
-            }
-          }),
-        coverage: buildCoverageInput(),
-        ...(form.reason ? { reason: form.reason } : {})
-      });
+            },
+            coverage: buildCoverageInput(),
+            ...(form.reason ? { reason: form.reason } : {})
+          };
+      const appointment = await patientApi.createExpressAppointment(tokenOrSlug, payload);
       setConfirmation(appointment);
     } catch (cause) {
       setError((cause as Error).message);
@@ -283,13 +287,13 @@ export const JoinPage = (): ReactElement => {
       <main style={{ maxWidth: 760, margin: '2rem auto', padding: '1rem' }}>
         <Card title="Turno reservado correctamente" subtitle="Te enviaremos la confirmación y recordatorio por WhatsApp.">
           <dl className="nx-appointment-detail__summary">
-            <div><dt>Paciente</dt><dd>{usingKnownExpressPatient ? expressPatient?.displayName : `${form.firstName} ${form.lastName}`.trim()}</dd></div>
+            <div><dt>Paciente</dt><dd>{usingKnownExpressPatient ? expressPatient?.displayName : usingSavedLookupPatient ? lookupResult?.displayName : `${form.firstName} ${form.lastName}`.trim()}</dd></div>
             <div><dt>Centro</dt><dd>{centerName}</dd></div>
             <div><dt>Profesional</dt><dd>{selectedProfessional?.displayName ?? confirmation.professionalId}</dd></div>
             <div><dt>Especialidad</dt><dd>{selectedSpecialty?.name ?? confirmation.specialtyId}</dd></div>
             <div><dt>Fecha</dt><dd>{formatDate(confirmation.startAt)}</dd></div>
             <div><dt>Hora</dt><dd>{formatTime(confirmation.startAt)}</dd></div>
-            <div><dt>Obra social/Particular</dt><dd>{confirmation.healthInsuranceName ?? coverageLabel}</dd></div>
+            <div><dt>Cobertura</dt><dd>{confirmation.healthInsuranceName ?? (usingSavedLookupPatient || usingKnownExpressPatient ? 'Cobertura guardada o Particular' : coverageLabel)}</dd></div>
           </dl>
           <p>La próxima vez podremos reconocerte para reservar más rápido.</p>
         </Card>
@@ -355,8 +359,8 @@ export const JoinPage = (): ReactElement => {
                       <p>{expressPatient.displayName} · WhatsApp terminado en {expressPatient.maskedPhone.slice(-4)}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
-                      <button type="button" className="nx-btn" onClick={() => setSelectedPatientMode('known')}>Sí, soy yo</button>
-                      <button type="button" className="nx-btn nx-btn--secondary" onClick={() => setSelectedPatientMode('other')}>Usar otros datos</button>
+                      <button type="button" className="nx-btn" disabled={submitting} onClick={() => void bookCurrentExpressPatient()}>{submitting ? 'Reservando...' : 'Sí, soy yo'}</button>
+                      <button type="button" className="nx-btn nx-btn--secondary" onClick={() => { setSelectedPatientMode('other'); setBookingMode('manual'); }}>Usar otros datos</button>
                     </div>
                   </section>
                 ) : null}
@@ -370,6 +374,8 @@ export const JoinPage = (): ReactElement => {
                       setLookupPhone(nextPhone);
                       setLookupResult(null);
                       setPrefillAccepted(false);
+                      setBookingMode('manual');
+                      setPatientLookupToken('');
                       setPrefillMessage('');
                       setInactiveCoverageMessage('');
                       setForm({ ...emptyForm, phone: nextPhone });
@@ -379,14 +385,14 @@ export const JoinPage = (): ReactElement => {
                     {lookupResult ? (
                       <div style={{ display: 'grid', gap: '.75rem' }}>
                         <div>
-                          <p><strong>Encontramos datos guardados asociados a este WhatsApp.</strong></p>
+                          <p><strong>Encontramos tus datos guardados</strong></p>
                           <p>{lookupResult.displayName} · WhatsApp terminado en {lookupResult.maskedPhone.slice(-4)}</p>
                         </div>
                         <label style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start' }}>
-                          <input type="checkbox" checked={prefillAccepted} disabled={prefillLoading} onChange={(event) => void togglePrefill(event.target.checked)} />
-                          <span>Traer mis datos guardados para completar el formulario</span>
+                          <input type="checkbox" checked={prefillAccepted} disabled={!patientLookupToken} onChange={(event) => toggleSavedLookupBooking(event.target.checked)} />
+                          <span>Usar mis datos guardados para reservar este turno</span>
                         </label>
-                        <p>Vas a poder revisar y editar los datos antes de confirmar el turno.</p>
+                        {usingSavedLookupPatient ? <p>No vamos a pedirte nombre, apellido, DNI, email, fecha de nacimiento ni obra social.</p> : <p>Si no tildás el checkbox, completá el formulario manual.</p>}
                         {prefillLoading ? <p>Cargando datos guardados...</p> : null}
                         {prefillMessage ? <p>{prefillMessage}</p> : null}
                         {inactiveCoverageMessage ? <p>{inactiveCoverageMessage}</p> : null}
@@ -405,13 +411,14 @@ export const JoinPage = (): ReactElement => {
                     <label>Email<input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
                     <label>Fecha de nacimiento<input type="date" value={form.birthDate} onChange={(event) => setForm({ ...form, birthDate: event.target.value })} /></label>
                   </>
-                ) : (
+                ) : usingSavedLookupPatient ? (
                   <section>
-                    <h2>Confirmá cobertura</h2>
-                    <p>Reservás como {expressPatient?.displayName}. No vamos a pedirte todos tus datos otra vez.</p>
+                    <h2>Reserva con datos guardados</h2>
+                    <p>Reservás como {lookupResult?.displayName}. No vamos a pedirte todos tus datos otra vez.</p>
                   </section>
-                )}
+                ) : null}
 
+                {showFullPatientForm ? (
                 <label>Obra social o Particular *
                   <select required value={form.coverageType === 'private' ? 'private' : form.healthInsuranceId} onChange={(event) => {
                     const value = event.target.value;
@@ -421,10 +428,11 @@ export const JoinPage = (): ReactElement => {
                     {healthInsurances.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                   </select>
                 </label>
-                {form.coverageType === 'health_insurance' ? <label>Número de afiliado<input required={selectedHealthInsurance?.requiresMemberNumber} value={form.insuranceMemberNumber} onChange={(event) => setForm({ ...form, insuranceMemberNumber: event.target.value })} /></label> : null}
-                {form.coverageType === 'health_insurance' ? <label>Plan<input required={selectedHealthInsurance?.requiresPlan} value={form.insurancePlan} onChange={(event) => setForm({ ...form, insurancePlan: event.target.value })} /></label> : null}
-                <label>Motivo de consulta<textarea value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} /></label>
-                <button type="submit" className="nx-btn" disabled={submitting}>{submitting ? 'Confirmando...' : 'Confirmar turno'}</button>
+                ) : null}
+                {showFullPatientForm && form.coverageType === 'health_insurance' ? <label>Número de afiliado<input required={selectedHealthInsurance?.requiresMemberNumber} value={form.insuranceMemberNumber} onChange={(event) => setForm({ ...form, insuranceMemberNumber: event.target.value })} /></label> : null}
+                {showFullPatientForm && form.coverageType === 'health_insurance' ? <label>Plan<input required={selectedHealthInsurance?.requiresPlan} value={form.insurancePlan} onChange={(event) => setForm({ ...form, insurancePlan: event.target.value })} /></label> : null}
+                {showFullPatientForm ? <label>Motivo de consulta<textarea value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} /></label> : null}
+                {!usingKnownExpressPatient ? <button type="submit" className="nx-btn" disabled={submitting}>{submitting ? 'Confirmando...' : 'Confirmar turno'}</button> : null}
               </form>
             ) : null}
           </section>
