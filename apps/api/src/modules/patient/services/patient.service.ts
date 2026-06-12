@@ -14,6 +14,7 @@ import type {
   UserEventDto
 } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import { env } from '../../../config/env.js';
 import { logger } from '../../../config/logger.js';
 import { formatAppointmentDateTimeArgentina } from '../../../core/argentina-date-time.js';
 import { AppointmentsService } from '../../appointments/services/appointments.service.js';
@@ -78,6 +79,7 @@ export interface PatientLookupResult {
   maskedPatient?: ExpressMaskedPatientDto;
   requiresVerification?: boolean;
   hasSavedData?: boolean;
+  lookupToken?: string;
 }
 
 export interface ExpressPatientPrefillResult {
@@ -158,7 +160,6 @@ export class PatientService {
     private readonly healthInsurances = new OrganizationHealthInsuranceRepository(),
     private readonly expressSessions = new PatientExpressSessionRepository()
   ) {}
-
 
   private isDuplicateKeyError(error: unknown): boolean {
     return Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: unknown }).code === 11000);
@@ -264,7 +265,7 @@ export class PatientService {
   }
 
   async lookupExpressPatient(tokenOrSlug: string, input: { phone: string }): Promise<PatientLookupResult> {
-    await this.resolveAvailableOrganization(tokenOrSlug);
+    const organization = await this.resolveAvailableOrganization(tokenOrSlug);
     const normalizedPhone = this.normalizePhoneIdentity(input.phone);
     if (!normalizedPhone) throw new AppError('INVALID_PATIENT_PHONE', 400, 'Ingresá un WhatsApp válido');
 
@@ -275,7 +276,8 @@ export class PatientService {
       found: true,
       maskedPatient: this.toMaskedPatient(identity),
       requiresVerification: false,
-      hasSavedData: true
+      hasSavedData: true,
+      lookupToken: this.issuePatientLookupToken(organization._id.toString(), identity._id.toString())
     };
   }
 
@@ -327,22 +329,28 @@ export class PatientService {
     endAt?: string | undefined;
     appointmentType?: 'single' | 'double' | undefined;
     useCurrentExpressPatient?: boolean | undefined;
+    useSavedPatientData?: boolean | undefined;
+    patientLookupToken?: string | undefined;
     patient?: { firstName: string; lastName: string; phone: string; email?: string | undefined; documentNumber?: string | undefined; birthDate?: string | undefined } | undefined;
-    coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null | undefined; insuranceMemberNumber?: string | null | undefined; insurancePlan?: string | null | undefined };
+    coverage?: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null | undefined; insuranceMemberNumber?: string | null | undefined; insurancePlan?: string | null | undefined } | undefined;
     reason?: string | undefined;
   }, expressSessionToken?: string, userAgent?: string): Promise<ExpressAppointmentResult> {
     const organization = await this.resolveAvailableOrganization(tokenOrSlug);
     const organizationId = organization._id.toString();
-    const coverage = await this.resolveExpressCoverage(organizationId, input.coverage);
 
     let step: 'patient_identity' | 'patient_profile' | 'appointment' = 'patient_identity';
     try {
       let identity: PatientIdentityDocument;
+      let useSavedPatientData = false;
 
       if (input.useCurrentExpressPatient === true) {
         const sessionIdentity = await this.resolveIdentityFromExpressSession(expressSessionToken, userAgent);
         if (!sessionIdentity) throw new AppError('EXPRESS_SESSION_REQUIRED', 401, 'Confirmá tu identidad para reservar rápido');
         identity = sessionIdentity;
+        useSavedPatientData = true;
+      } else if (input.useSavedPatientData === true) {
+        identity = await this.resolveIdentityFromPatientLookupToken(input.patientLookupToken, organizationId);
+        useSavedPatientData = true;
       } else {
         if (!input.patient) throw new AppError('PATIENT_DATA_REQUIRED', 400, 'Completá los datos del paciente');
         const identityData = this.normalizeExpressPatientInput(input.patient);
@@ -350,7 +358,10 @@ export class PatientService {
       }
 
       step = 'patient_profile';
-      const { compatProfile, orgProfile } = await this.createOrUpdateOrganizationPatientProfile(organizationId, identity, coverage, input.useCurrentExpressPatient === true);
+      const coverage = useSavedPatientData
+        ? await this.resolveSavedExpressCoverage(organizationId, identity)
+        : await this.resolveExpressCoverage(organizationId, input.coverage ?? { type: 'private' });
+      const { compatProfile, orgProfile } = await this.createOrUpdateOrganizationPatientProfile(organizationId, identity, coverage, useSavedPatientData);
 
       await this.links.upsertActive({
         patientProfileId: compatProfile._id.toString(),
@@ -1205,7 +1216,6 @@ export class PatientService {
     }
   }
 
-
   private normalizeExpressPatientInput(patient: { firstName: string; lastName: string; phone: string; email?: string | undefined; documentNumber?: string | undefined; birthDate?: string | undefined }): {
     firstName: string;
     lastName: string;
@@ -1300,6 +1310,45 @@ export class PatientService {
     return { paymentCoverageType, healthInsuranceId, healthInsuranceName, insuranceMemberNumber, insurancePlan };
   }
 
+  private async resolveSavedExpressCoverage(organizationId: string, identity: PatientIdentityDocument): Promise<{
+    paymentCoverageType: 'private' | 'health_insurance';
+    healthInsuranceId: string | null;
+    healthInsuranceName: string;
+    insuranceMemberNumber: string | null;
+    insurancePlan: string | null;
+  }> {
+    const orgProfile = await this.organizationPatientProfiles.findByOrganizationAndIdentity(organizationId, identity._id.toString())
+      ?? await this.organizationPatientProfiles.findByOrganizationAndNormalizedPhone(organizationId, identity.normalizedPhone);
+    const compatProfile = orgProfile?.patientProfileId
+      ? await this.patientProfiles.findById(orgProfile.patientProfileId.toString())
+      : await this.patientProfiles.findByOrganizationAndNormalizedPhone(organizationId, identity.normalizedPhone);
+
+    const savedHealthInsuranceId = orgProfile?.defaultHealthInsuranceId?.toString() ?? null;
+    const savedInsuranceMemberNumber = normalizeOptionalText(orgProfile?.defaultInsuranceMemberNumber ?? compatProfile?.insuranceMemberId ?? null) ?? null;
+    const savedInsurancePlan = normalizeOptionalText(compatProfile?.insurancePlan ?? null) ?? null;
+
+    if (orgProfile?.defaultCoverageType === 'health_insurance' && savedHealthInsuranceId && isValidObjectId(savedHealthInsuranceId)) {
+      const healthInsurance = await this.healthInsurances.findByIdInOrganization(organizationId, savedHealthInsuranceId);
+      if (healthInsurance?.status === 'active') {
+        return {
+          paymentCoverageType: 'health_insurance',
+          healthInsuranceId: healthInsurance._id.toString(),
+          healthInsuranceName: healthInsurance.name,
+          insuranceMemberNumber: savedInsuranceMemberNumber,
+          insurancePlan: savedInsurancePlan
+        };
+      }
+    }
+
+    return {
+      paymentCoverageType: 'private',
+      healthInsuranceId: null,
+      healthInsuranceName: 'Particular',
+      insuranceMemberNumber: null,
+      insurancePlan: null
+    };
+  }
+
   private async createOrUpdateOrganizationPatientProfile(
     organizationId: string,
     identity: PatientIdentityDocument,
@@ -1382,7 +1431,6 @@ export class PatientService {
     return { compatProfile, orgProfile };
   }
 
-
   private toExpressPatientPrefill(
     identity: PatientIdentityDocument,
     orgProfile: OrganizationPatientProfileDocument | null,
@@ -1406,6 +1454,41 @@ export class PatientService {
         insurancePlan: coverageType === 'health_insurance' ? (compatProfile?.insurancePlan ?? null) : null
       }
     };
+  }
+
+  private issuePatientLookupToken(organizationId: string, patientIdentityId: string): string {
+    const payload = JSON.stringify({ organizationId, patientIdentityId, expiresAt: Date.now() + 1000 * 60 * 15 });
+    const key = crypto.createHash('sha256').update(env.JWT_ACCESS_SECRET).digest();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    return [iv, authTag, encrypted].map((part) => part.toString('base64url')).join('.');
+  }
+
+  private async resolveIdentityFromPatientLookupToken(token: string | undefined, organizationId: string): Promise<PatientIdentityDocument> {
+    const normalizedToken = normalizeOptionalText(token);
+    if (!normalizedToken) throw new AppError('PATIENT_LOOKUP_TOKEN_REQUIRED', 400, 'Volvé a buscar tus datos por WhatsApp para reservar rápido');
+
+    const [ivPart, authTagPart, encryptedPart] = normalizedToken.split('.');
+    if (!ivPart || !authTagPart || !encryptedPart) throw new AppError('INVALID_PATIENT_LOOKUP_TOKEN', 401, 'La búsqueda de paciente venció. Volvé a buscar tus datos.');
+
+    try {
+      const key = crypto.createHash('sha256').update(env.JWT_ACCESS_SECRET).digest();
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivPart, 'base64url'));
+      decipher.setAuthTag(Buffer.from(authTagPart, 'base64url'));
+      const decoded = Buffer.concat([decipher.update(Buffer.from(encryptedPart, 'base64url')), decipher.final()]).toString('utf8');
+      const payload = JSON.parse(decoded) as { organizationId?: unknown; patientIdentityId?: unknown; expiresAt?: unknown };
+      if (payload.organizationId !== organizationId || typeof payload.patientIdentityId !== 'string' || typeof payload.expiresAt !== 'number' || payload.expiresAt <= Date.now()) {
+        throw new AppError('INVALID_PATIENT_LOOKUP_TOKEN', 401, 'La búsqueda de paciente venció. Volvé a buscar tus datos.');
+      }
+      const identity = await this.patientIdentities.findById(payload.patientIdentityId);
+      if (!identity) throw new AppError('PATIENT_IDENTITY_NOT_FOUND', 404, 'No encontramos el paciente guardado');
+      return identity;
+    } catch (error: unknown) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('INVALID_PATIENT_LOOKUP_TOKEN', 401, 'La búsqueda de paciente venció. Volvé a buscar tus datos.');
+    }
   }
 
   private async issueExpressSession(patientIdentityId: string, userAgent?: string): Promise<{ token: string; expiresAt: Date }> {

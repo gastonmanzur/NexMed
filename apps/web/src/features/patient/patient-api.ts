@@ -6,7 +6,7 @@ const API_URL = rawApiUrl.replace(/\/$/, '');
 
 export type ExpressMaskedPatient = { displayName: string; maskedPhone: string };
 export type ExpressSessionMe = { authenticated: false } | { authenticated: true; patient: ExpressMaskedPatient & { patientIdentityId: string } };
-export type ExpressPatientLookup = { found: false } | { found: true; maskedPatient: ExpressMaskedPatient; requiresVerification: boolean; hasSavedData: boolean };
+export type ExpressPatientLookup = { found: false } | { found: true; maskedPatient: ExpressMaskedPatient; requiresVerification: boolean; hasSavedData: boolean; lookupToken: string };
 export type ExpressPatientPrefill = {
   found: false;
 } | {
@@ -35,8 +35,10 @@ export type ExpressAppointmentInput = {
   endAt?: string;
   appointmentType?: 'single' | 'double';
   useCurrentExpressPatient?: boolean;
+  useSavedPatientData?: boolean;
+  patientLookupToken?: string;
   patient?: { firstName: string; lastName: string; phone: string; email?: string; documentNumber?: string; birthDate?: string };
-  coverage: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null; insuranceMemberNumber?: string | null; insurancePlan?: string | null };
+  coverage?: { type: 'private' | 'health_insurance'; healthInsuranceId?: string | null; insuranceMemberNumber?: string | null; insurancePlan?: string | null };
   reason?: string;
 };
 
