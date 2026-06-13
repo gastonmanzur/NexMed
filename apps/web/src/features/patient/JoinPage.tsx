@@ -604,17 +604,18 @@ export const JoinPage = (): ReactElement => {
     })();
   };
 
-  const confirmKnownExpressPatient = (): void => {
-    setSelectedPatientMode("known");
-    setBookingMode("current_express_session");
-    setError("");
-  };
-
   const submit = async (
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (!selectedSlot) return;
+    if (!selectedSlot) {
+      setError("Elegí un horario disponible para reservar.");
+      return;
+    }
+    if (form.coverageType === "health_insurance" && !form.healthInsuranceId) {
+      setError("Seleccioná una obra social para reservar con cobertura.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -882,32 +883,16 @@ export const JoinPage = (): ReactElement => {
                         {expressPatient.maskedPhone.slice(-4)}
                       </p>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: ".75rem",
-                        flexWrap: "wrap",
+                    <button
+                      type="button"
+                      className="nx-btn nx-btn--secondary"
+                      onClick={() => {
+                        setSelectedPatientMode("other");
+                        setBookingMode("manual");
                       }}
                     >
-                      <button
-                        type="button"
-                        className="nx-btn"
-                        disabled={submitting}
-                        onClick={confirmKnownExpressPatient}
-                      >
-                        Sí, soy yo
-                      </button>
-                      <button
-                        type="button"
-                        className="nx-btn nx-btn--secondary"
-                        onClick={() => {
-                          setSelectedPatientMode("other");
-                          setBookingMode("manual");
-                        }}
-                      >
-                        Usar otros datos
-                      </button>
-                    </div>
+                      Usar otros datos
+                    </button>
                   </section>
                 ) : null}
 
@@ -1047,7 +1032,11 @@ export const JoinPage = (): ReactElement => {
                   </label>
                 ) : null}
                 <button type="submit" className="nx-btn" disabled={submitting}>
-                  {submitting ? "Confirmando..." : "Confirmar turno"}
+                  {submitting
+                    ? "Confirmando..."
+                    : usingKnownExpressPatient || usingSavedLookupPatient
+                      ? "Sí, soy yo"
+                      : "Confirmar turno"}
                 </button>
               </form>
             ) : null}
