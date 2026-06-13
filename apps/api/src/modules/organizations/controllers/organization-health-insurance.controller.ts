@@ -6,12 +6,18 @@ import { OrganizationHealthInsuranceService } from '../services/organization-hea
 const service = new OrganizationHealthInsuranceService();
 const paramsSchema = z.object({ organizationId: z.string().trim().min(1) });
 const itemParamsSchema = z.object({ organizationId: z.string().trim().min(1), healthInsuranceId: z.string().trim().min(1) });
+const planSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  code: z.string().trim().max(40).nullable().optional(),
+  active: z.boolean().optional()
+});
 const writeSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   status: z.enum(['active', 'inactive']).optional(),
   requiresMemberNumber: z.boolean().optional(),
   requiresPlan: z.boolean().optional(),
-  notes: z.string().trim().max(500).nullable().optional()
+  notes: z.string().trim().max(500).nullable().optional(),
+  plans: z.array(planSchema).optional()
 });
 const createSchema = writeSchema.extend({ name: z.string().trim().min(1).max(120) });
 

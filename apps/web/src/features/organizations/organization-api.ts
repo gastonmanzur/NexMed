@@ -198,7 +198,7 @@ export const organizationApi = {
     const result = await request<{ success: true; data: OrganizationHealthInsuranceDto[] }>(`/organizations/${organizationId}/health-insurances`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
     return result.data;
   },
-  createHealthInsurance: async (accessToken: string, organizationId: string, input: { name: string; status?: 'active' | 'inactive'; requiresMemberNumber?: boolean; requiresPlan?: boolean; notes?: string }): Promise<OrganizationHealthInsuranceDto> => {
+  createHealthInsurance: async (accessToken: string, organizationId: string, input: { name: string; status?: 'active' | 'inactive'; requiresMemberNumber?: boolean; requiresPlan?: boolean; notes?: string; plans?: OrganizationHealthInsuranceDto['plans'] }): Promise<OrganizationHealthInsuranceDto> => {
     const result = await request<{ success: true; data: OrganizationHealthInsuranceDto }>(`/organizations/${organizationId}/health-insurances`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });
     return result.data;
   },

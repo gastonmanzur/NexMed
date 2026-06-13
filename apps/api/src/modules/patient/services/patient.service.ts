@@ -302,6 +302,9 @@ export class PatientService {
       requiresMemberNumber: row.requiresMemberNumber,
       requiresPlan: row.requiresPlan,
       notes: row.notes ?? null,
+      plans: (row.plans ?? [])
+        .filter((plan) => plan.active)
+        .map((plan) => ({ name: plan.name, code: plan.code ?? null, active: plan.active })),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));
@@ -2147,8 +2150,28 @@ export class PatientService {
         throw new AppError(
           "INSURANCE_PLAN_REQUIRED",
           400,
-          "Ingresá el plan de la cobertura",
+          "Seleccioná el plan de la obra social",
         );
+      const activePlans = (healthInsurance.plans ?? []).filter((plan) => plan.active);
+      if (healthInsurance.requiresPlan && activePlans.length === 0)
+        throw new AppError(
+          "INSURANCE_PLAN_NOT_CONFIGURED",
+          400,
+          "Esta obra social requiere plan, pero el centro no configuró planes disponibles.",
+        );
+      if (healthInsurance.requiresPlan && activePlans.length > 0) {
+        const selectedPlan = activePlans.find(
+          (plan) =>
+            plan.name.trim().toLocaleLowerCase("es-AR") ===
+            insurancePlan?.toLocaleLowerCase("es-AR"),
+        );
+        if (!selectedPlan)
+          throw new AppError(
+            "INVALID_INSURANCE_PLAN",
+            400,
+            "Seleccioná un plan válido para la obra social elegida.",
+          );
+      }
       paymentCoverageType = "health_insurance";
       healthInsuranceId = healthInsurance._id.toString();
       healthInsuranceName = healthInsurance.name;
@@ -2157,8 +2180,8 @@ export class PatientService {
       paymentCoverageType,
       healthInsuranceId,
       healthInsuranceName,
-      insuranceMemberNumber,
-      insurancePlan,
+      insuranceMemberNumber: paymentCoverageType === "health_insurance" ? insuranceMemberNumber : null,
+      insurancePlan: paymentCoverageType === "health_insurance" ? insurancePlan : null,
     };
   }
 

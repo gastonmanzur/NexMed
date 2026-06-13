@@ -1,5 +1,7 @@
 import { OrganizationHealthInsuranceModel, type OrganizationHealthInsuranceDocument } from '../models/organization-health-insurance.model.js';
 
+type HealthInsurancePlanInput = { name: string; code?: string | null; active: boolean };
+
 export class OrganizationHealthInsuranceRepository {
   async listByOrganization(organizationId: string, activeOnly = false): Promise<OrganizationHealthInsuranceDocument[]> {
     return OrganizationHealthInsuranceModel.find({ organizationId, ...(activeOnly ? { status: 'active' } : {}) }).sort({ name: 1 }).exec();
@@ -9,7 +11,7 @@ export class OrganizationHealthInsuranceRepository {
     return OrganizationHealthInsuranceModel.findOne({ _id: id, organizationId }).exec();
   }
 
-  async create(input: { organizationId: string; name: string; status: 'active' | 'inactive'; requiresMemberNumber: boolean; requiresPlan: boolean; notes?: string | null }): Promise<OrganizationHealthInsuranceDocument> {
+  async create(input: { organizationId: string; name: string; status: 'active' | 'inactive'; requiresMemberNumber: boolean; requiresPlan: boolean; notes?: string | null; plans?: HealthInsurancePlanInput[] }): Promise<OrganizationHealthInsuranceDocument> {
     return OrganizationHealthInsuranceModel.create(input);
   }
 
