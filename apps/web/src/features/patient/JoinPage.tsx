@@ -153,64 +153,70 @@ const PatientPersonalFields = ({
   form,
   onChange,
 }: PatientPersonalFieldsProps): ReactElement => (
-  <>
-    <h2>Datos personales</h2>
-    <label>
-      Nombre *
-      <input
-        required
-        value={form.firstName}
-        onChange={(event) =>
-          onChange({ ...form, firstName: event.target.value })
-        }
-      />
-    </label>
-    <label>
-      Apellido *
-      <input
-        required
-        value={form.lastName}
-        onChange={(event) =>
-          onChange({ ...form, lastName: event.target.value })
-        }
-      />
-    </label>
-    <label>
-      Teléfono / WhatsApp *
-      <input
-        required
-        value={form.phone}
-        onChange={(event) => onChange({ ...form, phone: event.target.value })}
-      />
-    </label>
-    <label>
-      DNI
-      <input
-        value={form.documentNumber}
-        onChange={(event) =>
-          onChange({ ...form, documentNumber: event.target.value })
-        }
-      />
-    </label>
-    <label>
-      Email
-      <input
-        type="email"
-        value={form.email}
-        onChange={(event) => onChange({ ...form, email: event.target.value })}
-      />
-    </label>
-    <label>
-      Fecha de nacimiento
-      <input
-        type="date"
-        value={form.birthDate}
-        onChange={(event) =>
-          onChange({ ...form, birthDate: event.target.value })
-        }
-      />
-    </label>
-  </>
+  <section className="nx-public-booking__panel nx-public-booking__patient-panel">
+    <div className="nx-public-booking__section-heading">
+      <span className="nx-public-booking__eyebrow">Paciente</span>
+      <h2>Datos personales</h2>
+      <p>Completá solo la información necesaria para confirmar tu turno.</p>
+    </div>
+    <div className="nx-public-booking__form-grid">
+      <label className="nx-public-booking__field">
+        <span>Nombre *</span>
+        <input
+          required
+          value={form.firstName}
+          onChange={(event) =>
+            onChange({ ...form, firstName: event.target.value })
+          }
+        />
+      </label>
+      <label className="nx-public-booking__field">
+        <span>Apellido *</span>
+        <input
+          required
+          value={form.lastName}
+          onChange={(event) =>
+            onChange({ ...form, lastName: event.target.value })
+          }
+        />
+      </label>
+      <label className="nx-public-booking__field">
+        <span>Teléfono / WhatsApp *</span>
+        <input
+          required
+          value={form.phone}
+          onChange={(event) => onChange({ ...form, phone: event.target.value })}
+        />
+      </label>
+      <label className="nx-public-booking__field">
+        <span>DNI</span>
+        <input
+          value={form.documentNumber}
+          onChange={(event) =>
+            onChange({ ...form, documentNumber: event.target.value })
+          }
+        />
+      </label>
+      <label className="nx-public-booking__field">
+        <span>Email</span>
+        <input
+          type="email"
+          value={form.email}
+          onChange={(event) => onChange({ ...form, email: event.target.value })}
+        />
+      </label>
+      <label className="nx-public-booking__field">
+        <span>Fecha de nacimiento</span>
+        <input
+          type="date"
+          value={form.birthDate}
+          onChange={(event) =>
+            onChange({ ...form, birthDate: event.target.value })
+          }
+        />
+      </label>
+    </div>
+  </section>
 );
 
 type CoverageFieldsProps = {
@@ -231,64 +237,68 @@ const CoverageFields = ({
   const canUseHealthInsurance = healthInsurances.length > 0;
   return (
     <section
+      className="nx-public-booking__panel nx-public-booking__coverage"
       aria-labelledby="coverage-title"
-      style={{
-        border: "1px solid #dbe4ef",
-        borderRadius: 12,
-        padding: "1rem",
-        display: "grid",
-        gap: ".75rem",
-      }}
     >
-      <div>
+      <div className="nx-public-booking__section-heading">
+        <span className="nx-public-booking__eyebrow">Cobertura</span>
         <h2 id="coverage-title">Cobertura del turno</h2>
-        <p>¿Cómo vas a atenderte?</p>
-      </div>
-      {inactiveCoverageMessage ? <p>{inactiveCoverageMessage}</p> : null}
-      {!canUseHealthInsurance ? (
         <p>
+          Elegí cómo vas a atenderte para que el centro reciba la información
+          correcta.
+        </p>
+      </div>
+      {inactiveCoverageMessage ? (
+        <p className="nx-public-booking__alert nx-public-booking__alert--warning">
+          {inactiveCoverageMessage}
+        </p>
+      ) : null}
+      {!canUseHealthInsurance ? (
+        <p className="nx-public-booking__alert nx-public-booking__alert--info">
           Este centro no tiene obras sociales configuradas para reserva online.
         </p>
       ) : null}
-      <label style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
-        <input
-          type="radio"
-          name="coverageType"
-          checked={form.coverageType === "private"}
-          onChange={() =>
-            onChange({
-              ...form,
-              coverageType: "private",
-              healthInsuranceId: "",
-              insuranceMemberNumber: "",
-              insurancePlan: "",
-            })
-          }
-        />
-        <span>Particular</span>
-      </label>
-      {canUseHealthInsurance ? (
-        <label style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+      <div className="nx-public-booking__coverage-options">
+        <label className="nx-public-booking__choice">
           <input
             type="radio"
             name="coverageType"
-            checked={form.coverageType === "health_insurance"}
+            checked={form.coverageType === "private"}
             onChange={() =>
               onChange({
                 ...form,
-                coverageType: "health_insurance",
-                healthInsuranceId:
-                  form.healthInsuranceId || healthInsurances[0]?.id || "",
+                coverageType: "private",
+                healthInsuranceId: "",
+                insuranceMemberNumber: "",
+                insurancePlan: "",
               })
             }
           />
-          <span>Obra social</span>
+          <span>Particular</span>
         </label>
-      ) : null}
+        {canUseHealthInsurance ? (
+          <label className="nx-public-booking__choice">
+            <input
+              type="radio"
+              name="coverageType"
+              checked={form.coverageType === "health_insurance"}
+              onChange={() =>
+                onChange({
+                  ...form,
+                  coverageType: "health_insurance",
+                  healthInsuranceId:
+                    form.healthInsuranceId || healthInsurances[0]?.id || "",
+                })
+              }
+            />
+            <span>Obra social</span>
+          </label>
+        ) : null}
+      </div>
       {canUseHealthInsurance && form.coverageType === "health_insurance" ? (
-        <>
-          <label>
-            Obra social *
+        <div className="nx-public-booking__form-grid">
+          <label className="nx-public-booking__field">
+            <span>Obra social *</span>
             <select
               required
               value={form.healthInsuranceId}
@@ -306,8 +316,8 @@ const CoverageFields = ({
               ))}
             </select>
           </label>
-          <label>
-            Número de afiliado
+          <label className="nx-public-booking__field">
+            <span>Número de afiliado</span>
             <input
               required={selectedHealthInsurance?.requiresMemberNumber}
               value={form.insuranceMemberNumber}
@@ -316,8 +326,8 @@ const CoverageFields = ({
               }
             />
           </label>
-          <label>
-            Plan
+          <label className="nx-public-booking__field">
+            <span>Plan</span>
             <input
               required={selectedHealthInsurance?.requiresPlan}
               value={form.insurancePlan}
@@ -326,7 +336,7 @@ const CoverageFields = ({
               }
             />
           </label>
-        </>
+        </div>
       ) : null}
     </section>
   );
@@ -670,12 +680,23 @@ export const JoinPage = (): ReactElement => {
 
   if (confirmation && selectedSlot) {
     return (
-      <main style={{ maxWidth: 760, margin: "2rem auto", padding: "1rem" }}>
+      <main className="nx-public-booking nx-public-booking--confirmation">
         <Card
+          className="nx-public-booking__card nx-public-booking__card--success"
           title="Turno reservado correctamente"
           subtitle="Te enviaremos la confirmación y recordatorio por WhatsApp."
         >
-          <dl className="nx-appointment-detail__summary">
+          <div className="nx-public-booking__success-banner" role="status">
+            <span aria-hidden="true">✓</span>
+            <div>
+              <strong>Reserva confirmada</strong>
+              <p>
+                Guardá estos datos. La próxima vez podremos reconocerte para
+                reservar más rápido.
+              </p>
+            </div>
+          </div>
+          <dl className="nx-public-booking__summary-grid nx-appointment-detail__summary">
             <div>
               <dt>Paciente</dt>
               <dd>
@@ -719,128 +740,209 @@ export const JoinPage = (): ReactElement => {
               </dd>
             </div>
           </dl>
-          <p>La próxima vez podremos reconocerte para reservar más rápido.</p>
         </Card>
       </main>
     );
   }
 
   return (
-    <main style={{ maxWidth: 980, margin: "2rem auto", padding: "1rem" }}>
+    <main className="nx-public-booking">
       <Card
+        className="nx-public-booking__card"
         title={`Reservar turno en ${centerName}`}
         subtitle="Elegí primero especialidad, profesional, fecha y horario. Después te pediremos solo los datos mínimos."
       >
-        {loading ? <p>Cargando agenda pública...</p> : null}
+        {loading ? (
+          <p className="nx-public-booking__alert nx-public-booking__alert--info">
+            Cargando agenda pública...
+          </p>
+        ) : null}
         {error ? (
-          <p role="alert" className="nx-join__error">
+          <p
+            role="alert"
+            className="nx-public-booking__alert nx-public-booking__alert--error nx-join__error"
+          >
             {error}
           </p>
         ) : null}
         {preview && !loading ? (
-          <section style={{ display: "grid", gap: "1.5rem" }}>
-            <div>
-              <p>
-                <strong>{centerName}</strong>
-              </p>
-              {[
-                preview.organization.address,
-                preview.organization.city,
-                preview.organization.province,
-              ]
-                .filter(Boolean)
-                .join(", ") ? (
-                <p>
-                  {[
-                    preview.organization.address,
-                    preview.organization.city,
-                    preview.organization.province,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")}
-                </p>
-              ) : null}
-              {preview.organization.phone ? (
-                <p>Teléfono: {preview.organization.phone}</p>
-              ) : null}
-              {preview.organization.locationLabel ? (
-                <p>Ubicación: {preview.organization.locationLabel}</p>
-              ) : null}
-              <p>
-                Especialidades disponibles:{" "}
-                {catalog.specialties.map((item) => item.name).join(", ") ||
-                  "Sin especialidades activas"}
-              </p>
-            </div>
+          <section className="nx-public-booking__content">
+            <section
+              className="nx-public-booking__center-card"
+              aria-label="Datos del centro"
+            >
+              <div className="nx-public-booking__center-heading">
+                <span className="nx-public-booking__logo" aria-hidden="true">
+                  N
+                </span>
+                <div>
+                  <span className="nx-public-booking__eyebrow">
+                    Centro NexMed
+                  </span>
+                  <h2>{centerName}</h2>
+                </div>
+              </div>
+              <div className="nx-public-booking__center-details">
+                {[
+                  preview.organization.address,
+                  preview.organization.city,
+                  preview.organization.province,
+                ]
+                  .filter(Boolean)
+                  .join(", ") ? (
+                  <div className="nx-public-booking__detail-item">
+                    <span aria-hidden="true">📍</span>
+                    <div>
+                      <small>Dirección</small>
+                      <strong>
+                        {[
+                          preview.organization.address,
+                          preview.organization.city,
+                          preview.organization.province,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </strong>
+                    </div>
+                  </div>
+                ) : null}
+                {preview.organization.phone ? (
+                  <div className="nx-public-booking__detail-item">
+                    <span aria-hidden="true">☎</span>
+                    <div>
+                      <small>Teléfono</small>
+                      <strong>{preview.organization.phone}</strong>
+                    </div>
+                  </div>
+                ) : null}
+                {preview.organization.locationLabel ? (
+                  <div className="nx-public-booking__detail-item">
+                    <span aria-hidden="true">⌖</span>
+                    <div>
+                      <small>Ubicación</small>
+                      <strong>{preview.organization.locationLabel}</strong>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="nx-public-booking__specialties-block">
+                <span className="nx-public-booking__eyebrow">
+                  Especialidades disponibles
+                </span>
+                <div
+                  className="nx-public-booking__chips"
+                  aria-label="Especialidades disponibles"
+                >
+                  {catalog.specialties.length > 0 ? (
+                    catalog.specialties.map((item) => (
+                      <span className="nx-public-booking__chip" key={item.id}>
+                        {item.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="nx-public-booking__chip nx-public-booking__chip--empty">
+                      Sin especialidades activas
+                    </span>
+                  )}
+                </div>
+              </div>
+            </section>
 
             <section
+              className="nx-public-booking__panel nx-public-booking__selector-panel"
               aria-label="Selección de turno"
-              style={{ display: "grid", gap: "1rem" }}
             >
-              <label>
-                Especialidad
-                <select
-                  value={specialtyId}
-                  onChange={(event) => setSpecialtyId(event.target.value)}
-                >
-                  {catalog.specialties.map((specialty) => (
-                    <option key={specialty.id} value={specialty.id}>
-                      {specialty.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Profesional
-                <select
-                  value={professionalId}
-                  onChange={(event) => setProfessionalId(event.target.value)}
-                >
-                  {professionalsForSpecialty.map((professional) => (
-                    <option key={professional.id} value={professional.id}>
-                      {professional.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Fecha
-                <input
-                  type="date"
-                  value={date}
-                  min={todayKey()}
-                  onChange={(event) => setDate(event.target.value)}
-                />
-              </label>
-              <div>
-                <strong>Horario</strong>
+              <div className="nx-public-booking__section-heading">
+                <span className="nx-public-booking__eyebrow">Paso 1</span>
+                <h2>Elegí tu turno</h2>
+                <p>
+                  Seleccioná especialidad, profesional y fecha para ver la
+                  disponibilidad real.
+                </p>
+              </div>
+              <div className="nx-public-booking__selectors">
+                <label className="nx-public-booking__field">
+                  <span>Especialidad</span>
+                  <select
+                    value={specialtyId}
+                    onChange={(event) => setSpecialtyId(event.target.value)}
+                  >
+                    {catalog.specialties.map((specialty) => (
+                      <option key={specialty.id} value={specialty.id}>
+                        {specialty.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="nx-public-booking__field">
+                  <span>Profesional</span>
+                  <select
+                    value={professionalId}
+                    onChange={(event) => setProfessionalId(event.target.value)}
+                  >
+                    {professionalsForSpecialty.map((professional) => (
+                      <option key={professional.id} value={professional.id}>
+                        {professional.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="nx-public-booking__field">
+                  <span>Fecha</span>
+                  <input
+                    type="date"
+                    value={date}
+                    min={todayKey()}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="nx-public-booking__slots" aria-live="polite">
+                <div className="nx-public-booking__slots-header">
+                  <div>
+                    <span className="nx-public-booking__eyebrow">
+                      Horarios disponibles
+                    </span>
+                    <h3>Elegí un horario</h3>
+                  </div>
+                  {selectedSlot ? (
+                    <span className="nx-public-booking__selected-pill">
+                      Seleccionado {formatTime(selectedSlot.startsAtIso)}
+                    </span>
+                  ) : null}
+                </div>
                 {loadingAvailability ? (
-                  <p>Buscando disponibilidad real...</p>
+                  <p className="nx-public-booking__alert nx-public-booking__alert--info">
+                    Buscando disponibilidad real...
+                  </p>
                 ) : null}
                 {!loadingAvailability && slots.length === 0 ? (
-                  <p>No hay horarios disponibles para esta fecha.</p>
+                  <div className="nx-public-booking__empty-state">
+                    <span aria-hidden="true">🗓️</span>
+                    <strong>No hay horarios disponibles para esta fecha</strong>
+                    <p>Probá con otra fecha, especialidad o profesional.</p>
+                  </div>
                 ) : null}
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: ".5rem",
-                    marginTop: ".5rem",
-                  }}
-                >
-                  {slots.map((slot) => (
-                    <button
-                      type="button"
-                      key={slot.startsAtIso}
-                      className="nx-btn"
-                      onClick={() => setSelectedSlot(slot)}
-                      aria-pressed={
-                        selectedSlot?.startsAtIso === slot.startsAtIso
-                      }
-                    >
-                      {formatTime(slot.startsAtIso)}
-                    </button>
-                  ))}
+                <div className="nx-public-booking__slot-grid">
+                  {slots.map((slot) => {
+                    const isSelected =
+                      selectedSlot?.startsAtIso === slot.startsAtIso;
+                    return (
+                      <button
+                        type="button"
+                        key={slot.startsAtIso}
+                        className={
+                          isSelected
+                            ? "nx-public-booking__slot nx-public-booking__slot--selected"
+                            : "nx-public-booking__slot"
+                        }
+                        onClick={() => setSelectedSlot(slot)}
+                        aria-pressed={isSelected}
+                      >
+                        {formatTime(slot.startsAtIso)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </section>
@@ -848,17 +950,20 @@ export const JoinPage = (): ReactElement => {
             {selectedSlot ? (
               <form
                 onSubmit={(event) => void submit(event)}
-                style={{ display: "grid", gap: "1rem" }}
+                className="nx-public-booking__flow"
               >
+                <div className="nx-public-booking__section-heading nx-public-booking__flow-heading">
+                  <span className="nx-public-booking__eyebrow">Paso 2</span>
+                  <h2>Confirmá tus datos</h2>
+                  <p>
+                    Turno seleccionado: {formatDate(selectedSlot.startsAtIso)} a
+                    las {formatTime(selectedSlot.startsAtIso)}.
+                  </p>
+                </div>
+
                 {expressSessionLoading ? (
-                  <section
-                    style={{
-                      border: "1px solid #dbe4ef",
-                      borderRadius: 12,
-                      padding: "1rem",
-                    }}
-                  >
-                    <p>
+                  <section className="nx-public-booking__panel">
+                    <p className="nx-public-booking__alert nx-public-booking__alert--info">
                       Buscando si ya tenemos tus datos en este dispositivo...
                     </p>
                   </section>
@@ -867,16 +972,11 @@ export const JoinPage = (): ReactElement => {
                 {!expressSessionLoading &&
                 expressPatient &&
                 selectedPatientMode !== "other" ? (
-                  <section
-                    style={{
-                      border: "1px solid #dbe4ef",
-                      borderRadius: 12,
-                      padding: "1rem",
-                      display: "grid",
-                      gap: ".75rem",
-                    }}
-                  >
-                    <div>
+                  <section className="nx-public-booking__panel nx-public-booking__detected">
+                    <div className="nx-public-booking__section-heading">
+                      <span className="nx-public-booking__eyebrow">
+                        Paciente detectado
+                      </span>
                       <h2>Detectamos tus datos</h2>
                       <p>
                         {expressPatient.displayName} · WhatsApp terminado en{" "}
@@ -885,7 +985,7 @@ export const JoinPage = (): ReactElement => {
                     </div>
                     <button
                       type="button"
-                      className="nx-btn nx-btn--secondary"
+                      className="nx-btn-secondary"
                       onClick={() => {
                         setSelectedPatientMode("other");
                         setBookingMode("manual");
@@ -899,61 +999,56 @@ export const JoinPage = (): ReactElement => {
                 {!expressSessionLoading &&
                 !expressPatient &&
                 selectedPatientMode === "lookup" ? (
-                  <section
-                    style={{
-                      border: "1px solid #dbe4ef",
-                      borderRadius: 12,
-                      padding: "1rem",
-                      display: "grid",
-                      gap: ".75rem",
-                    }}
-                  >
-                    <h2>¿Ya reservaste antes?</h2>
-                    <p>Ingresá tu WhatsApp para buscar tus datos.</p>
-                    <label>
-                      WhatsApp
-                      <input
-                        value={lookupPhone}
-                        onChange={(event) => {
-                          const nextPhone = event.target.value;
-                          setLookupPhone(nextPhone);
-                          setLookupResult(null);
-                          setPrefillAccepted(false);
-                          setBookingMode("manual");
-                          setPatientLookupToken("");
-                          setPrefillMessage("");
-                          setInactiveCoverageMessage("");
-                          setForm({ ...emptyForm, phone: nextPhone });
-                        }}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className="nx-btn"
-                      disabled={lookupLoading || !lookupPhone}
-                      onClick={() => void lookupPatient()}
-                    >
-                      {lookupLoading ? "Buscando..." : "Buscar mis datos"}
-                    </button>
-                    {lookupMessage ? <p>{lookupMessage}</p> : null}
+                  <section className="nx-public-booking__panel nx-public-booking__lookup">
+                    <div className="nx-public-booking__section-heading">
+                      <span className="nx-public-booking__eyebrow">
+                        Reserva rápida
+                      </span>
+                      <h2>¿Ya reservaste antes?</h2>
+                      <p>Ingresá tu WhatsApp para buscar tus datos.</p>
+                    </div>
+                    <div className="nx-public-booking__lookup-row">
+                      <label className="nx-public-booking__field">
+                        <span>WhatsApp</span>
+                        <input
+                          value={lookupPhone}
+                          onChange={(event) => {
+                            const nextPhone = event.target.value;
+                            setLookupPhone(nextPhone);
+                            setLookupResult(null);
+                            setPrefillAccepted(false);
+                            setBookingMode("manual");
+                            setPatientLookupToken("");
+                            setPrefillMessage("");
+                            setInactiveCoverageMessage("");
+                            setForm({ ...emptyForm, phone: nextPhone });
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="nx-btn"
+                        disabled={lookupLoading || !lookupPhone}
+                        onClick={() => void lookupPatient()}
+                      >
+                        {lookupLoading ? "Buscando..." : "Buscar mis datos"}
+                      </button>
+                    </div>
+                    {lookupMessage ? (
+                      <p className="nx-public-booking__alert nx-public-booking__alert--info">
+                        {lookupMessage}
+                      </p>
+                    ) : null}
                     {lookupResult ? (
-                      <div style={{ display: "grid", gap: ".75rem" }}>
+                      <div className="nx-public-booking__saved-data">
                         <div>
-                          <p>
-                            <strong>Encontramos tus datos guardados</strong>
-                          </p>
+                          <strong>Encontramos tus datos guardados</strong>
                           <p>
                             {lookupResult.displayName} · WhatsApp terminado en{" "}
                             {lookupResult.maskedPhone.slice(-4)}
                           </p>
                         </div>
-                        <label
-                          style={{
-                            display: "flex",
-                            gap: ".5rem",
-                            alignItems: "flex-start",
-                          }}
-                        >
+                        <label className="nx-public-booking__choice nx-public-booking__choice--full">
                           <input
                             type="checkbox"
                             checked={prefillAccepted}
@@ -967,23 +1062,31 @@ export const JoinPage = (): ReactElement => {
                           </span>
                         </label>
                         {usingSavedLookupPatient ? (
-                          <p>
+                          <p className="nx-public-booking__alert nx-public-booking__alert--success">
                             Usaremos tus datos guardados para reservar. No vamos
                             a pedirte nombre, apellido, DNI, email ni fecha de
                             nacimiento.
                           </p>
                         ) : (
-                          <p>
+                          <p className="nx-public-booking__hint">
                             Si no tildás el checkbox, completá el formulario
                             manual.
                           </p>
                         )}
                         {prefillLoading ? (
-                          <p>Cargando datos guardados...</p>
+                          <p className="nx-public-booking__alert nx-public-booking__alert--info">
+                            Cargando datos guardados...
+                          </p>
                         ) : null}
-                        {prefillMessage ? <p>{prefillMessage}</p> : null}
+                        {prefillMessage ? (
+                          <p className="nx-public-booking__alert nx-public-booking__alert--success">
+                            {prefillMessage}
+                          </p>
+                        ) : null}
                         {inactiveCoverageMessage ? (
-                          <p>{inactiveCoverageMessage}</p>
+                          <p className="nx-public-booking__alert nx-public-booking__alert--warning">
+                            {inactiveCoverageMessage}
+                          </p>
                         ) : null}
                       </div>
                     ) : null}
@@ -993,20 +1096,30 @@ export const JoinPage = (): ReactElement => {
                 {showFullPatientForm ? (
                   <PatientPersonalFields form={form} onChange={setForm} />
                 ) : usingSavedLookupPatient ? (
-                  <section>
-                    <h2>Reserva con datos guardados</h2>
-                    <p>
-                      Reservás como {lookupResult?.displayName}. No vamos a
-                      pedirte todos tus datos otra vez.
-                    </p>
+                  <section className="nx-public-booking__panel nx-public-booking__detected">
+                    <div className="nx-public-booking__section-heading">
+                      <span className="nx-public-booking__eyebrow">
+                        Datos guardados
+                      </span>
+                      <h2>Reserva con datos guardados</h2>
+                      <p>
+                        Reservás como {lookupResult?.displayName}. No vamos a
+                        pedirte todos tus datos otra vez.
+                      </p>
+                    </div>
                   </section>
                 ) : usingKnownExpressPatient ? (
-                  <section>
-                    <h2>Reserva con sesión express</h2>
-                    <p>
-                      Confirmá o cambiá la cobertura de este turno antes de
-                      reservar.
-                    </p>
+                  <section className="nx-public-booking__panel nx-public-booking__detected">
+                    <div className="nx-public-booking__section-heading">
+                      <span className="nx-public-booking__eyebrow">
+                        Sesión express
+                      </span>
+                      <h2>Reserva con sesión express</h2>
+                      <p>
+                        Confirmá o cambiá la cobertura de este turno antes de
+                        reservar.
+                      </p>
+                    </div>
                   </section>
                 ) : null}
 
@@ -1021,8 +1134,8 @@ export const JoinPage = (): ReactElement => {
                   }}
                 />
                 {showFullPatientForm ? (
-                  <label>
-                    Motivo de consulta
+                  <label className="nx-public-booking__field nx-public-booking__field--textarea">
+                    <span>Motivo de consulta</span>
                     <textarea
                       value={form.reason}
                       onChange={(event) =>
@@ -1031,13 +1144,19 @@ export const JoinPage = (): ReactElement => {
                     />
                   </label>
                 ) : null}
-                <button type="submit" className="nx-btn" disabled={submitting}>
-                  {submitting
-                    ? "Confirmando..."
-                    : usingKnownExpressPatient || usingSavedLookupPatient
-                      ? "Sí, soy yo"
-                      : "Confirmar turno"}
-                </button>
+                <div className="nx-public-booking__actions">
+                  <button
+                    type="submit"
+                    className="nx-btn nx-public-booking__submit"
+                    disabled={submitting}
+                  >
+                    {submitting
+                      ? "Confirmando..."
+                      : usingKnownExpressPatient || usingSavedLookupPatient
+                        ? "Sí, soy yo"
+                        : "Confirmar turno"}
+                  </button>
+                </div>
               </form>
             ) : null}
           </section>
