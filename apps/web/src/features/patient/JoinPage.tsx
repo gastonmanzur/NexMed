@@ -102,15 +102,26 @@ const applySavedCoverageToForm = (
       (item) => item.id === coverage.healthInsuranceId,
     );
     if (savedHealthInsurance) {
+      const activePlans = (savedHealthInsurance.plans ?? []).filter((plan) => plan.active);
+      const savedPlan = coverage.insurancePlan ?? "";
+      const savedPlanStillActive =
+        !savedHealthInsurance.requiresPlan ||
+        activePlans.some(
+          (plan) =>
+            plan.name.toLocaleLowerCase("es-AR") ===
+            savedPlan.toLocaleLowerCase("es-AR"),
+        );
       return {
         form: {
           ...currentForm,
           coverageType: "health_insurance",
           healthInsuranceId: coverage.healthInsuranceId,
           insuranceMemberNumber: coverage.insuranceMemberNumber ?? "",
-          insurancePlan: coverage.insurancePlan ?? "",
+          insurancePlan: savedPlanStillActive ? savedPlan : "",
         },
-        inactiveMessage: "",
+        inactiveMessage: savedPlanStillActive
+          ? ""
+          : "Tu plan guardado ya no está disponible. Seleccioná un plan válido para continuar.",
         prefillMessage: coverage.healthInsuranceName
           ? `Preseleccionamos tu cobertura guardada: ${coverage.healthInsuranceName}.`
           : "",
@@ -288,6 +299,7 @@ const CoverageFields = ({
                   coverageType: "health_insurance",
                   healthInsuranceId:
                     form.healthInsuranceId || healthInsurances[0]?.id || "",
+                  insurancePlan: "",
                 })
               }
             />
@@ -303,7 +315,7 @@ const CoverageFields = ({
               required
               value={form.healthInsuranceId}
               onChange={(event) =>
-                onChange({ ...form, healthInsuranceId: event.target.value })
+                onChange({ ...form, healthInsuranceId: event.target.value, insurancePlan: "" })
               }
             >
               <option value="" disabled>
@@ -326,16 +338,35 @@ const CoverageFields = ({
               }
             />
           </label>
-          <label className="nx-public-booking__field">
-            <span>Plan</span>
-            <input
-              required={selectedHealthInsurance?.requiresPlan}
-              value={form.insurancePlan}
-              onChange={(event) =>
-                onChange({ ...form, insurancePlan: event.target.value })
-              }
-            />
-          </label>
+          {selectedHealthInsurance?.requiresPlan ? (
+            (selectedHealthInsurance.plans ?? []).filter((plan) => plan.active).length > 0 ? (
+              <label className="nx-public-booking__field">
+                <span>Plan *</span>
+                <select
+                  required
+                  value={form.insurancePlan}
+                  onChange={(event) =>
+                    onChange({ ...form, insurancePlan: event.target.value })
+                  }
+                >
+                  <option value="" disabled>
+                    Seleccionar plan
+                  </option>
+                  {(selectedHealthInsurance.plans ?? [])
+                    .filter((plan) => plan.active)
+                    .map((plan) => (
+                      <option key={plan.name} value={plan.name}>
+                        {plan.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            ) : (
+              <p className="nx-public-booking__alert nx-public-booking__alert--warning">
+                Esta obra social requiere plan, pero el centro no configuró planes disponibles.
+              </p>
+            )
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -625,6 +656,21 @@ export const JoinPage = (): ReactElement => {
     if (form.coverageType === "health_insurance" && !form.healthInsuranceId) {
       setError("Seleccioná una obra social para reservar con cobertura.");
       return;
+    }
+    if (form.coverageType === "health_insurance" && selectedHealthInsurance?.requiresMemberNumber && !form.insuranceMemberNumber.trim()) {
+      setError("Ingresá el número de afiliado.");
+      return;
+    }
+    if (form.coverageType === "health_insurance" && selectedHealthInsurance?.requiresPlan) {
+      const activePlans = (selectedHealthInsurance.plans ?? []).filter((plan) => plan.active);
+      if (activePlans.length === 0) {
+        setError("Esta obra social requiere plan, pero el centro no configuró planes disponibles.");
+        return;
+      }
+      if (!form.insurancePlan) {
+        setError("Seleccioná el plan de la obra social.");
+        return;
+      }
     }
     setSubmitting(true);
     setError("");

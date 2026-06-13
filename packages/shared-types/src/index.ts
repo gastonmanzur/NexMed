@@ -417,6 +417,12 @@ export interface OrganizationPatientListItemDto {
 
 export type OrganizationHealthInsuranceStatus = 'active' | 'inactive';
 
+export interface OrganizationHealthInsurancePlanDto {
+  name: string;
+  code: string | null;
+  active: boolean;
+}
+
 export interface OrganizationHealthInsuranceDto {
   id: string;
   organizationId: string;
@@ -425,6 +431,7 @@ export interface OrganizationHealthInsuranceDto {
   requiresMemberNumber: boolean;
   requiresPlan: boolean;
   notes: string | null;
+  plans: OrganizationHealthInsurancePlanDto[];
   createdAt: string;
   updatedAt: string;
 }
