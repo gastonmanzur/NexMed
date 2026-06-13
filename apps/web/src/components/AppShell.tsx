@@ -24,6 +24,7 @@ const centerItems: NavItem[] = [
   { id: 'center-invite', label: 'Invitación', to: '/app/invite' },
   { id: 'center-subscription', label: 'Suscripción', to: '/app/subscription' },
   { id: 'center-reminders', label: 'Recordatorios', to: '/organization/settings/reminders' },
+  { id: 'center-whatsapp', label: 'WhatsApp', to: '/organization/settings/whatsapp' },
   { id: 'center-settings', label: 'Configuración', to: '/organization/profile' }
 ];
 

@@ -15,6 +15,8 @@ import { AuditLogRepository } from '../repositories/audit-log.repository.js';
 import { NotificationService } from '../../notifications/services/notification.service.js';
 import { WaitlistService } from '../../waitlist/services/waitlist.service.js';
 import { ReminderService } from '../../reminders/services/reminder.service.js';
+import { WhatsAppNotificationService } from '../../whatsapp/services/whatsapp-notification.service.js';
+import { logger } from '../../../config/logger.js';
 import { PatientOrganizationLinkRepository } from '../../patient/repositories/patient-organization-link.repository.js';
 import type { AppointmentDocument } from '../models/appointment.model.js';
 
@@ -128,7 +130,8 @@ export class AppointmentsService {
     private readonly notifications = new NotificationService(),
     private readonly waitlist = new WaitlistService(),
     private readonly reminders = new ReminderService(),
-    private readonly patientOrganizationLinks = new PatientOrganizationLinkRepository()
+    private readonly patientOrganizationLinks = new PatientOrganizationLinkRepository(),
+    private readonly whatsappNotifications = new WhatsAppNotificationService()
   ) {}
 
   async listAppointments(organizationId: string, input: ListAppointmentsInput): Promise<AppointmentDto[]> {
@@ -247,6 +250,7 @@ export class AppointmentsService {
       );
 
       await this.reminders.scheduleForAppointment(created);
+      await this.scheduleWhatsAppForCreatedAppointment(created._id.toString());
 
       return createdDto;
     } catch (error: unknown) {
@@ -303,6 +307,7 @@ export class AppointmentsService {
       });
 
       await this.reminders.scheduleForAppointment(created);
+      await this.scheduleWhatsAppForCreatedAppointment(created._id.toString());
       return this.toDto(created);
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
@@ -355,6 +360,7 @@ export class AppointmentsService {
       'Tu turno fue cancelado.'
     );
     await this.reminders.scheduleForAppointment(updated);
+    await this.scheduleWhatsAppForCancelledAppointment(updated._id.toString());
     await this.waitlist.handleSlotFreed({
       organizationId: updatedDto.organizationId,
       professionalId: updatedDto.professionalId,
@@ -420,6 +426,7 @@ export class AppointmentsService {
     if (input.status === 'canceled_by_staff') {
       await this.notifications.notifyPatientFromAppointment(updatedDto, 'appointment_canceled', 'Turno cancelado', 'Tu turno fue cancelado.');
       await this.reminders.scheduleForAppointment(updated);
+      await this.scheduleWhatsAppForCancelledAppointment(updated._id.toString());
       await this.waitlist.handleSlotFreed({
         organizationId: updatedDto.organizationId,
         professionalId: updatedDto.professionalId,
@@ -529,6 +536,7 @@ export class AppointmentsService {
     const updatedDto = this.toDto(updated);
     await this.notifications.notifyPatientFromAppointment(updatedDto, 'appointment_canceled', 'Turno cancelado', 'Tu turno fue cancelado.');
     await this.reminders.scheduleForAppointment(updated);
+    await this.scheduleWhatsAppForCancelledAppointment(updated._id.toString());
     await this.waitlist.handleSlotFreed({
       organizationId: appointment.organizationId,
       professionalId: appointment.professionalId,
@@ -651,6 +659,7 @@ export class AppointmentsService {
     );
     await this.reminders.scheduleForAppointment(updatedOriginal);
     await this.reminders.scheduleForAppointment(replacement);
+    await this.scheduleWhatsAppForRescheduledAppointment(original.id, replacement._id.toString());
     await this.waitlist.handleSlotFreed({
       organizationId: originalDto.organizationId,
       professionalId: originalDto.professionalId,
@@ -680,6 +689,35 @@ export class AppointmentsService {
       startsAtIso: item.startAt.toISOString(),
       endsAtIso: item.endAt.toISOString()
     }));
+  }
+
+
+  private async scheduleWhatsAppForCreatedAppointment(appointmentId: string): Promise<void> {
+    try {
+      await this.whatsappNotifications.scheduleAppointmentConfirmation(appointmentId);
+      await this.whatsappNotifications.scheduleAppointmentReminder(appointmentId);
+    } catch (error) {
+      logger.warn({ error, appointmentId }, 'whatsapp scheduling failed after appointment creation');
+    }
+  }
+
+  private async scheduleWhatsAppForCancelledAppointment(appointmentId: string): Promise<void> {
+    try {
+      await this.whatsappNotifications.cancelPendingNotifications(appointmentId, ['appointment_reminder'], 'appointment_cancelled');
+      await this.whatsappNotifications.scheduleAppointmentCancellation(appointmentId);
+    } catch (error) {
+      logger.warn({ error, appointmentId }, 'whatsapp scheduling failed after appointment cancellation');
+    }
+  }
+
+  private async scheduleWhatsAppForRescheduledAppointment(originalAppointmentId: string, replacementAppointmentId: string): Promise<void> {
+    try {
+      await this.whatsappNotifications.cancelPendingNotifications(originalAppointmentId, ['appointment_reminder'], 'appointment_rescheduled');
+      await this.whatsappNotifications.scheduleAppointmentRescheduled(replacementAppointmentId);
+      await this.whatsappNotifications.scheduleAppointmentReminder(replacementAppointmentId);
+    } catch (error) {
+      logger.warn({ error, originalAppointmentId, replacementAppointmentId }, 'whatsapp scheduling failed after appointment reschedule');
+    }
   }
 
   private async getBookableAppointment(organizationId: string, appointmentId: string): Promise<AppointmentDto> {
