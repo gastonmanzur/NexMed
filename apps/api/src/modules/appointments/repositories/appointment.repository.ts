@@ -51,6 +51,10 @@ export class AppointmentRepository {
     return AppointmentModel.create(input);
   }
 
+  async findById(appointmentId: string): Promise<AppointmentDocument | null> {
+    return AppointmentModel.findById(appointmentId).exec();
+  }
+
   async findByIdInOrganization(organizationId: string, appointmentId: string): Promise<AppointmentDocument | null> {
     return AppointmentModel.findOne({ _id: appointmentId, organizationId }).exec();
   }

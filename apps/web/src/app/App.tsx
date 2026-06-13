@@ -50,6 +50,7 @@ import { PatientWaitlistPage } from '../features/patient/PatientWaitlistPage';
 import { PatientWaitlistCreatePage } from '../features/patient/PatientWaitlistCreatePage';
 import { PatientFamilyMembersPage } from '../features/patient/PatientFamilyMembersPage';
 import { OrganizationReminderRulesPage } from '../features/organizations/OrganizationReminderRulesPage';
+import { OrganizationWhatsAppSettingsPage } from '../features/organizations/OrganizationWhatsAppSettingsPage';
 import { OrganizationPatientsPage } from '../features/organizations/OrganizationPatientsPage';
 import { FeedbackPage } from '../features/feedback/FeedbackPage';
 import { AppShell } from '../components/AppShell';
@@ -123,6 +124,16 @@ export const App = (): ReactElement => {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/organization/settings/whatsapp"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
+            {shell(<OrganizationWhatsAppSettingsPage />)}
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/app"
         element={

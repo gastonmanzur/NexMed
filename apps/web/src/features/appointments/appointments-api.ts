@@ -1,4 +1,4 @@
-import type { AppointmentDto, AppointmentDurationMultiplier, AppointmentStatus } from '@starter/shared-types';
+import type { AppointmentDto, AppointmentDurationMultiplier, AppointmentNotificationDto, AppointmentStatus } from '@starter/shared-types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
 
@@ -124,6 +124,14 @@ export const appointmentsApi = {
       body: JSON.stringify({ reason })
     });
 
+    return result.data;
+  },
+
+  listNotifications: async (accessToken: string, organizationId: string, appointmentId: string): Promise<AppointmentNotificationDto[]> => {
+    const result = await request<{ success: true; data: AppointmentNotificationDto[] }>(`/organizations/${organizationId}/appointments/${appointmentId}/notifications`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
     return result.data;
   },
 

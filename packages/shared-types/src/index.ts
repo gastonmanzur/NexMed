@@ -566,3 +566,53 @@ export interface AnalyticsSummaryDto {
     notSupportedYet: string[];
   };
 }
+
+export type WhatsAppProviderName = 'manual' | 'noop' | 'meta_cloud_api';
+export type AppointmentNotificationType = 'appointment_confirmation' | 'appointment_reminder' | 'appointment_cancellation' | 'appointment_rescheduled';
+export type AppointmentNotificationStatus = 'pending' | 'processing' | 'sent' | 'failed' | 'skipped' | 'manual_required' | 'cancelled';
+
+export interface OrganizationWhatsAppSettingsDto {
+  organizationId: string;
+  enabled: boolean;
+  provider: WhatsAppProviderName;
+  displayPhoneNumber: string | null;
+  meta: {
+    phoneNumberId: string | null;
+    businessAccountId: string | null;
+    apiVersion: string | null;
+    hasAccessToken: boolean;
+  };
+  templates: {
+    appointmentConfirmation: string;
+    appointmentReminder: string;
+    appointmentCancellation: string;
+    appointmentRescheduled: string;
+  };
+  reminderHoursBefore: number;
+  secondReminderHoursBefore: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppointmentNotificationDto {
+  id: string;
+  organizationId: string;
+  appointmentId: string;
+  channel: 'whatsapp';
+  type: AppointmentNotificationType;
+  status: AppointmentNotificationStatus;
+  scheduledFor: string;
+  sentAt: string | null;
+  recipientPhone: string;
+  normalizedRecipientPhone: string;
+  senderDisplayPhone: string | null;
+  provider: WhatsAppProviderName | null;
+  templateName: string | null;
+  templateParams: Record<string, string> | null;
+  providerMessageId: string | null;
+  error: string | null;
+  attempts: number;
+  lastAttemptAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

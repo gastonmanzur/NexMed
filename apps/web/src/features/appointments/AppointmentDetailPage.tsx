@@ -7,8 +7,32 @@ import { useAuth } from '../auth/AuthContext';
 import { PatientDetailModal } from '../organizations/PatientDetailModal';
 import { organizationApi } from '../organizations/organization-api';
 import { appointmentsApi } from './appointments-api';
-import type { AppointmentDto, OrganizationPatientDetailDto } from '@starter/shared-types';
+import type { AppointmentDto, AppointmentNotificationDto, OrganizationPatientDetailDto } from '@starter/shared-types';
 import { formatArgentinaDate, formatArgentinaTime } from '../../lib/argentina-date-time';
+
+const notificationTypeLabel = (type: AppointmentNotificationDto['type']): string => {
+  switch (type) {
+    case 'appointment_confirmation': return 'Confirmación WhatsApp';
+    case 'appointment_reminder': return 'Recordatorio WhatsApp';
+    case 'appointment_cancellation': return 'Cancelación WhatsApp';
+    case 'appointment_rescheduled': return 'Reprogramación WhatsApp';
+    default: return 'WhatsApp';
+  }
+};
+
+const notificationStatusLabel = (status: AppointmentNotificationDto['status']): string => {
+  switch (status) {
+    case 'sent': return 'enviada';
+    case 'pending': return 'pendiente';
+    case 'processing': return 'procesando';
+    case 'failed': return 'fallida';
+    case 'manual_required': return 'manual';
+    case 'skipped': return 'omitida';
+    case 'cancelled': return 'cancelada';
+    default: return status;
+  }
+};
+
 const getAppointmentPatientName = (appointment: AppointmentDto): string => appointment.beneficiaryDisplayName ?? appointment.patientName;
 
 export const AppointmentDetailPage = (): ReactElement => {
@@ -17,6 +41,7 @@ export const AppointmentDetailPage = (): ReactElement => {
 
   const [appointment, setAppointment] = useState<AppointmentDto | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<OrganizationPatientDetailDto | null>(null);
+  const [appointmentNotifications, setAppointmentNotifications] = useState<AppointmentNotificationDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -29,6 +54,7 @@ export const AppointmentDetailPage = (): ReactElement => {
     try {
       const data = await appointmentsApi.getById(accessToken, activeOrganizationId, appointmentId);
       setAppointment(data);
+      setAppointmentNotifications(await appointmentsApi.listNotifications(accessToken, activeOrganizationId, appointmentId));
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -132,6 +158,25 @@ export const AppointmentDetailPage = (): ReactElement => {
                   <dd className="nx-appointment-detail__value">{appointment.source === 'express_booking' ? 'Reserva express' : appointment.source}</dd>
                 </div>
               </dl>
+
+
+              <section className="nx-appointment-detail__notifications" aria-label="Notificaciones del turno">
+                <h3>Notificaciones</h3>
+                {appointmentNotifications.length === 0 ? (
+                  <p>No hay notificaciones WhatsApp registradas para este turno.</p>
+                ) : (
+                  <ul>
+                    {appointmentNotifications.map((item) => (
+                      <li key={item.id}>
+                        <strong>{notificationTypeLabel(item.type)}:</strong> {notificationStatusLabel(item.status)}
+                        {item.scheduledFor ? ` · programado ${formatArgentinaDate(item.scheduledFor)} ${formatArgentinaTime(item.scheduledFor)}` : ''}
+                        {item.sentAt ? ` · enviado ${formatArgentinaDate(item.sentAt)} ${formatArgentinaTime(item.sentAt)}` : ''}
+                        {item.error ? ` · ${item.error}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
 
               <div className="nx-appointment-detail__actions">
                 <button

@@ -433,3 +433,22 @@ export const organizationApi = {
   },
 
 };
+
+export const organizationWhatsAppApi = {
+  getSettings: async (accessToken: string, organizationId: string) => {
+    const result = await request<{ success: true; data: import('@starter/shared-types').OrganizationWhatsAppSettingsDto | null }>(`/organizations/${organizationId}/whatsapp-settings`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+  updateSettings: async (accessToken: string, organizationId: string, input: {
+    enabled: boolean;
+    provider: 'manual' | 'noop' | 'meta_cloud_api';
+    displayPhoneNumber?: string | null;
+    meta?: { phoneNumberId?: string | null; businessAccountId?: string | null; apiVersion?: string | null; accessToken?: string | null };
+    templates: { appointmentConfirmation?: string | null; appointmentReminder?: string | null; appointmentCancellation?: string | null; appointmentRescheduled?: string | null };
+    reminderHoursBefore: number;
+    secondReminderHoursBefore?: number | null;
+  }) => {
+    const result = await request<{ success: true; data: import('@starter/shared-types').OrganizationWhatsAppSettingsDto }>(`/organizations/${organizationId}/whatsapp-settings`, { method: 'PUT', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });
+    return result.data;
+  }
+};

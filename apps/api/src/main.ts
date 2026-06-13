@@ -4,6 +4,7 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { dropLegacySpecialtyIndexes } from './modules/professionals/models/specialty.model.js';
 import { ReminderWorkerService } from './modules/reminders/services/reminder-worker.service.js';
+import { WhatsAppNotificationWorkerService } from './modules/whatsapp/services/whatsapp-notification-worker.service.js';
 
 const bootstrap = async (): Promise<void> => {
   await mongoose.connect(env.MONGO_URI);
@@ -16,6 +17,7 @@ const bootstrap = async (): Promise<void> => {
   });
 
   new ReminderWorkerService().start();
+  new WhatsAppNotificationWorkerService().start();
 };
 
 bootstrap().catch((error: unknown) => {
