@@ -3,7 +3,7 @@ export type AuthProvider = 'local' | 'google';
 export type GlobalRole = 'super_admin' | 'user';
 export type OrganizationType = 'clinic' | 'office' | 'esthetic_center' | 'professional_cabinet' | 'other';
 export type OrganizationStatus = 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
-export type OrganizationMemberRole = 'owner' | 'admin' | 'staff' | 'patient';
+export type OrganizationMemberRole = 'owner' | 'admin' | 'staff' | 'patient' | 'professional';
 export type OrganizationMemberStatus = 'active' | 'inactive' | 'blocked';
 
 export interface AvatarDto {
@@ -85,6 +85,7 @@ export interface OrganizationMembershipDto {
   organizationId: string;
   role: OrganizationMemberRole;
   status: OrganizationMemberStatus;
+  professionalId: string | null;
 }
 
 export interface OrganizationProfileDto {
@@ -288,12 +289,36 @@ export interface AppointmentDto {
   statusUpdatedAt: string | null;
   statusUpdatedByUserId: string | null;
   statusUpdatedByRole: string | null;
+  arrivedAt: string | null;
   statusHistory: AppointmentStatusHistoryItemDto[];
   rescheduledFromAppointmentId: string | null;
   rescheduledToAppointmentId: string | null;
   createdAt: string;
   updatedAt: string;
   organization?: OrganizationDto | null;
+}
+
+
+export interface ProfessionalPanelMeDto {
+  organizationId: string;
+  professionalId: string;
+  organizationName: string;
+  professional: ProfessionalDto;
+}
+
+export interface ProfessionalDashboardDto {
+  me: ProfessionalPanelMeDto;
+  today: string;
+  nextAppointment: AppointmentDto | null;
+  waitingRoom: AppointmentDto[];
+  todayAppointments: AppointmentDto[];
+  stats: {
+    waiting: number;
+    pendingToday: number;
+    completedToday: number;
+    noShowToday: number;
+    canceledToday: number;
+  };
 }
 
 export interface PatientFamilyMemberDto {

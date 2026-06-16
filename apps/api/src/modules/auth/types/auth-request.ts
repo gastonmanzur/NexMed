@@ -7,7 +7,8 @@ export interface AuthenticatedUser {
   email: string;
   activeOrganizationId?: string | null;
   organizationId?: string | null;
-  organizationRole?: 'owner' | 'admin' | 'staff' | 'patient';
+  organizationRole?: 'owner' | 'admin' | 'staff' | 'patient' | 'professional';
+  professionalId?: string | null;
 }
 
 export interface AuthenticatedRequest extends Request {

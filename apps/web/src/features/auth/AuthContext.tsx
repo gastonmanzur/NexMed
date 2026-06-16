@@ -22,7 +22,7 @@ const ACTIVE_ORGANIZATION_STORAGE_KEY = 'nexmed.activeOrganizationId';
 const resolveSuggestedActiveOrganizationId = (
   context: Pick<AuthSessionContextDto, 'organizations' | 'memberships'>
 ): string | null => {
-  const centerMembershipRoles = new Set(['owner', 'admin', 'staff', 'manager']);
+  const centerMembershipRoles = new Set(['owner', 'admin', 'staff', 'manager', 'professional']);
   const activeCenterMemberships = context.memberships.filter(
     (membership) =>
       membership.status === 'active' && centerMembershipRoles.has(membership.role)

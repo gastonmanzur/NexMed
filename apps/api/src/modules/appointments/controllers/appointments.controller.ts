@@ -101,7 +101,9 @@ export const appointmentsController = {
     const { organizationId, appointmentId } = appointmentPathSchema.parse(req.params);
     const input = cancelSchema.parse(req.body);
 
-    const data = await service.cancelAppointment(organizationId, appointmentId, req.auth!.userId, req.auth!.organizationRole ?? 'staff', input);
+    const role = req.auth?.organizationRole;
+    const actorRole = role === 'owner' || role === 'admin' || role === 'staff' || role === 'patient' ? role : 'staff';
+    const data = await service.cancelAppointment(organizationId, appointmentId, req.auth!.userId, actorRole, input);
     res.status(200).json({ success: true, data });
   },
 

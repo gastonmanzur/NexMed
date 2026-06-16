@@ -58,6 +58,8 @@ import { OrganizationInvitePage } from '../features/organizations/OrganizationIn
 import { OrganizationHealthInsurancesPage } from '../features/organizations/OrganizationHealthInsurancesPage';
 import { OrganizationSubscriptionPage } from '../features/subscription/OrganizationSubscriptionPage';
 import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
+import { ProfessionalShell } from '../features/professional/ProfessionalShell';
+import { ProfessionalDashboardPage } from '../features/professional/ProfessionalDashboardPage';
 
 const shell = (page: ReactElement): ReactElement => <AppShell>{page}</AppShell>;
 
@@ -130,6 +132,48 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin']}>
             {shell(<OrganizationWhatsAppSettingsPage />)}
+          </ProtectedRoute>
+        }
+      />
+
+
+      <Route
+        path="/app/professional"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalDashboardPage />
+            </ProfessionalShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professional/dashboard"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalDashboardPage />
+            </ProfessionalShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professional/waiting-room"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalDashboardPage />
+            </ProfessionalShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professional/appointments"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalDashboardPage />
+            </ProfessionalShell>
           </ProtectedRoute>
         }
       />

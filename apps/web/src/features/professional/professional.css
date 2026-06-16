@@ -1,0 +1,277 @@
+.professional-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  background: linear-gradient(135deg, #f7fbff 0%, #eef6ff 45%, #f8fbff 100%);
+}
+
+.professional-sidebar {
+  padding: 1.2rem;
+  border-right: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(18px);
+}
+
+.professional-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.professional-brand__mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+}
+
+.professional-brand strong,
+.professional-brand small,
+.professional-topbar span,
+.professional-topbar strong {
+  display: block;
+}
+
+.professional-brand small,
+.professional-topbar span,
+.pro-panel header span,
+.pro-appointment span {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.professional-nav {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.professional-nav a,
+.professional-nav span {
+  padding: 0.78rem 0.9rem;
+  color: var(--text-muted);
+  border-radius: 16px;
+}
+
+.professional-nav a.active {
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: 700;
+}
+
+.professional-nav span {
+  opacity: 0.55;
+}
+
+.professional-main {
+  padding: 1.25rem;
+}
+
+.professional-topbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.professional-dashboard {
+  display: grid;
+  gap: 1rem;
+}
+
+.pro-hero,
+.pro-stats article,
+.pro-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pro-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem;
+}
+
+.pro-hero span {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.pro-hero h1 {
+  margin: 0.25rem 0;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+}
+
+.pro-hero p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.pro-hero__status {
+  padding: 0.55rem 0.9rem;
+  color: #047857;
+  background: #d1fae5;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.pro-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.pro-stats article {
+  padding: 1rem;
+}
+
+.pro-stats span {
+  color: var(--text-soft);
+}
+
+.pro-stats strong {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 2rem;
+}
+
+.pro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.pro-panel {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.pro-panel--focus {
+  border-color: rgba(47, 128, 237, 0.35);
+}
+
+.pro-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pro-panel h2 {
+  margin: 0;
+}
+
+.pro-appointment {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: #fff;
+}
+
+.pro-appointment--primary {
+  border-color: rgba(124, 58, 237, 0.35);
+  background: linear-gradient(135deg, #fff, #f5f3ff);
+}
+
+.pro-appointment p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.pro-appointment footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.pro-appointment button {
+  padding: 0.48rem 0.7rem;
+  border: 0;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border-radius: 999px;
+}
+
+.pro-status {
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.pro-status--arrived { color: #1d4ed8; background: #dbeafe; }
+.pro-status--completed { color: #047857; background: #d1fae5; }
+.pro-status--no_show { color: #b91c1c; background: #fee2e2; }
+.pro-status--canceled_by_patient,
+.pro-status--canceled_by_staff,
+.pro-status--rescheduled { color: #475569; background: #e2e8f0; }
+.pro-status--booked,
+.pro-status--confirmed_by_patient { color: #92400e; background: #fef3c7; }
+
+.pro-empty {
+  padding: 1rem;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: 20px;
+  background: #f8fbff;
+}
+
+.pro-empty p {
+  margin-bottom: 0;
+}
+
+.pro-agenda-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.pro-agenda-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.65rem;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+
+@media (max-width: 1080px) {
+  .professional-shell,
+  .pro-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .professional-sidebar {
+    position: static;
+  }
+
+  .professional-nav,
+  .professional-topbar,
+  .pro-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .professional-topbar,
+  .pro-stats {
+    grid-template-columns: 1fr;
+  }
+}

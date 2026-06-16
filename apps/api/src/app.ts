@@ -20,6 +20,7 @@ import { notificationsRouter } from './modules/notifications/notifications.route
 import { reminderAdminRouter } from './modules/reminders/reminder.routes.js';
 import { feedbackRouter } from './modules/feedback/feedback.routes.js';
 import { plansRouter } from './modules/plans/plans.routes.js';
+import { professionalPanelRouter } from './modules/professional-panel/professional-panel.routes.js';
 
 export const createApp = () => {
   const app = express();
@@ -72,6 +73,7 @@ export const createApp = () => {
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/feedback', feedbackRouter);
   app.use('/api/plans', plansRouter);
+  app.use('/api/professional', professionalPanelRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);

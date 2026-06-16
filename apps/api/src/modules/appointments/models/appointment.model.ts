@@ -46,6 +46,7 @@ const appointmentSchema = new mongoose.Schema(
     statusUpdatedAt: { type: Date, required: false, default: null },
     statusUpdatedByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
     statusUpdatedByRole: { type: String, required: false, trim: true, default: null },
+    arrivedAt: { type: Date, required: false, default: null, index: true },
     statusHistory: {
       type: [{
         status: { type: String, enum: appointmentStatuses, required: true },
