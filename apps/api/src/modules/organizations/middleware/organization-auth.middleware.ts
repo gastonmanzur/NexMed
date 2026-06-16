@@ -46,11 +46,12 @@ export const requireOrganizationMember = async (req: AuthenticatedRequest, _res:
 
   req.auth.organizationId = organizationId;
   req.auth.organizationRole = membership.role;
+  req.auth.professionalId = membership.professionalId ? membership.professionalId.toString() : null;
 
   next();
 };
 
-export const requireOrganizationRole = (...roles: Array<'owner' | 'admin' | 'staff' | 'patient'>) => {
+export const requireOrganizationRole = (...roles: Array<'owner' | 'admin' | 'staff' | 'patient' | 'professional'>) => {
   return async (req: AuthenticatedRequest, _res: Response, next: NextFunction): Promise<void> => {
     if (!req.auth) {
       throw new AppError('UNAUTHORIZED', 401, 'Authentication required');
@@ -75,6 +76,7 @@ export const requireOrganizationRole = (...roles: Array<'owner' | 'admin' | 'sta
     }
 
     req.auth.organizationRole = membership.role;
+    req.auth.professionalId = membership.professionalId ? membership.professionalId.toString() : null;
     next();
   };
 };

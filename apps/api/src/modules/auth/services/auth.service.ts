@@ -236,7 +236,7 @@ export class AuthService {
     } catch {
       orgContext = { organizations: [], memberships: [] };
     }
-    const centerMembershipRoles = new Set(['owner', 'admin', 'staff', 'manager']);
+    const centerMembershipRoles = new Set(['owner', 'admin', 'staff', 'manager', 'professional']);
     const activeCenterMemberships = orgContext.memberships.filter(
       (membership) => membership.status === 'active' && centerMembershipRoles.has(membership.role)
     );

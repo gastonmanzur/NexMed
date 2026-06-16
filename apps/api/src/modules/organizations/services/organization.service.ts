@@ -131,7 +131,7 @@ export class OrganizationService {
 
     return {
       organization: this.toOrganizationDto(organization),
-      membership: this.toMembershipDto(membership.organizationId.toString(), membership.role, membership.status)
+      membership: this.toMembershipDto(membership.organizationId.toString(), membership.role, membership.status, membership.professionalId ? membership.professionalId.toString() : null)
     };
   }
 
@@ -146,7 +146,7 @@ export class OrganizationService {
     return {
       organizations: organizations.map((organization) => this.toOrganizationDto(organization)),
       memberships: memberships.map((membership) =>
-        this.toMembershipDto(membership.organizationId.toString(), membership.role, membership.status)
+        this.toMembershipDto(membership.organizationId.toString(), membership.role, membership.status, membership.professionalId ? membership.professionalId.toString() : null)
       )
     };
   }
@@ -173,7 +173,7 @@ export class OrganizationService {
       throw new AppError('MEMBERSHIP_NOT_FOUND', 404, 'Membership not found');
     }
 
-    return this.toMembershipDto(organizationId, membership.role, membership.status);
+    return this.toMembershipDto(organizationId, membership.role, membership.status, membership.professionalId ? membership.professionalId.toString() : null);
   }
 
   async getProfileForUser(input: { organizationId: string; actorUserId: string }): Promise<OrganizationProfileDto> {
@@ -197,7 +197,7 @@ export class OrganizationService {
     return {
       organization: organizationDto,
       settings: settings ? this.toOrganizationSettingsDto(settings) : null,
-      membership: this.toMembershipDto(input.organizationId, membership.role, membership.status),
+      membership: this.toMembershipDto(input.organizationId, membership.role, membership.status, membership.professionalId ? membership.professionalId.toString() : null),
       onboarding
     };
   }
@@ -509,7 +509,7 @@ export class OrganizationService {
     return {
       organization: this.toOrganizationDto(updatedOrganization),
       settings: this.toOrganizationSettingsDto(nextSettings),
-      membership: this.toMembershipDto(input.organizationId, membership.role, membership.status),
+      membership: this.toMembershipDto(input.organizationId, membership.role, membership.status, membership.professionalId ? membership.professionalId.toString() : null),
       onboarding: this.calculateOnboarding(this.toOrganizationDto(updatedOrganization), this.toOrganizationSettingsDto(nextSettings))
     };
   }
@@ -1180,12 +1180,14 @@ export class OrganizationService {
   toMembershipDto(
     organizationId: string,
     role: OrganizationMembershipDto['role'],
-    status: OrganizationMembershipDto['status']
+    status: OrganizationMembershipDto['status'],
+    professionalId: string | null = null
   ): OrganizationMembershipDto {
     return {
       organizationId,
       role,
-      status
+      status,
+      professionalId
     };
   }
 }

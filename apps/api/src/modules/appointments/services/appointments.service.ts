@@ -396,6 +396,10 @@ export class AppointmentsService {
       statusUpdatedByRole: actorRole
     };
 
+    if (input.status === 'arrived') {
+      update.arrivedAt = appointment.arrivedAt ? new Date(appointment.arrivedAt) : now;
+    }
+
     if (input.status === 'canceled_by_staff') {
       update.canceledByUserId = actorUserId;
       update.canceledAt = now;
@@ -980,6 +984,7 @@ export class AppointmentsService {
       statusUpdatedAt: document.statusUpdatedAt ? document.statusUpdatedAt.toISOString() : null,
       statusUpdatedByUserId: document.statusUpdatedByUserId ? document.statusUpdatedByUserId.toString() : null,
       statusUpdatedByRole: document.statusUpdatedByRole ?? null,
+      arrivedAt: document.arrivedAt ? document.arrivedAt.toISOString() : null,
       statusHistory: (document.statusHistory ?? []).map((entry) => ({
         status: entry.status,
         changedAt: entry.changedAt.toISOString(),
