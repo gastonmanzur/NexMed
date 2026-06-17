@@ -73,7 +73,7 @@ export const DashboardPage = (): ReactElement => {
     if (!accessToken || !activeOrganizationId) return;
     setMessagesLoading(true);
     setMessagesError('');
-    try { setInternalMessages(await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { status: 'unread', limit: 10 })); }
+    try { setInternalMessages((await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { status: 'unread', limit: 10 })).items); }
     catch (cause) { setMessagesError((cause as Error).message); }
     finally { setMessagesLoading(false); }
   };

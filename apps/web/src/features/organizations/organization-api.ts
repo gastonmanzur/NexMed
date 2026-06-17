@@ -37,8 +37,13 @@ export interface InternalMessageDto {
   title: string;
   message: string;
   status: 'unread' | 'read' | 'resolved';
+  fromRole?: 'professional' | 'secretary' | 'admin';
+  fromUserId?: { firstName?: string; lastName?: string; email?: string } | string;
+  parentMessageId?: string | null;
   createdAt: string;
 }
+
+export interface InternalMessagesResponse { items: InternalMessageDto[]; unreadCount: number }
 
 export class ApiRequestError extends Error {
   constructor(
@@ -199,17 +204,26 @@ export const organizationApi = {
     return result.data;
   },
 
-  listInternalMessages: async (accessToken: string, organizationId: string, query?: { status?: 'unread' | 'read' | 'resolved'; appointmentId?: string; limit?: number }): Promise<InternalMessageDto[]> => {
+  listInternalMessages: async (accessToken: string, organizationId: string, query?: { status?: 'unread' | 'read' | 'resolved'; appointmentId?: string; professionalId?: string; limit?: number }): Promise<InternalMessagesResponse> => {
     const params = new URLSearchParams();
     if (query?.status) params.set('status', query.status);
     if (query?.appointmentId) params.set('appointmentId', query.appointmentId);
+    if (query?.professionalId) params.set('professionalId', query.professionalId);
     if (query?.limit) params.set('limit', String(query.limit));
     const qs = params.toString();
-    const result = await request<{ success: true; data: InternalMessageDto[] }>(`/organizations/${organizationId}/internal-messages${qs ? `?${qs}` : ''}`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
-    return result.data;
+    const result = await request<{ success: true; data?: InternalMessageDto[]; items?: InternalMessageDto[]; unreadCount?: number }>(`/organizations/${organizationId}/internal-messages${qs ? `?${qs}` : ''}`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
+    return { items: result.items ?? result.data ?? [], unreadCount: result.unreadCount ?? 0 };
   },
   markInternalMessageRead: async (accessToken: string, organizationId: string, messageId: string): Promise<InternalMessageDto> => {
     const result = await request<{ success: true; data: InternalMessageDto }>(`/organizations/${organizationId}/internal-messages/${messageId}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+  replyInternalMessage: async (accessToken: string, organizationId: string, messageId: string, message: string): Promise<InternalMessageDto> => {
+    const result = await request<{ success: true; data: InternalMessageDto }>(`/organizations/${organizationId}/internal-messages/${messageId}/reply`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ message }) });
+    return result.data;
+  },
+  sendAppointmentInternalMessage: async (accessToken: string, organizationId: string, appointmentId: string, input: { type: string; message?: string }): Promise<InternalMessageDto> => {
+    const result = await request<{ success: true; data: InternalMessageDto }>(`/organizations/${organizationId}/appointments/${appointmentId}/internal-messages`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });
     return result.data;
   },
   resolveInternalMessage: async (accessToken: string, organizationId: string, messageId: string): Promise<InternalMessageDto> => {

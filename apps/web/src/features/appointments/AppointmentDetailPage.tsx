@@ -45,6 +45,8 @@ export const AppointmentDetailPage = (): ReactElement => {
   const [appointmentNotifications, setAppointmentNotifications] = useState<AppointmentNotificationDto[]>([]);
   const [internalMessages, setInternalMessages] = useState<InternalMessageDto[]>([]);
   const [messagesError, setMessagesError] = useState('');
+  const [internalMessageText, setInternalMessageText] = useState('');
+  const [internalMessageType, setInternalMessageType] = useState('custom');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -59,7 +61,7 @@ export const AppointmentDetailPage = (): ReactElement => {
       setAppointment(data);
       setAppointmentNotifications(await appointmentsApi.listNotifications(accessToken, activeOrganizationId, appointmentId));
       setMessagesError('');
-      setInternalMessages(await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { appointmentId, limit: 20 }));
+      setInternalMessages((await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { appointmentId, limit: 20 })).items);
     } catch (cause) {
       setError((cause as Error).message);
       setMessagesError((cause as Error).message);
@@ -84,6 +86,17 @@ export const AppointmentDetailPage = (): ReactElement => {
       setPatientDetailError((cause as Error).message);
     } finally {
       setLoadingPatientDetail(false);
+    }
+  };
+
+  const sendInternalMessage = async (): Promise<void> => {
+    if (!accessToken || !activeOrganizationId || !appointmentId) return;
+    try {
+      await organizationApi.sendAppointmentInternalMessage(accessToken, activeOrganizationId, appointmentId, { type: internalMessageType, message: internalMessageText });
+      setInternalMessageText('');
+      await load();
+    } catch (cause) {
+      setMessagesError((cause as Error).message);
     }
   };
 
@@ -212,7 +225,23 @@ export const AppointmentDetailPage = (): ReactElement => {
           ) : null}
         </div>
       </Card>
-      {accessToken && activeOrganizationId ? <InternalMessagesCard accessToken={accessToken} organizationId={activeOrganizationId} messages={internalMessages} error={messagesError} onRefresh={load} /> : null}
+      {accessToken && activeOrganizationId ? <>
+        <Card title="Enviar mensaje al profesional" subtitle="Novedad interna asociada a este turno.">
+          <div style={{ display: 'grid', gap: '.75rem' }}>
+            <select value={internalMessageType} onChange={(event) => setInternalMessageType(event.target.value)}>
+              <option value="patient_arrived">Paciente llegó</option>
+              <option value="patient_left">Paciente se retiró</option>
+              <option value="coverage_issue">Problema de cobertura</option>
+              <option value="documentation_request">Documentación</option>
+              <option value="payment_request">Cobro</option>
+              <option value="custom">Personalizado</option>
+            </select>
+            <textarea placeholder="Mensaje opcional o personalizado" value={internalMessageText} onChange={(event) => setInternalMessageText(event.target.value)} />
+            <button type="button" className="nx-btn-primary" disabled={internalMessageType === 'custom' && !internalMessageText.trim()} onClick={() => void sendInternalMessage()}>Enviar al profesional</button>
+          </div>
+        </Card>
+        <InternalMessagesCard accessToken={accessToken} organizationId={activeOrganizationId} messages={internalMessages} error={messagesError} onRefresh={load} allowReply />
+      </> : null}
       <PatientDetailModal patient={selectedPatient} isOpen={isPatientModalOpen} loading={loadingPatientDetail} error={patientDetailError} onClose={closePatientDetail} />
     </main>
   );

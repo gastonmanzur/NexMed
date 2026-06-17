@@ -57,6 +57,7 @@ import { FeedbackPage } from '../features/feedback/FeedbackPage';
 import { AppShell } from '../components/AppShell';
 import { OrganizationInvitePage } from '../features/organizations/OrganizationInvitePage';
 import { OrganizationHealthInsurancesPage } from '../features/organizations/OrganizationHealthInsurancesPage';
+import { InternalMessagesPage } from '../features/organizations/InternalMessagesPage';
 import { OrganizationSubscriptionPage } from '../features/subscription/OrganizationSubscriptionPage';
 import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
 import { ProfessionalShell } from '../features/professional/ProfessionalShell';
@@ -303,6 +304,14 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
             {shell(<AnalyticsPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/internal-messages"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['owner', 'admin', 'staff']}>
+            {shell(<InternalMessagesPage />)}
           </ProtectedRoute>
         }
       />

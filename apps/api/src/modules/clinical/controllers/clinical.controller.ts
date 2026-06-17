@@ -46,7 +46,8 @@ export const clinicalController = {
     res.json({ success: true, data: await service.signEncounter(c.organizationId, c.professionalId, encounterId, c.userId, c.meta) });
   },
   professionalMessages: async (req: AuthenticatedRequest, res: Response) => {
-    res.json({ success: true, data: await service.listMessages(req.auth!.organizationId!, req.auth!.userId, 'professional') });
+    const result = await service.listMessages(req.auth!.organizationId!, req.auth!.userId, 'professional', {}, req.auth!.professionalId!);
+    res.json({ success: true, data: result.items, unreadCount: result.unreadCount });
   },
   createProfessionalMessage: async (req: AuthenticatedRequest, res: Response) => {
     const c = ctx(req);
@@ -54,16 +55,17 @@ export const clinicalController = {
   },
   readProfessionalMessage: async (req: AuthenticatedRequest, res: Response) => {
     const { messageId } = messageParam.parse(req.params);
-    res.json({ success: true, data: await service.markMessage(req.auth!.organizationId!, messageId, 'read') });
+    res.json({ success: true, data: await service.markMessage(req.auth!.organizationId!, messageId, 'read', 'professional', req.auth!.professionalId!) });
   },
   resolveProfessionalMessage: async (req: AuthenticatedRequest, res: Response) => {
     const { messageId } = messageParam.parse(req.params);
-    res.json({ success: true, data: await service.markMessage(req.auth!.organizationId!, messageId, 'resolved') });
+    res.json({ success: true, data: await service.markMessage(req.auth!.organizationId!, messageId, 'resolved', 'professional', req.auth!.professionalId!) });
   },
   organizationMessages: async (req: AuthenticatedRequest, res: Response) => {
     const { organizationId } = orgParam.parse(req.params);
-    const query = z.object({ status: z.enum(['unread', 'read', 'resolved']).optional(), appointmentId: z.string().min(1).optional(), limit: z.coerce.number().int().positive().max(100).optional() }).parse(req.query);
-    res.json({ success: true, data: await service.listMessages(organizationId, req.auth!.userId, 'secretary', query) });
+    const query = z.object({ status: z.enum(['unread', 'read', 'resolved']).optional(), appointmentId: z.string().min(1).optional(), professionalId: z.string().min(1).optional(), limit: z.coerce.number().int().positive().max(100).optional() }).parse(req.query);
+    const result = await service.listMessages(organizationId, req.auth!.userId, 'secretary', query);
+    res.json({ success: true, data: result.items, items: result.items, unreadCount: result.unreadCount });
   },
   createOrganizationAppointmentMessage: async (req: AuthenticatedRequest, res: Response) => {
     const { organizationId, appointmentId } = orgAppointmentParam.parse(req.params);
@@ -76,5 +78,9 @@ export const clinicalController = {
   resolveOrganizationMessage: async (req: AuthenticatedRequest, res: Response) => {
     const { organizationId, messageId } = orgMessageParam.parse(req.params);
     res.json({ success: true, data: await service.markMessage(organizationId, messageId, 'resolved') });
+  },
+  replyOrganizationMessage: async (req: AuthenticatedRequest, res: Response) => {
+    const { organizationId, messageId } = orgMessageParam.parse(req.params);
+    res.status(201).json({ success: true, data: await service.replyToMessage(organizationId, messageId, req.auth!.userId, req.body) });
   }
 };
