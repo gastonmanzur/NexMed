@@ -62,7 +62,8 @@ export const clinicalController = {
   },
   organizationMessages: async (req: AuthenticatedRequest, res: Response) => {
     const { organizationId } = orgParam.parse(req.params);
-    res.json({ success: true, data: await service.listMessages(organizationId, req.auth!.userId, 'secretary') });
+    const query = z.object({ status: z.enum(['unread', 'read', 'resolved']).optional(), appointmentId: z.string().min(1).optional(), limit: z.coerce.number().int().positive().max(100).optional() }).parse(req.query);
+    res.json({ success: true, data: await service.listMessages(organizationId, req.auth!.userId, 'secretary', query) });
   },
   createOrganizationAppointmentMessage: async (req: AuthenticatedRequest, res: Response) => {
     const { organizationId, appointmentId } = orgAppointmentParam.parse(req.params);

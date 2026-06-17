@@ -104,7 +104,7 @@ export const professionalApi = {
     return result.data;
   },
 
-  sendMessage: async (accessToken: string, organizationId: string, body: { appointmentId?: string; patientProfileId?: string; type: string; message: string }): Promise<unknown> => {
+  sendMessage: async (accessToken: string, organizationId: string, body: { appointmentId?: string; patientProfileId?: string; type: string; message?: string }): Promise<unknown> => {
     const result = await request<{ success: true; data: unknown }>('/professional/messages', accessToken, organizationId, 'POST', body);
     return result.data;
   },

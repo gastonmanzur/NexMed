@@ -90,17 +90,40 @@ export class ClinicalService {
     return encounter;
   }
 
-  async listMessages(organizationId: string, userId: string, role: 'professional' | 'secretary') {
-    const q = role === 'professional' ? { organizationId, $or: [{ toUserId: userId }, { toRole: 'professional' }] } : { organizationId, toRole: 'secretary' };
-    return InternalMessageModel.find(q).sort({ createdAt: -1 }).limit(50).exec();
+  async listMessages(organizationId: string, userId: string, role: 'professional' | 'secretary', filters: { status?: string | undefined; appointmentId?: string | undefined; limit?: number | undefined } = {}) {
+    const q: Record<string, unknown> = role === 'professional' ? { organizationId, $or: [{ toUserId: userId }, { toRole: 'professional' }] } : { organizationId, toRole: 'secretary' };
+    if (['unread', 'read', 'resolved'].includes(filters.status ?? '')) q.status = filters.status;
+    if (filters.appointmentId) q.appointmentId = filters.appointmentId;
+    const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
+    return InternalMessageModel.find(q).populate('patientProfileId', 'firstName lastName').populate('professionalId', 'firstName lastName displayName').sort({ createdAt: -1 }).limit(limit).exec();
   }
 
   async createProfessionalMessage(organizationId: string, professionalId: string, appointmentId: string | undefined, userId: string, body: Record<string, unknown>) {
-    const message = String(body.message ?? '').trim();
-    if (!message) throw new AppError('MESSAGE_REQUIRED', 400, 'Message is required');
-    let patientProfileId = body.patientProfileId as string | undefined;
-    if (appointmentId) patientProfileId = id((await this.ensureAppointment(organizationId, professionalId, appointmentId)).patientProfileId) ?? undefined;
-    return InternalMessageModel.create({ organizationId, appointmentId: appointmentId ?? null, patientProfileId: patientProfileId ?? null, fromUserId: userId, toRole: 'secretary', type: body.type ?? 'custom', message });
+    const allowedTypes = ['call_patient', 'delay_notice', 'admin_request', 'documentation_request', 'payment_request', 'custom'];
+    const type = allowedTypes.includes(String(body.type)) ? String(body.type) : 'custom';
+    let patientProfileId = typeof body.patientProfileId === 'string' && body.patientProfileId ? body.patientProfileId : undefined;
+    let patientName = 'seleccionado';
+    if (appointmentId) {
+      const appointment = await this.ensureAppointment(organizationId, professionalId, appointmentId);
+      patientProfileId = id(appointment.patientProfileId) ?? undefined;
+      patientName = appointment.patientName ?? patientName;
+    }
+    if (patientProfileId) {
+      const patient = await PatientProfileModel.findOne({ _id: patientProfileId, organizationId }).exec();
+      if (!patient) throw new AppError('PATIENT_NOT_FOUND', 404, 'Patient not found');
+      patientName = `${patient.firstName ?? ''} ${patient.lastName ?? ''}`.trim() || patientName;
+    }
+    const templates: Record<string, { title: string; message: string }> = {
+      call_patient: { title: 'Pedir paciente', message: `El profesional solicita que pase el paciente ${patientName}.` },
+      delay_notice: { title: 'Avisar demora', message: `El profesional avisa que está con demora para el paciente ${patientName}.` },
+      admin_request: { title: 'Dato administrativo', message: `El profesional solicita revisar un dato administrativo del paciente ${patientName}.` },
+      documentation_request: { title: 'Documentación', message: `El profesional solicita documentación del paciente ${patientName}.` },
+      payment_request: { title: 'Solicitar cobro', message: `El profesional solicita verificar o realizar el cobro del paciente ${patientName}.` },
+      custom: { title: 'Mensaje personalizado', message: String(body.message ?? '').trim() }
+    };
+    const template = templates[type]!;
+    if (!template.message) throw new AppError('MESSAGE_REQUIRED', 400, 'Message is required');
+    return InternalMessageModel.create({ organizationId, appointmentId: appointmentId ?? null, patientProfileId: patientProfileId ?? null, professionalId, fromUserId: userId, fromRole: 'professional', toRole: 'secretary', type, title: template.title, message: template.message });
   }
 
   async createSecretaryMessage(organizationId: string, appointmentId: string, userId: string, body: Record<string, unknown>) {
@@ -109,11 +132,12 @@ export class ClinicalService {
     const professional = await ProfessionalModel.findById(appointment.professionalId).exec();
     const message = String(body.message ?? '').trim();
     if (!message) throw new AppError('MESSAGE_REQUIRED', 400, 'Message is required');
-    return InternalMessageModel.create({ organizationId, appointmentId, patientProfileId: appointment.patientProfileId ?? null, fromUserId: userId, toUserId: professional?.accessUserId ?? professional?.userId ?? null, toRole: 'professional', type: body.type ?? 'custom', message });
+    return InternalMessageModel.create({ organizationId, appointmentId, patientProfileId: appointment.patientProfileId ?? null, professionalId: appointment.professionalId ?? null, fromUserId: userId, fromRole: 'secretary', toUserId: professional?.accessUserId ?? professional?.userId ?? null, toRole: 'professional', type: body.type ?? 'custom', title: 'Mensaje de secretaría', message });
   }
 
   async markMessage(organizationId: string, messageId: string, status: 'read' | 'resolved') {
-    const set = status === 'read' ? { status, readAt: new Date() } : { status, resolvedAt: new Date() };
+    const now = new Date();
+    const set = status === 'read' ? { status, readAt: now } : { status, readAt: now, resolvedAt: now };
     const msg = await InternalMessageModel.findOneAndUpdate({ _id: messageId, organizationId }, { $set: set }, { new: true }).exec();
     if (!msg) throw new AppError('MESSAGE_NOT_FOUND', 404, 'Message not found');
     return msg;

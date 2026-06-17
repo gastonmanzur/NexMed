@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
-import { organizationApi } from '../organizations/organization-api';
+import { organizationApi, type InternalMessageDto } from '../organizations/organization-api';
+import { InternalMessagesCard } from '../organizations/InternalMessagesCard';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
 
 interface DashboardModule {
@@ -36,6 +37,9 @@ export const DashboardPage = (): ReactElement => {
   } | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
+  const [internalMessages, setInternalMessages] = useState<InternalMessageDto[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState('');
 
   const activeOrganization = useMemo(
     () => organizations.find((organization) => organization.id === activeOrganizationId) ?? null,
@@ -65,8 +69,20 @@ export const DashboardPage = (): ReactElement => {
     }
   };
 
+  const loadInternalMessages = async (): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    setMessagesLoading(true);
+    setMessagesError('');
+    try { setInternalMessages(await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { status: 'unread', limit: 10 })); }
+    catch (cause) { setMessagesError((cause as Error).message); }
+    finally { setMessagesLoading(false); }
+  };
+
   useEffect(() => {
     void loadSummary();
+    void loadInternalMessages();
+    const interval = window.setInterval(() => { void loadInternalMessages(); }, 12000);
+    return () => window.clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeOrganizationId]);
 
@@ -117,6 +133,8 @@ export const DashboardPage = (): ReactElement => {
           </section>
         ) : null}
       </Card>
+
+      {accessToken && activeOrganizationId ? <InternalMessagesCard accessToken={accessToken} organizationId={activeOrganizationId} messages={internalMessages} loading={messagesLoading} error={messagesError} onRefresh={loadInternalMessages} /> : null}
 
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
         {MODULES.map((module) => (
