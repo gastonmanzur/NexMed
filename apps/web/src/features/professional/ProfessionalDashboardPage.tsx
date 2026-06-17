@@ -26,25 +26,38 @@ const statusLabel: Record<AppointmentDto['status'], string> = {
 
 const AppointmentCard = ({ appointment, primary = false, onStart, onComplete }: { appointment: AppointmentDto; primary?: boolean; onStart?: (id: string) => void; onComplete?: (id: string) => void }): ReactElement => (
   <article className={primary ? 'pro-appointment pro-appointment--primary' : 'pro-appointment'}>
-    <div>
-      <strong>{appointment.patientName}</strong>
-      <span>{coverage(appointment)}</span>
-    </div>
-    <div>
-      <span>Turno</span>
-      <strong>{time(appointment.startAt)}</strong>
-    </div>
-    <div>
-      <span>Estado</span>
+    <div className="pro-appointment__topline">
+      <div className="pro-patient-identity">
+        <span className="pro-appointment__eyebrow">Paciente</span>
+        <strong>{appointment.patientName}</strong>
+      </div>
       <strong className={`pro-status pro-status--${appointment.status}`}>{statusLabel[appointment.status]}</strong>
     </div>
-    {appointment.notes ? <p>{appointment.notes}</p> : null}
-    <footer>
-      {appointment.status === 'arrived' ? <button type="button" onClick={() => onStart?.(appointment.id)}>Iniciar atención</button> : null}
-      {appointment.status === 'in_progress' ? <button type="button" onClick={() => window.location.assign(`/app/professional/appointments/${appointment.id}/attention`)}>Abrir atención</button> : null}
-      <button type="button" disabled>Ver historia</button>
-      <button type="button" disabled>Avisar demora</button>
-      <button type="button" disabled>Mensaje a secretaría</button>
+
+    <div className="pro-appointment__meta">
+      <div>
+        <span>Turno</span>
+        <strong>{time(appointment.startAt)}</strong>
+      </div>
+      <div>
+        <span>Llegada</span>
+        <strong>{appointment.arrivedAt ? time(appointment.arrivedAt) : '—'}</strong>
+      </div>
+      <div>
+        <span>Cobertura</span>
+        <strong>{coverage(appointment)}</strong>
+      </div>
+    </div>
+
+    {appointment.notes ? <p className="pro-appointment__note">{appointment.notes}</p> : null}
+
+    <footer className="pro-appointment__actions">
+      {appointment.status === 'arrived' ? <button className="pro-button pro-button--primary" type="button" onClick={() => onStart?.(appointment.id)}>Iniciar atención</button> : null}
+      {appointment.status === 'in_progress' ? <button className="pro-button pro-button--primary" type="button" onClick={() => window.location.assign(`/app/professional/appointments/${appointment.id}/attention`)}>Abrir atención</button> : null}
+      {appointment.status === 'in_progress' ? <button className="pro-button pro-button--danger" type="button" onClick={() => onComplete?.(appointment.id)}>Finalizar</button> : null}
+      <button className="pro-button pro-button--ghost" type="button" disabled>Ver historia</button>
+      <button className="pro-button pro-button--ghost" type="button" disabled>Avisar demora</button>
+      <button className="pro-button pro-button--ghost" type="button" disabled>Mensaje a secretaría</button>
     </footer>
   </article>
 );
@@ -129,7 +142,7 @@ export const ProfessionalDashboardPage = (): ReactElement => {
           <h1>Hola Dr./Dra. {professionalName}</h1>
           <p>{dashboard.me.organizationName} · {new Intl.DateTimeFormat('es-AR', { dateStyle: 'full' }).format(new Date(dashboard.today))}</p>
         </div>
-        <div className="pro-hero__status">Operativo</div>
+        <div className="pro-hero__status">● Operativo</div>
       </div>
 
       <div className="pro-stats">
@@ -140,8 +153,8 @@ export const ProfessionalDashboardPage = (): ReactElement => {
       </div>
 
       <div className="pro-grid">
-        <section className="pro-panel">
-          <header><h2>{inProgress ? 'Atención actual' : 'Sala de espera'}</h2><span>Polling cada 15s</span></header>
+        <section className="pro-panel pro-panel--waiting">
+          <header className="pro-section-header"><div><span>Flujo en vivo</span><h2>{inProgress ? 'Atención actual' : 'Sala de espera'}</h2></div><span>Actualiza cada 15s</span></header>
           {inProgress ? <AppointmentCard appointment={inProgress} primary onComplete={handleComplete} /> : null}
           {waitingRoom.length > 0 ? waitingRoom.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} onStart={handleStart} />) : (
             <div className="pro-empty">
@@ -152,7 +165,7 @@ export const ProfessionalDashboardPage = (): ReactElement => {
         </section>
 
         <section className="pro-panel pro-panel--focus">
-          <header><h2>Próximo paciente</h2><span>{dashboard.nextAppointment ? time(dashboard.nextAppointment.startAt) : 'Sin espera'}</span></header>
+          <header className="pro-section-header"><div><span>Agenda inmediata</span><h2>Próximo paciente</h2></div><span>{dashboard.nextAppointment ? time(dashboard.nextAppointment.startAt) : 'Sin espera'}</span></header>
           {dashboard.nextAppointment ? <AppointmentCard appointment={dashboard.nextAppointment} primary /> : (
             <div className="pro-empty">
               <strong>No hay próximos pacientes pendientes.</strong>
@@ -162,19 +175,24 @@ export const ProfessionalDashboardPage = (): ReactElement => {
         </section>
 
 
-        <section className="pro-panel">
-          <header><h2>Mensajes de secretaría</h2><span>{messages.filter((m) => m.status === 'unread').length} no leídos</span></header>
+        <section className="pro-panel pro-panel--messages">
+          <header className="pro-section-header"><div><span>Comunicación interna</span><h2>Mensajes de secretaría</h2></div><span>{messages.filter((m) => m.status === 'unread').length} no leídos</span></header>
           {messages.length ? messages.slice(0, 6).map((m) => (
-            <div key={m._id ?? m.id} className="pro-agenda-row">
-              <span><b className={m.status === 'unread' ? 'pro-status pro-status--arrived' : 'pro-status'}>{m.status === 'unread' ? 'Mensaje no leído' : m.status}</b> {m.message}</span>
-              <button type="button" onClick={() => markMessage(m._id ?? m.id, 'read')}>Leído</button>
-              <button type="button" onClick={() => markMessage(m._id ?? m.id, 'resolve')}>Resolver</button>
-            </div>
-          )) : <div className="pro-empty"><strong>Sin mensajes operativos.</strong></div>}
+            <article key={m._id ?? m.id} className={m.status === 'unread' ? 'pro-message pro-message--unread' : 'pro-message'}>
+              <div className="pro-message__content">
+                <b className={m.status === 'unread' ? 'pro-status pro-status--arrived' : 'pro-status'}>{m.status === 'unread' ? 'Mensaje no leído' : m.status}</b>
+                <p>{m.message}</p>
+              </div>
+              <div className="pro-message__actions">
+                <button className="pro-button pro-button--ghost" type="button" onClick={() => markMessage(m._id ?? m.id, 'read')}>Marcar leído</button>
+                <button className="pro-button pro-button--secondary" type="button" onClick={() => markMessage(m._id ?? m.id, 'resolve')}>Resolver</button>
+              </div>
+            </article>
+          )) : <div className="pro-empty"><strong>Sin mensajes operativos.</strong><p>Las novedades de secretaría aparecerán en este panel.</p></div>}
         </section>
 
         <section className="pro-panel">
-          <header><h2>Agenda del día</h2><span>{appointments.length} turnos</span></header>
+          <header className="pro-section-header"><div><span>Resumen operativo</span><h2>Agenda del día</h2></div><span>{appointments.length} turnos</span></header>
           <div className="pro-agenda-list">
             {appointments.map((appointment) => (
               <div key={appointment.id} className="pro-agenda-row">
