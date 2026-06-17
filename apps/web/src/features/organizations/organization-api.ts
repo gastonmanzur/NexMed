@@ -38,6 +38,7 @@ export interface InternalMessageDto {
   message: string;
   status: 'unread' | 'read' | 'resolved';
   fromRole?: 'professional' | 'secretary' | 'admin';
+  toRole?: 'professional' | 'secretary' | 'admin';
   fromUserId?: { firstName?: string; lastName?: string; email?: string } | string;
   parentMessageId?: string | null;
   createdAt: string;

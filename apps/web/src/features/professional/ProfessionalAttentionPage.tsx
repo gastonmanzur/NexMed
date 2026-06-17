@@ -92,8 +92,7 @@ export const ProfessionalAttentionPage = (): ReactElement => {
     { label: 'Pedir paciente', type: 'call_patient', className: 'pro-button--secondary' },
     { label: 'Avisar demora', type: 'delay_notice', className: 'pro-button--ghost' },
     { label: 'Dato administrativo', type: 'admin_request', className: 'pro-button--ghost' },
-    { label: 'Documentación', type: 'documentation_request', className: 'pro-button--ghost' },
-    { label: 'Solicitar cobro', type: 'payment_request', className: 'pro-button--ghost' }
+    { label: 'Documentación', type: 'documentation_request', className: 'pro-button--ghost' }
   ];
 
   if (loading) return <LoadingState message="Abriendo atención actual..." />;
