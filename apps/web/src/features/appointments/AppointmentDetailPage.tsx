@@ -5,7 +5,8 @@ import { Card } from '@starter/ui';
 import './appointments-detail.css';
 import { useAuth } from '../auth/AuthContext';
 import { PatientDetailModal } from '../organizations/PatientDetailModal';
-import { organizationApi } from '../organizations/organization-api';
+import { organizationApi, type InternalMessageDto } from '../organizations/organization-api';
+import { InternalMessagesCard } from '../organizations/InternalMessagesCard';
 import { appointmentsApi } from './appointments-api';
 import type { AppointmentDto, AppointmentNotificationDto, OrganizationPatientDetailDto } from '@starter/shared-types';
 import { formatArgentinaDate, formatArgentinaTime } from '../../lib/argentina-date-time';
@@ -42,6 +43,8 @@ export const AppointmentDetailPage = (): ReactElement => {
   const [appointment, setAppointment] = useState<AppointmentDto | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<OrganizationPatientDetailDto | null>(null);
   const [appointmentNotifications, setAppointmentNotifications] = useState<AppointmentNotificationDto[]>([]);
+  const [internalMessages, setInternalMessages] = useState<InternalMessageDto[]>([]);
+  const [messagesError, setMessagesError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
@@ -55,8 +58,11 @@ export const AppointmentDetailPage = (): ReactElement => {
       const data = await appointmentsApi.getById(accessToken, activeOrganizationId, appointmentId);
       setAppointment(data);
       setAppointmentNotifications(await appointmentsApi.listNotifications(accessToken, activeOrganizationId, appointmentId));
+      setMessagesError('');
+      setInternalMessages(await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { appointmentId, limit: 20 }));
     } catch (cause) {
       setError((cause as Error).message);
+      setMessagesError((cause as Error).message);
     } finally {
       setLoading(false);
     }
@@ -206,6 +212,7 @@ export const AppointmentDetailPage = (): ReactElement => {
           ) : null}
         </div>
       </Card>
+      {accessToken && activeOrganizationId ? <InternalMessagesCard accessToken={accessToken} organizationId={activeOrganizationId} messages={internalMessages} error={messagesError} onRefresh={load} /> : null}
       <PatientDetailModal patient={selectedPatient} isOpen={isPatientModalOpen} loading={loadingPatientDetail} error={patientDetailError} onClose={closePatientDetail} />
     </main>
   );

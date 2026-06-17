@@ -426,8 +426,10 @@ export class AppointmentsService {
         appointmentId,
         patientProfileId: updated.patientProfileId ?? null,
         fromUserId: actorUserId,
+        fromRole: 'secretary',
         toRole: 'professional',
         type: 'patient_ready',
+        title: 'Paciente listo',
         message: `Paciente ${updated.patientName} llegó y está listo para atención.`
       }).catch(() => undefined);
     }

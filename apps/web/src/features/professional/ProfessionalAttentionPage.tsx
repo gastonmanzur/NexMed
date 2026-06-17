@@ -27,6 +27,8 @@ export const ProfessionalAttentionPage = (): ReactElement => {
   const [encounter, setEncounter] = useState<EncounterInput>({ reason: '', evolution: '', diagnosisText: '', treatmentPlan: '', observations: '' });
   const [record, setRecord] = useState({ relevantHistory: '', allergies: '', chronicConditions: '', currentMedications: '', generalObservations: '' });
   const [message, setMessage] = useState('');
+  const [sendingType, setSendingType] = useState<string | null>(null);
+  const [messageStatus, setMessageStatus] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
 
   const load = async (): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
@@ -68,10 +70,31 @@ export const ProfessionalAttentionPage = (): ReactElement => {
     navigate('/app/professional/waiting-room');
   };
   const sendMessage = async (type = 'custom', text = message): Promise<void> => {
-    if (!accessToken || !activeOrganizationId || !text.trim()) return;
-    await professionalApi.sendMessage(accessToken, activeOrganizationId, { appointmentId, type, message: text });
-    setMessage('');
+    if (!accessToken || !activeOrganizationId || !appointmentId) return;
+    if (type === 'custom' && !text.trim()) {
+      setMessageStatus({ kind: 'error', text: 'Escribí un mensaje antes de enviarlo.' });
+      return;
+    }
+    setSendingType(type);
+    setMessageStatus(null);
+    try {
+      await professionalApi.sendMessage(accessToken, activeOrganizationId, { appointmentId, ...(data?.appointment.patientProfileId ? { patientProfileId: data.appointment.patientProfileId } : {}), type, ...(type === 'custom' ? { message: text.trim() } : {}) });
+      if (type === 'custom') setMessage('');
+      setMessageStatus({ kind: 'success', text: 'Mensaje enviado a secretaría.' });
+    } catch {
+      setMessageStatus({ kind: 'error', text: 'No pudimos enviar el mensaje. Intentá nuevamente.' });
+    } finally {
+      setSendingType(null);
+    }
   };
+
+  const quickMessages = [
+    { label: 'Pedir paciente', type: 'call_patient', className: 'pro-button--secondary' },
+    { label: 'Avisar demora', type: 'delay_notice', className: 'pro-button--ghost' },
+    { label: 'Dato administrativo', type: 'admin_request', className: 'pro-button--ghost' },
+    { label: 'Documentación', type: 'documentation_request', className: 'pro-button--ghost' },
+    { label: 'Solicitar cobro', type: 'payment_request', className: 'pro-button--ghost' }
+  ];
 
   if (loading) return <LoadingState message="Abriendo atención actual..." />;
   if (error) return <ErrorState message={error} />;
@@ -97,7 +120,7 @@ export const ProfessionalAttentionPage = (): ReactElement => {
         <section className="attention-section"><header><div><span>Información longitudinal</span><h2>Historia clínica</h2></div></header>{['relevantHistory','allergies','chronicConditions','currentMedications','generalObservations'].map((field) => <label key={field}>{recordLabels[field]}<textarea value={(record as any)[field]} onChange={(e) => setRecord({ ...record, [field]: e.target.value })} /></label>)}<button className="pro-button pro-button--primary" onClick={saveRecord}>Guardar historia clínica</button></section>
         <section className="attention-section"><header><div><span>Timeline clínico</span><h2>Atenciones anteriores</h2></div></header>{data.previousEncounters.length ? data.previousEncounters.map((e) => <article className="timeline-item" key={e._id ?? e.id}><b>{fmt(e.createdAt)}</b><p>Motivo: {e.reason || '—'}</p><p>Diagnóstico: {e.diagnosisText || '—'}</p><p>{e.evolution || 'Sin resumen'}</p></article>) : <div className="pro-empty"><strong>No hay atenciones anteriores en este centro.</strong></div>}</section>
       </main>
-      <aside className="pro-panel attention-card pro-panel--messages"><h2>Comunicación</h2><div className="quick-message-grid"><button className="pro-button pro-button--secondary" onClick={() => sendMessage('call_patient', `Por favor hacé pasar a ${appointment.patientName}.`)}>Pedir paciente</button><button className="pro-button pro-button--ghost" onClick={() => sendMessage('delay_notice', 'Estoy demorado 10 minutos.')}>Avisar demora</button><button className="pro-button pro-button--ghost" onClick={() => sendMessage('admin_request', 'Falta validar datos administrativos del paciente.')}>Dato administrativo</button><button className="pro-button pro-button--ghost" onClick={() => sendMessage('documentation_missing', 'Solicitar documentación antes de continuar.')}>Documentación</button><button className="pro-button pro-button--ghost" onClick={() => sendMessage('payment_pending', 'Solicitar pago antes de la atención.')}>Solicitar cobro</button></div><label>Mensaje personalizado<textarea placeholder="Escribí una novedad para secretaría" value={message} onChange={(e) => setMessage(e.target.value)} /></label><button className="pro-button pro-button--primary" onClick={() => sendMessage()}>Enviar a secretaría</button></aside>
+      <aside className="pro-panel attention-card pro-panel--messages"><h2>Comunicación</h2>{!appointmentId && <p>Seleccioná un paciente o iniciá una atención para enviar mensajes a secretaría.</p>}<div className="quick-message-grid">{quickMessages.map((item) => <button key={item.type} className={`pro-button ${item.className}`} disabled={!appointmentId || sendingType !== null} onClick={() => sendMessage(item.type)}>{sendingType === item.type ? 'Enviando...' : item.label}</button>)}</div><label>Mensaje personalizado<textarea placeholder="Escribí una novedad para secretaría" value={message} onChange={(e) => setMessage(e.target.value)} /></label><button className="pro-button pro-button--primary" disabled={!appointmentId || sendingType !== null || !message.trim()} onClick={() => sendMessage()}>{sendingType === 'custom' ? 'Enviando...' : 'Enviar a secretaría'}</button>{messageStatus ? <p role="status" style={{ color: messageStatus.kind === 'success' ? 'var(--success)' : 'crimson' }}>{messageStatus.text}</p> : null}</aside>
     </div>
   </section>;
 };

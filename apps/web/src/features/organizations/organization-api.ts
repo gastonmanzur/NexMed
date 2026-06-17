@@ -25,6 +25,21 @@ interface ApiErrorPayload {
   };
 }
 
+
+export interface InternalMessageDto {
+  _id: string;
+  id?: string;
+  organizationId: string;
+  appointmentId?: string | { _id: string } | null;
+  patientProfileId?: string | { _id?: string; firstName?: string; lastName?: string } | null;
+  professionalId?: string | { _id?: string; firstName?: string; lastName?: string; displayName?: string } | null;
+  type: string;
+  title: string;
+  message: string;
+  status: 'unread' | 'read' | 'resolved';
+  createdAt: string;
+}
+
 export class ApiRequestError extends Error {
   constructor(
     message: string,
@@ -181,6 +196,24 @@ export const organizationApi = {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
+    return result.data;
+  },
+
+  listInternalMessages: async (accessToken: string, organizationId: string, query?: { status?: 'unread' | 'read' | 'resolved'; appointmentId?: string; limit?: number }): Promise<InternalMessageDto[]> => {
+    const params = new URLSearchParams();
+    if (query?.status) params.set('status', query.status);
+    if (query?.appointmentId) params.set('appointmentId', query.appointmentId);
+    if (query?.limit) params.set('limit', String(query.limit));
+    const qs = params.toString();
+    const result = await request<{ success: true; data: InternalMessageDto[] }>(`/organizations/${organizationId}/internal-messages${qs ? `?${qs}` : ''}`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+  markInternalMessageRead: async (accessToken: string, organizationId: string, messageId: string): Promise<InternalMessageDto> => {
+    const result = await request<{ success: true; data: InternalMessageDto }>(`/organizations/${organizationId}/internal-messages/${messageId}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` } });
+    return result.data;
+  },
+  resolveInternalMessage: async (accessToken: string, organizationId: string, messageId: string): Promise<InternalMessageDto> => {
+    const result = await request<{ success: true; data: InternalMessageDto }>(`/organizations/${organizationId}/internal-messages/${messageId}/resolve`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` } });
     return result.data;
   },
   listPatients: async (accessToken: string, organizationId: string, search?: string): Promise<OrganizationPatientListItemDto[]> => {
