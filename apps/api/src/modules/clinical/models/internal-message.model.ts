@@ -1,6 +1,6 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
-export const internalMessageTypes = ['call_patient', 'delay_notice', 'admin_request', 'documentation_request', 'payment_request', 'payment_pending', 'documentation_missing', 'patient_ready', 'no_show', 'custom'] as const;
+export const internalMessageTypes = ['call_patient', 'delay_notice', 'admin_request', 'documentation_request', 'payment_request', 'patient_arrived', 'patient_left', 'coverage_issue', 'custom', 'reply'] as const;
 
 const internalMessageSchema = new mongoose.Schema({
   organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization', index: true },
@@ -15,13 +15,16 @@ const internalMessageSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 160 },
   message: { type: String, required: true, trim: true, maxlength: 1000 },
   status: { type: String, enum: ['unread', 'read', 'resolved'], required: true, default: 'unread', index: true },
+  parentMessageId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'InternalMessage', default: null, index: true },
   readAt: { type: Date, required: false, default: null },
   resolvedAt: { type: Date, required: false, default: null }
 }, { timestamps: true });
 
 internalMessageSchema.index({ organizationId: 1, status: 1, createdAt: -1 });
+internalMessageSchema.index({ organizationId: 1, toRole: 1, status: 1, createdAt: -1 });
 internalMessageSchema.index({ appointmentId: 1, createdAt: -1 });
-internalMessageSchema.index({ toRole: 1, status: 1, createdAt: -1 });
+internalMessageSchema.index({ professionalId: 1, createdAt: -1 });
+internalMessageSchema.index({ parentMessageId: 1, createdAt: 1 });
 
 export type InternalMessageDocument = InferSchemaType<typeof internalMessageSchema> & { _id: mongoose.Types.ObjectId };
 export const InternalMessageModel: Model<InternalMessageDocument> = mongoose.model<InternalMessageDocument>('InternalMessage', internalMessageSchema);

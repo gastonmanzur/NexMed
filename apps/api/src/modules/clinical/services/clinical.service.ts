@@ -90,12 +90,31 @@ export class ClinicalService {
     return encounter;
   }
 
-  async listMessages(organizationId: string, userId: string, role: 'professional' | 'secretary', filters: { status?: string | undefined; appointmentId?: string | undefined; limit?: number | undefined } = {}) {
-    const q: Record<string, unknown> = role === 'professional' ? { organizationId, $or: [{ toUserId: userId }, { toRole: 'professional' }] } : { organizationId, toRole: 'secretary' };
+  private serializeMessage(message: any) {
+    const obj = typeof message.toObject === 'function' ? message.toObject() : message;
+    return { ...obj, id: obj._id?.toString?.() ?? obj.id };
+  }
+
+  async listMessages(organizationId: string, userId: string, role: 'professional' | 'secretary', filters: { status?: string | undefined; appointmentId?: string | undefined; professionalId?: string | undefined; limit?: number | undefined } = {}, professionalId?: string) {
+    const q: Record<string, unknown> = role === 'professional'
+      ? { organizationId, toRole: 'professional', ...(professionalId ? { professionalId } : { toUserId: userId }) }
+      : { organizationId };
     if (['unread', 'read', 'resolved'].includes(filters.status ?? '')) q.status = filters.status;
     if (filters.appointmentId) q.appointmentId = filters.appointmentId;
+    if (filters.professionalId) q.professionalId = filters.professionalId;
     const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
-    return InternalMessageModel.find(q).populate('patientProfileId', 'firstName lastName').populate('professionalId', 'firstName lastName displayName').sort({ createdAt: -1 }).limit(limit).exec();
+    const [items, unreadCount] = await Promise.all([
+      InternalMessageModel.find(q)
+        .populate('fromUserId', 'firstName lastName email')
+        .populate('patientProfileId', 'firstName lastName')
+        .populate('professionalId', 'firstName lastName displayName')
+        .populate('appointmentId', 'startAt endAt status patientName')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .exec(),
+      InternalMessageModel.countDocuments({ ...q, status: 'unread' }).exec()
+    ]);
+    return { items: items.map((item) => this.serializeMessage(item)), unreadCount };
   }
 
   async createProfessionalMessage(organizationId: string, professionalId: string, appointmentId: string | undefined, userId: string, body: Record<string, unknown>) {
@@ -130,16 +149,52 @@ export class ClinicalService {
     const appointment = await AppointmentModel.findOne({ _id: appointmentId, organizationId }).exec();
     if (!appointment) throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
     const professional = await ProfessionalModel.findById(appointment.professionalId).exec();
-    const message = String(body.message ?? '').trim();
+    const allowedTypes = ['patient_arrived', 'patient_left', 'coverage_issue', 'documentation_request', 'payment_request', 'custom'];
+    const type = allowedTypes.includes(String(body.type)) ? String(body.type) : 'custom';
+    const templates: Record<string, { title: string; message: string }> = {
+      patient_arrived: { title: 'Paciente llegó', message: 'Secretaría informa que el paciente llegó.' },
+      patient_left: { title: 'Paciente se retiró', message: 'Secretaría informa que el paciente se retiró.' },
+      coverage_issue: { title: 'Problema de cobertura', message: 'Secretaría solicita revisar un inconveniente de cobertura.' },
+      documentation_request: { title: 'Documentación', message: 'Secretaría solicita documentación del paciente.' },
+      payment_request: { title: 'Cobro', message: 'Secretaría solicita verificar el cobro del paciente.' },
+      custom: { title: 'Mensaje de secretaría', message: String(body.message ?? '').trim() }
+    };
+    const template = templates[type]!;
+    const message = type === 'custom' ? template.message : (String(body.message ?? '').trim() || template.message);
     if (!message) throw new AppError('MESSAGE_REQUIRED', 400, 'Message is required');
-    return InternalMessageModel.create({ organizationId, appointmentId, patientProfileId: appointment.patientProfileId ?? null, professionalId: appointment.professionalId ?? null, fromUserId: userId, fromRole: 'secretary', toUserId: professional?.accessUserId ?? professional?.userId ?? null, toRole: 'professional', type: body.type ?? 'custom', title: 'Mensaje de secretaría', message });
+    return InternalMessageModel.create({ organizationId, appointmentId, patientProfileId: appointment.patientProfileId ?? null, professionalId: appointment.professionalId ?? null, fromUserId: userId, fromRole: 'secretary', toUserId: professional?.accessUserId ?? professional?.userId ?? null, toRole: 'professional', type, title: template.title, message, status: 'unread' });
   }
 
-  async markMessage(organizationId: string, messageId: string, status: 'read' | 'resolved') {
+  async replyToMessage(organizationId: string, messageId: string, userId: string, body: Record<string, unknown>) {
+    const original = await InternalMessageModel.findOne({ _id: messageId, organizationId }).exec();
+    if (!original) throw new AppError('MESSAGE_NOT_FOUND', 404, 'Message not found');
+    const message = String(body.message ?? '').trim();
+    if (!message) throw new AppError('MESSAGE_REQUIRED', 400, 'Message is required');
+    const professional = original.professionalId ? await ProfessionalModel.findById(original.professionalId).exec() : null;
+    return InternalMessageModel.create({
+      organizationId,
+      appointmentId: original.appointmentId ?? null,
+      patientProfileId: original.patientProfileId ?? null,
+      professionalId: original.professionalId ?? null,
+      fromUserId: userId,
+      fromRole: 'secretary',
+      toUserId: professional?.accessUserId ?? professional?.userId ?? (original.fromRole === 'professional' ? original.fromUserId : null),
+      toRole: 'professional',
+      type: 'reply',
+      title: 'Respuesta de secretaría',
+      message,
+      parentMessageId: original._id,
+      status: 'unread'
+    });
+  }
+
+  async markMessage(organizationId: string, messageId: string, status: 'read' | 'resolved', role?: 'professional' | 'secretary', professionalId?: string) {
     const now = new Date();
-    const set = status === 'read' ? { status, readAt: now } : { status, readAt: now, resolvedAt: now };
+    const current = await InternalMessageModel.findOne({ _id: messageId, organizationId, ...(role === 'professional' ? { toRole: 'professional', professionalId } : {}) }).exec();
+    if (!current) throw new AppError('MESSAGE_NOT_FOUND', 404, 'Message not found');
+    if (status === 'read' && current.status === 'resolved') return current;
+    const set = status === 'read' ? { status, readAt: current.readAt ?? now } : { status, readAt: current.readAt ?? now, resolvedAt: now };
     const msg = await InternalMessageModel.findOneAndUpdate({ _id: messageId, organizationId }, { $set: set }, { new: true }).exec();
-    if (!msg) throw new AppError('MESSAGE_NOT_FOUND', 404, 'Message not found');
     return msg;
   }
 }

@@ -155,10 +155,16 @@ organizationsRouter.get(
   asyncHandler(clinicalController.organizationMessages)
 );
 organizationsRouter.post(
-  '/:organizationId/appointments/:appointmentId/messages',
+  '/:organizationId/appointments/:appointmentId/internal-messages',
   asyncHandler(requireOrganizationMember),
   asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
   asyncHandler(clinicalController.createOrganizationAppointmentMessage)
+);
+organizationsRouter.post(
+  '/:organizationId/internal-messages/:messageId/reply',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
+  asyncHandler(clinicalController.replyOrganizationMessage)
 );
 organizationsRouter.patch(
   '/:organizationId/internal-messages/:messageId/read',

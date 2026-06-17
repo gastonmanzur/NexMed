@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@starter/ui';
 import { formatArgentinaDate, formatArgentinaTime } from '../../lib/argentina-date-time';
@@ -10,7 +11,11 @@ const typeLabel: Record<string, string> = {
   admin_request: 'Dato administrativo',
   documentation_request: 'Documentación',
   payment_request: 'Cobro',
-  custom: 'Personalizado'
+  patient_arrived: 'Paciente llegó',
+  patient_left: 'Paciente se retiró',
+  coverage_issue: 'Cobertura',
+  custom: 'Personalizado',
+  reply: 'Respuesta'
 };
 
 const statusLabel: Record<string, string> = { unread: 'No leído', read: 'Leído', resolved: 'Resuelto' };
@@ -27,7 +32,8 @@ export const InternalMessagesCard = ({
   messages,
   loading,
   error,
-  onRefresh
+  onRefresh,
+  allowReply = false
 }: {
   accessToken: string;
   organizationId: string;
@@ -35,7 +41,17 @@ export const InternalMessagesCard = ({
   loading?: boolean;
   error?: string;
   onRefresh: () => void | Promise<void>;
+  allowReply?: boolean;
 }): ReactElement => {
+  const [replyById, setReplyById] = useState<Record<string, string>>({});
+  const sendReply = async (messageId: string): Promise<void> => {
+    const text = (replyById[messageId] ?? '').trim();
+    if (!text) return;
+    await organizationApi.replyInternalMessage(accessToken, organizationId, messageId, text);
+    setReplyById((current) => ({ ...current, [messageId]: '' }));
+    await onRefresh();
+  };
+
   const update = async (messageId: string, action: 'read' | 'resolve'): Promise<void> => {
     if (action === 'read') await organizationApi.markInternalMessageRead(accessToken, organizationId, messageId);
     else await organizationApi.resolveInternalMessage(accessToken, organizationId, messageId);
@@ -62,6 +78,10 @@ export const InternalMessagesCard = ({
             <button type="button" className="nx-btn-secondary" disabled={message.status !== 'unread'} onClick={() => void update(message._id ?? message.id, 'read')}>Marcar leído</button>
             <button type="button" className="nx-btn-secondary" disabled={message.status === 'resolved'} onClick={() => void update(message._id ?? message.id, 'resolve')}>Resolver</button>
           </div>
+          {allowReply && message.fromRole !== 'secretary' ? <div style={{ display: 'grid', gap: '.4rem' }}>
+            <textarea placeholder="Responder al profesional" value={replyById[message._id ?? message.id ?? ''] ?? ''} onChange={(event) => setReplyById((current) => ({ ...current, [message._id ?? message.id ?? '']: event.target.value }))} />
+            <button type="button" className="nx-btn-primary" disabled={!(replyById[message._id ?? message.id ?? ''] ?? '').trim()} onClick={() => void sendReply(message._id ?? message.id)}>Responder</button>
+          </div> : null}
         </article>
       ))}
     </div>
