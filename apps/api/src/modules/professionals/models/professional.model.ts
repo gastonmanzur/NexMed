@@ -17,7 +17,10 @@ const professionalSchema = new mongoose.Schema(
     status: { type: String, enum: professionalStatuses, default: 'active', index: true },
     availabilityReleaseMode: { type: String, enum: availabilityReleaseModes, default: 'free' },
     availabilityReleaseLimit: { type: Number, required: false, min: 1, max: 20, default: null },
-    userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null }
+    userId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
+    accessEnabled: { type: Boolean, default: false, index: true },
+    accessUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
+    accessEmail: { type: String, required: false, trim: true, lowercase: true, default: null }
   },
   { timestamps: true }
 );

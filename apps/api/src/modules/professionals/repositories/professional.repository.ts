@@ -14,6 +14,9 @@ interface CreateProfessionalInput {
   availabilityReleaseMode?: 'free' | 'progressive' | undefined;
   availabilityReleaseLimit?: number | null | undefined;
   userId?: string | null | undefined;
+  accessEnabled?: boolean | undefined;
+  accessUserId?: string | null | undefined;
+  accessEmail?: string | null | undefined;
 }
 
 interface UpdateProfessionalInput {
@@ -29,6 +32,9 @@ interface UpdateProfessionalInput {
   availabilityReleaseMode?: 'free' | 'progressive' | undefined;
   availabilityReleaseLimit?: number | null | undefined;
   userId?: string | null | undefined;
+  accessEnabled?: boolean | undefined;
+  accessUserId?: string | null | undefined;
+  accessEmail?: string | null | undefined;
 }
 
 export class ProfessionalRepository {

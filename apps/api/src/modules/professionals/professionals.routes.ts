@@ -41,6 +41,26 @@ professionalsRouter.patch(
   asyncHandler(requireOrganizationRole('owner', 'admin')),
   asyncHandler(professionalsController.updateProfessional)
 );
+
+professionalsRouter.post(
+  '/:professionalId/access',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(professionalsController.activateProfessionalAccess)
+);
+professionalsRouter.patch(
+  '/:professionalId/access',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(professionalsController.resendProfessionalAccess)
+);
+professionalsRouter.delete(
+  '/:professionalId/access',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(professionalsController.deactivateProfessionalAccess)
+);
+
 professionalsRouter.patch(
   '/:professionalId/status',
   asyncHandler(requireOrganizationMember),

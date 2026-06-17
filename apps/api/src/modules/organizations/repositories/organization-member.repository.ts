@@ -14,7 +14,12 @@ export class OrganizationMemberRepository {
   }
 
   async findByOrganizationAndUser(organizationId: string, userId: string): Promise<OrganizationMemberDocument | null> {
-    return OrganizationMemberModel.findOne({ organizationId, userId }).exec();
+    return OrganizationMemberModel.findOne({ organizationId, userId, status: 'active', role: { $ne: 'professional' } }).exec()
+      ?? OrganizationMemberModel.findOne({ organizationId, userId, status: 'active' }).exec();
+  }
+
+  async findProfessionalByOrganizationAndUser(organizationId: string, userId: string): Promise<OrganizationMemberDocument | null> {
+    return OrganizationMemberModel.findOne({ organizationId, userId, role: 'professional' }).exec();
   }
 
   async findByUser(userId: string): Promise<OrganizationMemberDocument[]> {
@@ -23,5 +28,21 @@ export class OrganizationMemberRepository {
 
   async findActiveByUser(userId: string): Promise<OrganizationMemberDocument[]> {
     return OrganizationMemberModel.find({ userId, status: 'active' }).sort({ createdAt: 1 }).exec();
+  }
+
+  async findActiveProfessionalLink(organizationId: string, professionalId: string): Promise<OrganizationMemberDocument | null> {
+    return OrganizationMemberModel.findOne({ organizationId, professionalId, role: 'professional', status: 'active' }).exec();
+  }
+
+  async upsertProfessionalMembership(input: CreateMemberInput): Promise<OrganizationMemberDocument> {
+    return OrganizationMemberModel.findOneAndUpdate(
+      { organizationId: input.organizationId, userId: input.userId, role: 'professional', professionalId: input.professionalId ?? null },
+      { $set: { role: 'professional', professionalId: input.professionalId ?? null, status: input.status ?? 'active' }, $setOnInsert: { joinedAt: new Date() } },
+      { upsert: true, new: true }
+    ).exec();
+  }
+
+  async deactivateProfessionalMembership(organizationId: string, professionalId: string): Promise<void> {
+    await OrganizationMemberModel.updateMany({ organizationId, professionalId, role: 'professional' }, { $set: { status: 'inactive' } }).exec();
   }
 }

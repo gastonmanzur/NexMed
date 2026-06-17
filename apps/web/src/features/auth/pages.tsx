@@ -410,7 +410,10 @@ export const PostLoginResolverPage = (): ReactElement => {
   const activePatientMemberships = memberships.filter(
     (membership) => membership.status === 'active' && membership.role === 'patient'
   );
-  const resolvedOrganizationId = activeOrganizationId ?? activeCenterMemberships[0]?.organizationId ?? organizations[0]?.id ?? null;
+  const activeProfessionalMemberships = memberships.filter(
+    (membership) => membership.status === 'active' && membership.role === 'professional'
+  );
+  const resolvedOrganizationId = activeOrganizationId ?? activeCenterMemberships[0]?.organizationId ?? activeProfessionalMemberships[0]?.organizationId ?? organizations[0]?.id ?? null;
   const activeOrganization = organizations.find(
     (organization) => organization.id === resolvedOrganizationId
   );
@@ -439,12 +442,18 @@ export const PostLoginResolverPage = (): ReactElement => {
     });
   }
 
+  if (activeCenterMemberships.length === 0 && activeProfessionalMemberships.length > 0) {
+    clearAccountIntent();
+    if (!activeOrganizationId && activeProfessionalMemberships.length > 1) return <Navigate to="/select-organization" replace />;
+    return <Navigate to="/app/professional" replace />;
+  }
+
   if (shouldGoToPatient) {
     clearAccountIntent();
     return <Navigate to="/patient" replace />;
   }
 
-  if (activeCenterMemberships.length === 0) {
+  if (activeCenterMemberships.length === 0 && activeProfessionalMemberships.length === 0) {
     return <Navigate to="/onboarding" replace />;
   }
 

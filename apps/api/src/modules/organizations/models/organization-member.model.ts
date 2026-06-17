@@ -15,7 +15,7 @@ const organizationMemberSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-organizationMemberSchema.index({ organizationId: 1, userId: 1 }, { unique: true });
+organizationMemberSchema.index({ organizationId: 1, userId: 1, role: 1, professionalId: 1 }, { unique: true });
 organizationMemberSchema.index({ organizationId: 1, professionalId: 1 });
 
 export type OrganizationMemberDocument = InferSchemaType<typeof organizationMemberSchema> & {

@@ -48,6 +48,40 @@ export class ProfessionalPanelService {
     return rows.sort((a, b) => a.startAt.getTime() - b.startAt.getTime()).map((row) => this.toAppointmentDto(row));
   }
 
+  async startAppointment(organizationId: string, professionalId: string, appointmentId: string, actorUserId: string): Promise<AppointmentDto> {
+    const appointment = await this.appointments.findByIdInOrganization(organizationId, appointmentId);
+    if (!appointment || appointment.professionalId.toString() !== professionalId) throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    if (appointment.status !== 'arrived') throw new AppError('INVALID_APPOINTMENT_STATE', 409, 'Appointment must be arrived to start care');
+    const now = new Date();
+    const updated = await this.appointments.updateByIdInOrganization(organizationId, appointmentId, {
+      status: 'in_progress',
+      startedAt: now,
+      startedByUserId: actorUserId,
+      statusUpdatedAt: now,
+      statusUpdatedByUserId: actorUserId,
+      statusUpdatedByRole: 'professional'
+    }, { status: 'in_progress', changedAt: now, changedByUserId: actorUserId, changedByRole: 'professional', note: 'Atención iniciada' });
+    if (!updated) throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    return this.toAppointmentDto(updated);
+  }
+
+  async completeAppointment(organizationId: string, professionalId: string, appointmentId: string, actorUserId: string): Promise<AppointmentDto> {
+    const appointment = await this.appointments.findByIdInOrganization(organizationId, appointmentId);
+    if (!appointment || appointment.professionalId.toString() !== professionalId) throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    if (appointment.status !== 'in_progress') throw new AppError('INVALID_APPOINTMENT_STATE', 409, 'Appointment must be in progress to complete care');
+    const now = new Date();
+    const updated = await this.appointments.updateByIdInOrganization(organizationId, appointmentId, {
+      status: 'completed',
+      completedAt: now,
+      completedByUserId: actorUserId,
+      statusUpdatedAt: now,
+      statusUpdatedByUserId: actorUserId,
+      statusUpdatedByRole: 'professional'
+    }, { status: 'completed', changedAt: now, changedByUserId: actorUserId, changedByRole: 'professional', note: 'Atención finalizada' });
+    if (!updated) throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    return this.toAppointmentDto(updated);
+  }
+
   async waitingRoom(organizationId: string, professionalId: string): Promise<AppointmentDto[]> {
     const rows = await this.appointments.listByOrganization(organizationId, {
       professionalId,
@@ -125,6 +159,10 @@ export class ProfessionalPanelService {
       statusUpdatedByUserId: document.statusUpdatedByUserId ? document.statusUpdatedByUserId.toString() : null,
       statusUpdatedByRole: document.statusUpdatedByRole ?? null,
       arrivedAt: document.arrivedAt ? document.arrivedAt.toISOString() : null,
+      startedAt: document.startedAt ? document.startedAt.toISOString() : null,
+      startedByUserId: document.startedByUserId ? document.startedByUserId.toString() : null,
+      completedAt: document.completedAt ? document.completedAt.toISOString() : null,
+      completedByUserId: document.completedByUserId ? document.completedByUserId.toString() : null,
       statusHistory: (document.statusHistory ?? []).map((entry) => ({
         status: entry.status,
         changedAt: entry.changedAt.toISOString(),

@@ -41,6 +41,9 @@ export const ProfessionalFormPage = (): ReactElement => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [accessEnabled, setAccessEnabled] = useState(false);
+  const [accessEmail, setAccessEmail] = useState('');
+  const [accessMessage, setAccessMessage] = useState('');
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId) {
@@ -71,6 +74,8 @@ export const ProfessionalFormPage = (): ReactElement => {
           setAvailabilityReleaseLimit(String(professional.availabilityReleaseLimit ?? 3));
           setSelectedSpecialtyIds(professional.specialties.map((specialty) => specialty.id));
           setAvatarPreview(professional.avatarUrl ? resolveAvatarUrl(professional.avatarUrl) : null);
+          setAccessEnabled(professional.accessEnabled === true);
+          setAccessEmail(professional.accessEmail ?? professional.email ?? '');
         }
       } catch (cause) {
         setError((cause as Error).message);
@@ -173,6 +178,44 @@ export const ProfessionalFormPage = (): ReactElement => {
             </fieldset>
 
 
+            {isEdit ? (
+              <fieldset className="nx-entity-form-page__fieldset">
+                <legend>Acceso al panel profesional</legend>
+                <p className="nx-entity-form-page__hint">
+                  Este acceso permite que el profesional ingrese a NexMed con su propio email para ver sus turnos, sala de espera y atención diaria. No tendrá acceso a configuración administrativa del centro.
+                </p>
+                <label className="nx-checkbox-field nx-entity-form-page__checkbox-item">
+                  <input type="checkbox" checked={accessEnabled} onChange={(event) => setAccessEnabled(event.target.checked)} />
+                  <span>Activar acceso profesional</span>
+                </label>
+                <label className="nx-field">
+                  <span>Email de acceso</span>
+                  <input value={accessEmail} onChange={(event) => setAccessEmail(event.target.value)} placeholder="profesional@ejemplo.com" />
+                </label>
+                <p className="nx-entity-form-page__hint">Estado: {accessEnabled ? 'Activo' : 'Sin acceso'}</p>
+                {accessMessage ? <p className="nx-entity-form-page__hint" role="status">{accessMessage}</p> : null}
+                <div className="nx-form-actions">
+                  <button type="button" className="nx-btn-secondary" disabled={loading || !accessEnabled} onClick={async () => {
+                    if (!accessToken || !professionalId) return;
+                    try {
+                      setLoading(true); setError(''); setAccessMessage('');
+                      const result = await professionalsApi.activateAccess(accessToken, activeOrganizationId, professionalId, { email: accessEmail, firstName, lastName, sendInvite: true });
+                      setAccessMessage(result.message); setAccessEnabled(true);
+                    } catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
+                  }}>Crear acceso</button>
+                  <button type="button" className="nx-btn-secondary" disabled={loading || !accessEnabled} onClick={async () => {
+                    if (!accessToken || !professionalId) return;
+                    try { setLoading(true); setError(''); const result = await professionalsApi.resendAccess(accessToken, activeOrganizationId, professionalId); setAccessMessage(result.message); }
+                    catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
+                  }}>Recuperar acceso</button>
+                  <button type="button" className="nx-btn-secondary" disabled={loading || !accessEnabled} onClick={async () => {
+                    if (!accessToken || !professionalId) return;
+                    try { setLoading(true); setError(''); const result = await professionalsApi.deactivateAccess(accessToken, activeOrganizationId, professionalId); setAccessMessage(result.message); setAccessEnabled(false); }
+                    catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
+                  }}>Desactivar acceso</button>
+                </div>
+              </fieldset>
+            ) : null}
 
             <fieldset className="nx-entity-form-page__fieldset">
               <legend>Modo de agenda</legend>
