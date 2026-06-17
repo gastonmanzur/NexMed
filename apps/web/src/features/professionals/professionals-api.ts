@@ -143,6 +143,31 @@ export const professionalsApi = {
     return result.data;
   },
 
+  activateAccess: async (accessToken: string, organizationId: string, professionalId: string, input: { email: string; firstName?: string; lastName?: string; sendInvite?: boolean }): Promise<{ message: string }> => {
+    const result = await request<{ success: true; data: { message: string } }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+    return result.data;
+  },
+
+  resendAccess: async (accessToken: string, organizationId: string, professionalId: string): Promise<{ message: string }> => {
+    const result = await request<{ success: true; data: { message: string } }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  deactivateAccess: async (accessToken: string, organizationId: string, professionalId: string): Promise<{ message: string }> => {
+    const result = await request<{ success: true; data: { message: string } }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
   updateStatus: async (
     accessToken: string,
     organizationId: string,

@@ -553,6 +553,9 @@ export class ProfessionalsService {
       availabilityReleaseMode?: AvailabilityReleaseMode | null;
       availabilityReleaseLimit?: number | null;
       userId?: { toString(): string } | null;
+      accessEnabled?: boolean | null;
+      accessUserId?: { toString(): string } | null;
+      accessEmail?: string | null;
       createdAt: Date;
       updatedAt: Date;
     },
@@ -573,6 +576,9 @@ export class ProfessionalsService {
       availabilityReleaseMode: professional.availabilityReleaseMode ?? 'free',
       availabilityReleaseLimit: professional.availabilityReleaseMode === 'progressive' ? professional.availabilityReleaseLimit ?? null : null,
       userId: professional.userId ? professional.userId.toString() : null,
+      accessEnabled: professional.accessEnabled === true,
+      accessUserId: professional.accessUserId ? professional.accessUserId.toString() : null,
+      accessEmail: professional.accessEmail ?? null,
       specialties,
       createdAt: professional.createdAt.toISOString(),
       updatedAt: professional.updatedAt.toISOString()

@@ -15,6 +15,7 @@ const statusLabel: Record<AppointmentDto['status'], string> = {
   booked: 'Reservado',
   confirmed_by_patient: 'Confirmado',
   arrived: 'Llegó',
+  in_progress: 'En atención',
   completed: 'Atendido',
   no_show: 'No asistió',
   canceled_by_patient: 'Cancelado por paciente',
@@ -22,7 +23,7 @@ const statusLabel: Record<AppointmentDto['status'], string> = {
   rescheduled: 'Reprogramado'
 };
 
-const AppointmentCard = ({ appointment, primary = false }: { appointment: AppointmentDto; primary?: boolean }): ReactElement => (
+const AppointmentCard = ({ appointment, primary = false, onStart, onComplete }: { appointment: AppointmentDto; primary?: boolean; onStart?: (id: string) => void; onComplete?: (id: string) => void }): ReactElement => (
   <article className={primary ? 'pro-appointment pro-appointment--primary' : 'pro-appointment'}>
     <div>
       <strong>{appointment.patientName}</strong>
@@ -38,7 +39,8 @@ const AppointmentCard = ({ appointment, primary = false }: { appointment: Appoin
     </div>
     {appointment.notes ? <p>{appointment.notes}</p> : null}
     <footer>
-      <button type="button" disabled>Iniciar atención</button>
+      {appointment.status === 'arrived' ? <button type="button" onClick={() => onStart?.(appointment.id)}>Iniciar atención</button> : null}
+      {appointment.status === 'in_progress' ? <button type="button" onClick={() => onComplete?.(appointment.id)}>Finalizar atención</button> : null}
       <button type="button" disabled>Ver historia</button>
       <button type="button" disabled>Avisar demora</button>
       <button type="button" disabled>Mensaje a secretaría</button>
@@ -80,7 +82,25 @@ export const ProfessionalDashboardPage = (): ReactElement => {
   }, [accessToken, activeOrganizationId]);
 
   const waitingRoom = dashboard?.waitingRoom ?? [];
+  const inProgress = (dashboard?.todayAppointments ?? []).find((appointment) => appointment.status === 'in_progress') ?? null;
   const appointments = dashboard?.todayAppointments ?? [];
+  const refresh = async (): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    setDashboard(await professionalApi.dashboard(accessToken, activeOrganizationId));
+  };
+
+  const handleStart = async (id: string): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    await professionalApi.start(accessToken, activeOrganizationId, id);
+    await refresh();
+  };
+
+  const handleComplete = async (id: string): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    await professionalApi.complete(accessToken, activeOrganizationId, id);
+    await refresh();
+  };
+
   const professionalName = useMemo(() => {
     const professional = dashboard?.me.professional;
     return professional?.displayName ?? (professional ? `${professional.firstName} ${professional.lastName}` : 'Profesional');
@@ -110,8 +130,9 @@ export const ProfessionalDashboardPage = (): ReactElement => {
 
       <div className="pro-grid">
         <section className="pro-panel">
-          <header><h2>Sala de espera</h2><span>Polling cada 15s</span></header>
-          {waitingRoom.length > 0 ? waitingRoom.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} />) : (
+          <header><h2>{inProgress ? 'Atención actual' : 'Sala de espera'}</h2><span>Polling cada 15s</span></header>
+          {inProgress ? <AppointmentCard appointment={inProgress} primary onComplete={handleComplete} /> : null}
+          {waitingRoom.length > 0 ? waitingRoom.map((appointment) => <AppointmentCard key={appointment.id} appointment={appointment} onStart={handleStart} />) : (
             <div className="pro-empty">
               <strong>No hay pacientes en sala de espera.</strong>
               <p>Cuando secretaría marque “Llegó”, aparecerán acá.</p>

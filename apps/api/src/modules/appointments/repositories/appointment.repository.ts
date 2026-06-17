@@ -2,7 +2,7 @@ import { AppointmentModel, type AppointmentDocument } from '../models/appointmen
 
 type AppointmentStatus = AppointmentDocument['status'];
 
-const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived'];
+const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived', 'in_progress'];
 const OCCUPIED_APPOINTMENT_STATUSES: AppointmentStatus[] = [...ACTIVE_APPOINTMENT_STATUSES, 'completed', 'no_show'];
 
 interface CreateAppointmentInput {

@@ -12,3 +12,6 @@ professionalPanelRouter.get('/me', asyncHandler(professionalPanelController.me))
 professionalPanelRouter.get('/dashboard', asyncHandler(professionalPanelController.dashboard));
 professionalPanelRouter.get('/appointments', asyncHandler(professionalPanelController.appointments));
 professionalPanelRouter.get('/waiting-room', asyncHandler(professionalPanelController.waitingRoom));
+professionalPanelRouter.get('/appointments/today', asyncHandler(professionalPanelController.appointments));
+professionalPanelRouter.post('/appointments/:appointmentId/start', asyncHandler(professionalPanelController.startAppointment));
+professionalPanelRouter.post('/appointments/:appointmentId/complete', asyncHandler(professionalPanelController.completeAppointment));

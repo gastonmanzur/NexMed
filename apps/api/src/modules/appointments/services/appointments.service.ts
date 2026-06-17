@@ -73,13 +73,14 @@ interface RescheduleAppointmentInput {
   reason?: string | undefined;
 }
 
-const ACTIVE_BOOKING_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived'];
-const PENDING_OPERATIONAL_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived'];
+const ACTIVE_BOOKING_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived', 'in_progress'];
+const PENDING_OPERATIONAL_STATUSES: AppointmentStatus[] = ['booked', 'confirmed_by_patient', 'arrived', 'in_progress'];
 const TERMINAL_STATUSES: AppointmentStatus[] = ['completed', 'no_show', 'canceled_by_patient', 'canceled_by_staff', 'rescheduled'];
 const CENTER_STATUS_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
   booked: ['arrived', 'completed', 'no_show', 'canceled_by_staff'],
   confirmed_by_patient: ['arrived', 'completed', 'no_show', 'canceled_by_staff'],
-  arrived: ['completed', 'no_show', 'canceled_by_staff'],
+  arrived: ['in_progress', 'completed', 'no_show', 'canceled_by_staff'],
+  in_progress: ['completed'],
   completed: [],
   no_show: [],
   canceled_by_patient: [],

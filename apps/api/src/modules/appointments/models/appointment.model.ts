@@ -4,6 +4,7 @@ export const appointmentStatuses = [
   'booked',
   'confirmed_by_patient',
   'arrived',
+  'in_progress',
   'canceled_by_staff',
   'canceled_by_patient',
   'rescheduled',
@@ -47,6 +48,10 @@ const appointmentSchema = new mongoose.Schema(
     statusUpdatedByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
     statusUpdatedByRole: { type: String, required: false, trim: true, default: null },
     arrivedAt: { type: Date, required: false, default: null, index: true },
+    startedAt: { type: Date, required: false, default: null, index: true },
+    startedByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
+    completedAt: { type: Date, required: false, default: null, index: true },
+    completedByUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null },
     statusHistory: {
       type: [{
         status: { type: String, enum: appointmentStatuses, required: true },
@@ -78,7 +83,7 @@ const appointmentSchema = new mongoose.Schema(
 
 appointmentSchema.index({ organizationId: 1, professionalId: 1, startAt: 1, endAt: 1 }, {
   unique: true,
-  partialFilterExpression: { status: { $in: ['booked', 'confirmed_by_patient', 'arrived'] } }
+  partialFilterExpression: { status: { $in: ['booked', 'confirmed_by_patient', 'arrived', 'in_progress'] } }
 });
 
 appointmentSchema.index({ organizationId: 1, professionalId: 1, startAt: 1 });

@@ -13,9 +13,9 @@ interface ApiErrorPayload {
   error?: { message?: string };
 }
 
-const request = async <T>(path: string, accessToken: string, organizationId: string): Promise<T> => {
+const request = async <T>(path: string, accessToken: string, organizationId: string, method = 'GET'): Promise<T> => {
   const response = await fetch(`${API_URL}${path}`, {
-    method: 'GET',
+    method,
     credentials: 'include',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -60,6 +60,16 @@ export const professionalApi = {
 
   waitingRoom: async (accessToken: string, organizationId: string): Promise<AppointmentDto[]> => {
     const result = await request<{ success: true; data: AppointmentDto[] }>('/professional/waiting-room', accessToken, organizationId);
+    return result.data;
+  },
+
+  start: async (accessToken: string, organizationId: string, appointmentId: string): Promise<AppointmentDto> => {
+    const result = await request<{ success: true; data: AppointmentDto }>(`/professional/appointments/${appointmentId}/start`, accessToken, organizationId, 'POST');
+    return result.data;
+  },
+
+  complete: async (accessToken: string, organizationId: string, appointmentId: string): Promise<AppointmentDto> => {
+    const result = await request<{ success: true; data: AppointmentDto }>(`/professional/appointments/${appointmentId}/complete`, accessToken, organizationId, 'POST');
     return result.data;
   }
 };

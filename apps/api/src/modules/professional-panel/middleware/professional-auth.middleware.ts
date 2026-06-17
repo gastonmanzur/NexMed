@@ -18,7 +18,7 @@ export const requireProfessionalMembership = async (req: AuthenticatedRequest, _
   const organizationId = resolveOrganizationId(req);
   if (!organizationId) throw new AppError('ORGANIZATION_CONTEXT_REQUIRED', 400, 'Organization context is required');
 
-  const membership = await members.findByOrganizationAndUser(organizationId, req.auth.userId);
+  const membership = await members.findProfessionalByOrganizationAndUser(organizationId, req.auth.userId);
   if (!membership || membership.status !== 'active' || membership.role !== 'professional') {
     throw new AppError('FORBIDDEN', 403, 'Professional access is required');
   }

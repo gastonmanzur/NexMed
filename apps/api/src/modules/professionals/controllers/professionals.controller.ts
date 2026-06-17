@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { z } from 'zod';
 import type { AuthenticatedRequest } from '../../auth/types/auth-request.js';
 import { ProfessionalsService } from '../services/professionals.service.js';
+import { ProfessionalAccessService } from '../services/professional-access.service.js';
 import { env } from '../../../config/env.js';
 import { AppError } from '../../../core/errors.js';
 import sharp from 'sharp';
@@ -66,6 +67,13 @@ const updateProfessionalStatusSchema = z.object({
   status: professionalStatusSchema
 });
 
+const professionalAccessSchema = z.object({
+  email: z.string().trim().email(),
+  firstName: z.string().trim().min(1).max(120).optional(),
+  lastName: z.string().trim().min(1).max(120).optional(),
+  sendInvite: z.boolean().optional()
+});
+
 const replaceProfessionalSpecialtiesSchema = z.object({
   specialtyIds: z.array(z.string().trim().min(1))
 });
@@ -111,6 +119,7 @@ export const professionalAvatarMulterErrorHandler = (error: unknown): never => {
 };
 
 const service = new ProfessionalsService();
+const accessService = new ProfessionalAccessService();
 
 export const professionalsController = {
   listProfessionals: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -143,6 +152,25 @@ export const professionalsController = {
     const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
     const { status } = updateProfessionalStatusSchema.parse(req.body);
     const data = await service.updateProfessionalStatus(organizationId, professionalId, status, req.auth ? { globalRole: req.auth.globalRole } : undefined);
+    res.status(200).json({ success: true, data });
+  },
+
+  activateProfessionalAccess: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
+    const input = professionalAccessSchema.parse(req.body);
+    const data = await accessService.activate(organizationId, professionalId, input);
+    res.status(200).json({ success: true, data });
+  },
+
+  resendProfessionalAccess: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
+    const data = await accessService.resend(organizationId, professionalId);
+    res.status(200).json({ success: true, data });
+  },
+
+  deactivateProfessionalAccess: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
+    const data = await accessService.deactivate(organizationId, professionalId);
     res.status(200).json({ success: true, data });
   },
 

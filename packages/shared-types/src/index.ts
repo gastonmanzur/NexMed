@@ -154,6 +154,9 @@ export interface ProfessionalDto {
   avatarUrl: string | null;
   status: ProfessionalStatus;
   userId: string | null;
+  accessEnabled?: boolean;
+  accessUserId?: string | null;
+  accessEmail?: string | null;
   availabilityReleaseMode: AvailabilityReleaseMode;
   availabilityReleaseLimit: number | null;
   specialties: SpecialtySummaryDto[];
@@ -243,7 +246,7 @@ export interface CalculatedAvailabilityDto {
 }
 
 
-export type AppointmentStatus = 'booked' | 'confirmed_by_patient' | 'arrived' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
+export type AppointmentStatus = 'booked' | 'confirmed_by_patient' | 'arrived' | 'in_progress' | 'canceled_by_staff' | 'canceled_by_patient' | 'rescheduled' | 'completed' | 'no_show';
 export type AppointmentSource = 'staff_manual' | 'admin_manual' | 'patient_self_service' | 'express_booking';
 export type AppointmentBeneficiaryType = 'self' | 'family_member';
 export type AppointmentDurationMultiplier = 1 | 2;
@@ -290,6 +293,10 @@ export interface AppointmentDto {
   statusUpdatedByUserId: string | null;
   statusUpdatedByRole: string | null;
   arrivedAt: string | null;
+  startedAt?: string | null;
+  startedByUserId?: string | null;
+  completedAt?: string | null;
+  completedByUserId?: string | null;
   statusHistory: AppointmentStatusHistoryItemDto[];
   rescheduledFromAppointmentId: string | null;
   rescheduledToAppointmentId: string | null;
