@@ -1,5 +1,15 @@
 import type { AvailabilityReleaseMode, ProfessionalDto } from '@starter/shared-types';
 
+export interface ProfessionalAccessResponse {
+  message: string;
+  inviteUrl?: string;
+  inviteExpiresAt?: string;
+  emailSent?: boolean;
+  smtpConfigured?: boolean;
+  userAlreadyExisted?: boolean;
+  userHasPassword?: boolean;
+}
+
 const rawApiUrl = import.meta.env.VITE_API_URL;
 
 if (!rawApiUrl) {
@@ -143,8 +153,8 @@ export const professionalsApi = {
     return result.data;
   },
 
-  activateAccess: async (accessToken: string, organizationId: string, professionalId: string, input: { email: string; firstName?: string; lastName?: string; sendInvite?: boolean }): Promise<{ message: string }> => {
-    const result = await request<{ success: true; data: { message: string } }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
+  activateAccess: async (accessToken: string, organizationId: string, professionalId: string, input: { email: string; firstName?: string; lastName?: string; sendInvite?: boolean }): Promise<ProfessionalAccessResponse> => {
+    const result = await request<{ success: true; data: ProfessionalAccessResponse }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify(input)
@@ -152,16 +162,16 @@ export const professionalsApi = {
     return result.data;
   },
 
-  resendAccess: async (accessToken: string, organizationId: string, professionalId: string): Promise<{ message: string }> => {
-    const result = await request<{ success: true; data: { message: string } }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
-      method: 'PATCH',
+  resendAccess: async (accessToken: string, organizationId: string, professionalId: string): Promise<ProfessionalAccessResponse> => {
+    const result = await request<{ success: true; data: ProfessionalAccessResponse }>(`/organizations/${organizationId}/professionals/${professionalId}/access/resend-invite`, {
+      method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     return result.data;
   },
 
-  deactivateAccess: async (accessToken: string, organizationId: string, professionalId: string): Promise<{ message: string }> => {
-    const result = await request<{ success: true; data: { message: string } }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
+  deactivateAccess: async (accessToken: string, organizationId: string, professionalId: string): Promise<ProfessionalAccessResponse> => {
+    const result = await request<{ success: true; data: ProfessionalAccessResponse }>(`/organizations/${organizationId}/professionals/${professionalId}/access`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${accessToken}` }
     });

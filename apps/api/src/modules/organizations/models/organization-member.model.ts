@@ -1,6 +1,6 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
-export const organizationMemberRoles = ['owner', 'admin', 'staff', 'patient', 'professional'] as const;
+export const organizationMemberRoles = ['owner', 'admin', 'staff', 'manager', 'patient', 'professional'] as const;
 export const organizationMemberStatuses = ['active', 'inactive', 'blocked'] as const;
 
 const organizationMemberSchema = new mongoose.Schema(

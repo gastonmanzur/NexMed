@@ -44,6 +44,8 @@ export const ProfessionalFormPage = (): ReactElement => {
   const [accessEnabled, setAccessEnabled] = useState(false);
   const [accessEmail, setAccessEmail] = useState('');
   const [accessMessage, setAccessMessage] = useState('');
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [inviteStatus, setInviteStatus] = useState('');
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId) {
@@ -76,6 +78,7 @@ export const ProfessionalFormPage = (): ReactElement => {
           setAvatarPreview(professional.avatarUrl ? resolveAvatarUrl(professional.avatarUrl) : null);
           setAccessEnabled(professional.accessEnabled === true);
           setAccessEmail(professional.accessEmail ?? professional.email ?? '');
+          setInviteStatus(professional.accessEnabled ? 'Activo o invitación pendiente' : 'Sin acceso');
         }
       } catch (cause) {
         setError((cause as Error).message);
@@ -192,25 +195,42 @@ export const ProfessionalFormPage = (): ReactElement => {
                   <span>Email de acceso</span>
                   <input value={accessEmail} onChange={(event) => setAccessEmail(event.target.value)} placeholder="profesional@ejemplo.com" />
                 </label>
-                <p className="nx-entity-form-page__hint">Estado: {accessEnabled ? 'Activo' : 'Sin acceso'}</p>
-                {accessMessage ? <p className="nx-entity-form-page__hint" role="status">{accessMessage}</p> : null}
+                <div className="nx-entity-form-page__fieldset">
+                  <p><strong>Acceso profesional {accessEnabled ? 'activo' : 'sin activar'}</strong></p>
+                  <p><strong>Email:</strong><br />{accessEmail || '-'}</p>
+                  <p><strong>Estado:</strong> {inviteStatus || (accessEnabled ? 'Activo' : 'Sin acceso')}</p>
+                  {inviteUrl ? (
+                    <label className="nx-field">
+                      <span>Link de invitación</span>
+                      <input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} />
+                    </label>
+                  ) : null}
+                  {accessMessage ? <p className="nx-entity-form-page__hint" role="status">{accessMessage}</p> : null}
+                  {inviteUrl ? <p className="nx-entity-form-page__hint">No hay envío de email configurado. Copiá este enlace y compartilo manualmente con el profesional.</p> : null}
+                </div>
                 <div className="nx-form-actions">
                   <button type="button" className="nx-btn-secondary" disabled={loading || !accessEnabled} onClick={async () => {
                     if (!accessToken || !professionalId) return;
                     try {
                       setLoading(true); setError(''); setAccessMessage('');
                       const result = await professionalsApi.activateAccess(accessToken, activeOrganizationId, professionalId, { email: accessEmail, firstName, lastName, sendInvite: true });
-                      setAccessMessage(result.message); setAccessEnabled(true);
+                      setAccessMessage(result.message); setInviteUrl(result.inviteUrl ?? ''); setInviteStatus(result.inviteUrl ? 'Invitación pendiente' : 'Activo'); setAccessEnabled(true);
                     } catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
                   }}>Crear acceso</button>
+                  <button type="button" className="nx-btn-secondary" disabled={!inviteUrl} onClick={() => { void navigator.clipboard.writeText(inviteUrl); setAccessMessage('Enlace de invitación copiado.'); }}>Copiar enlace</button>
                   <button type="button" className="nx-btn-secondary" disabled={loading || !accessEnabled} onClick={async () => {
                     if (!accessToken || !professionalId) return;
-                    try { setLoading(true); setError(''); const result = await professionalsApi.resendAccess(accessToken, activeOrganizationId, professionalId); setAccessMessage(result.message); }
+                    try { setLoading(true); setError(''); const result = await professionalsApi.resendAccess(accessToken, activeOrganizationId, professionalId); setAccessMessage(result.message); setInviteUrl(result.inviteUrl ?? ''); setInviteStatus('Invitación pendiente'); }
                     catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
-                  }}>Recuperar acceso</button>
+                  }}>Reenviar invitación</button>
                   <button type="button" className="nx-btn-secondary" disabled={loading || !accessEnabled} onClick={async () => {
                     if (!accessToken || !professionalId) return;
-                    try { setLoading(true); setError(''); const result = await professionalsApi.deactivateAccess(accessToken, activeOrganizationId, professionalId); setAccessMessage(result.message); setAccessEnabled(false); }
+                    try { setLoading(true); setError(''); const result = await professionalsApi.resendAccess(accessToken, activeOrganizationId, professionalId); setAccessMessage('Nuevo enlace generado.'); setInviteUrl(result.inviteUrl ?? ''); setInviteStatus('Invitación pendiente'); }
+                    catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
+                  }}>Generar nuevo enlace</button>
+                  <button type="button" className="nx-btn-secondary" disabled={loading || !accessEnabled} onClick={async () => {
+                    if (!accessToken || !professionalId) return;
+                    try { setLoading(true); setError(''); const result = await professionalsApi.deactivateAccess(accessToken, activeOrganizationId, professionalId); setAccessMessage(result.message); setInviteUrl(''); setInviteStatus('Sin acceso'); setAccessEnabled(false); }
                     catch (cause) { setError((cause as Error).message); } finally { setLoading(false); }
                   }}>Desactivar acceso</button>
                 </div>

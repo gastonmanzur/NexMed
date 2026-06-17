@@ -7,7 +7,7 @@ export interface AuthenticatedUser {
   email: string;
   activeOrganizationId?: string | null;
   organizationId?: string | null;
-  organizationRole?: 'owner' | 'admin' | 'staff' | 'patient' | 'professional';
+  organizationRole?: 'owner' | 'admin' | 'manager' | 'staff' | 'patient' | 'professional';
   professionalId?: string | null;
 }
 

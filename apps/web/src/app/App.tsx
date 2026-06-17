@@ -32,6 +32,7 @@ import { OrganizationOnboardingPage } from '../features/organizations/Organizati
 import { OrganizationProfilePage } from '../features/organizations/OrganizationProfilePage';
 import { ProfessionalsListPage } from '../features/professionals/ProfessionalsListPage';
 import { ProfessionalFormPage } from '../features/professionals/ProfessionalFormPage';
+import { ProfessionalInvitePage } from '../features/professionals/ProfessionalInvitePage';
 import { ProfessionalAvailabilityPage } from '../features/professionals/ProfessionalAvailabilityPage';
 import { SpecialtiesListPage } from '../features/specialties/SpecialtiesListPage';
 import { SpecialtyFormPage } from '../features/specialties/SpecialtyFormPage';
@@ -78,6 +79,7 @@ export const App = (): ReactElement => {
       <Route path="/join/:tokenOrSlug" element={<JoinPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/professional-invite/:token" element={<ProfessionalInvitePage />} />
       <Route
         path="/post-login"
         element={

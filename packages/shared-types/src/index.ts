@@ -3,7 +3,7 @@ export type AuthProvider = 'local' | 'google';
 export type GlobalRole = 'super_admin' | 'user';
 export type OrganizationType = 'clinic' | 'office' | 'esthetic_center' | 'professional_cabinet' | 'other';
 export type OrganizationStatus = 'onboarding' | 'active' | 'inactive' | 'suspended' | 'blocked';
-export type OrganizationMemberRole = 'owner' | 'admin' | 'staff' | 'patient' | 'professional';
+export type OrganizationMemberRole = 'owner' | 'admin' | 'manager' | 'staff' | 'patient' | 'professional';
 export type OrganizationMemberStatus = 'active' | 'inactive' | 'blocked';
 
 export interface AvatarDto {
