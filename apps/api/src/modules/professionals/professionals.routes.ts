@@ -26,7 +26,7 @@ professionalsRouter.get(
 professionalsRouter.post(
   '/',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.createProfessional)
 );
 professionalsRouter.get(
@@ -38,54 +38,68 @@ professionalsRouter.get(
 professionalsRouter.patch(
   '/:professionalId',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.updateProfessional)
 );
 
 professionalsRouter.post(
   '/:professionalId/access',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.activateProfessionalAccess)
 );
 professionalsRouter.patch(
   '/:professionalId/access',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.resendProfessionalAccess)
 );
+
+professionalsRouter.post(
+  '/:professionalId/access/resend-invite',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
+  asyncHandler(professionalsController.resendProfessionalAccess)
+);
+professionalsRouter.post(
+  '/:professionalId/access/regenerate-invite',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
+  asyncHandler(professionalsController.resendProfessionalAccess)
+);
+
 professionalsRouter.delete(
   '/:professionalId/access',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.deactivateProfessionalAccess)
 );
 
 professionalsRouter.patch(
   '/:professionalId/status',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.updateProfessionalStatus)
 );
 
 professionalsRouter.post(
   '/:professionalId/avatar',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   uploadProfessionalAvatar,
   asyncHandler(professionalsController.uploadProfessionalAvatar)
 );
 professionalsRouter.delete(
   '/:professionalId/avatar',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.deleteProfessionalAvatar)
 );
 
 professionalsRouter.put(
   '/:professionalId/specialties',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.replaceProfessionalSpecialties)
 );
 
@@ -98,7 +112,7 @@ specialtiesRouter.get(
 specialtiesRouter.post(
   '/',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.createSpecialty)
 );
 specialtiesRouter.get(
@@ -110,12 +124,12 @@ specialtiesRouter.get(
 specialtiesRouter.patch(
   '/:specialtyId',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.updateSpecialty)
 );
 specialtiesRouter.patch(
   '/:specialtyId/status',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(professionalsController.updateSpecialtyStatus)
 );

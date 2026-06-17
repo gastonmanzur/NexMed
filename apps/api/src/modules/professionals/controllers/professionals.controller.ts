@@ -158,13 +158,13 @@ export const professionalsController = {
   activateProfessionalAccess: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
     const input = professionalAccessSchema.parse(req.body);
-    const data = await accessService.activate(organizationId, professionalId, input);
+    const data = await accessService.activate(organizationId, professionalId, input, req.auth?.userId ?? "");
     res.status(200).json({ success: true, data });
   },
 
   resendProfessionalAccess: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId, professionalId } = professionalPathParamsSchema.parse(req.params);
-    const data = await accessService.resend(organizationId, professionalId);
+    const data = await accessService.resend(organizationId, professionalId, req.auth?.userId ?? "");
     res.status(200).json({ success: true, data });
   },
 

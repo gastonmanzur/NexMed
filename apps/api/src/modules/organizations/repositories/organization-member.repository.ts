@@ -3,7 +3,7 @@ import { OrganizationMemberModel, type OrganizationMemberDocument } from '../mod
 interface CreateMemberInput {
   organizationId: string;
   userId: string;
-  role: 'owner' | 'admin' | 'staff' | 'patient' | 'professional';
+  role: 'owner' | 'admin' | 'manager' | 'staff' | 'patient' | 'professional';
   professionalId?: string | null;
   status?: 'active' | 'inactive' | 'blocked';
 }
