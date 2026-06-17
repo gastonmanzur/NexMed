@@ -15,6 +15,7 @@ import { analyticsRouter } from '../analytics/analytics.routes.js';
 import { organizationHealthInsuranceRouter } from './organization-health-insurance.routes.js';
 import { organizationWhatsAppSettingsController } from '../whatsapp/controllers/organization-whatsapp-settings.controller.js';
 import { appointmentNotificationController } from '../whatsapp/controllers/appointment-notification.controller.js';
+import { clinicalController } from '../clinical/controllers/clinical.controller.js';
 
 export const organizationsRouter = Router();
 
@@ -144,6 +145,32 @@ organizationsRouter.get(
   asyncHandler(requireOrganizationMember),
   asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
   asyncHandler(appointmentNotificationController.listByAppointment)
+);
+
+
+organizationsRouter.get(
+  '/:organizationId/internal-messages',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
+  asyncHandler(clinicalController.organizationMessages)
+);
+organizationsRouter.post(
+  '/:organizationId/appointments/:appointmentId/messages',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
+  asyncHandler(clinicalController.createOrganizationAppointmentMessage)
+);
+organizationsRouter.patch(
+  '/:organizationId/internal-messages/:messageId/read',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
+  asyncHandler(clinicalController.readOrganizationMessage)
+);
+organizationsRouter.patch(
+  '/:organizationId/internal-messages/:messageId/resolve',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
+  asyncHandler(clinicalController.resolveOrganizationMessage)
 );
 
 organizationsRouter.use('/:organizationId/professionals', professionalsRouter);

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import type { AppointmentBeneficiaryType, AppointmentDto, AppointmentDurationMultiplier, AppointmentStatus, AppointmentSource } from '@starter/shared-types';
 import { AppError } from '../../../core/errors.js';
+import { InternalMessageModel } from '../../clinical/models/internal-message.model.js';
 import {
   formatAppointmentDateTimeArgentina,
   getArgentinaDateKey,
@@ -340,7 +341,6 @@ export class AppointmentsService {
     if (!updated) {
       throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
     }
-
     await this.auditLogs.create({
       organizationId,
       actorUserId,
@@ -416,6 +416,20 @@ export class AppointmentsService {
 
     if (!updated) {
       throw new AppError('APPOINTMENT_NOT_FOUND', 404, 'Appointment not found');
+    }
+
+
+
+    if (input.status === 'arrived') {
+      await InternalMessageModel.create({
+        organizationId,
+        appointmentId,
+        patientProfileId: updated.patientProfileId ?? null,
+        fromUserId: actorUserId,
+        toRole: 'professional',
+        type: 'patient_ready',
+        message: `Paciente ${updated.patientName} llegó y está listo para atención.`
+      }).catch(() => undefined);
     }
 
     await this.auditLogs.create({

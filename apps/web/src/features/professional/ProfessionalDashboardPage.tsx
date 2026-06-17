@@ -1,6 +1,7 @@
 import type { AppointmentDto, ProfessionalDashboardDto } from '@starter/shared-types';
 import type { ReactElement } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ErrorState, LoadingState } from '../../components/AsyncState';
 import { useAuth } from '../auth/AuthContext';
 import { professionalApi } from './professional-api';
@@ -40,7 +41,7 @@ const AppointmentCard = ({ appointment, primary = false, onStart, onComplete }: 
     {appointment.notes ? <p>{appointment.notes}</p> : null}
     <footer>
       {appointment.status === 'arrived' ? <button type="button" onClick={() => onStart?.(appointment.id)}>Iniciar atención</button> : null}
-      {appointment.status === 'in_progress' ? <button type="button" onClick={() => onComplete?.(appointment.id)}>Finalizar atención</button> : null}
+      {appointment.status === 'in_progress' ? <button type="button" onClick={() => window.location.assign(`/app/professional/appointments/${appointment.id}/attention`)}>Abrir atención</button> : null}
       <button type="button" disabled>Ver historia</button>
       <button type="button" disabled>Avisar demora</button>
       <button type="button" disabled>Mensaje a secretaría</button>
@@ -50,9 +51,11 @@ const AppointmentCard = ({ appointment, primary = false, onStart, onComplete }: 
 
 export const ProfessionalDashboardPage = (): ReactElement => {
   const { accessToken, activeOrganizationId } = useAuth();
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<ProfessionalDashboardDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId) return;
@@ -64,6 +67,7 @@ export const ProfessionalDashboardPage = (): ReactElement => {
         const data = await professionalApi.dashboard(accessToken, activeOrganizationId);
         if (!alive) return;
         setDashboard(data);
+        setMessages(await professionalApi.messages(accessToken, activeOrganizationId));
         setError(null);
       } catch (err) {
         if (!alive) return;
@@ -92,13 +96,20 @@ export const ProfessionalDashboardPage = (): ReactElement => {
   const handleStart = async (id: string): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
     await professionalApi.start(accessToken, activeOrganizationId, id);
-    await refresh();
+    navigate(`/app/professional/appointments/${id}/attention`);
   };
 
   const handleComplete = async (id: string): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
     await professionalApi.complete(accessToken, activeOrganizationId, id);
     await refresh();
+  };
+
+  const markMessage = async (id: string, action: 'read' | 'resolve'): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    if (action === 'read') await professionalApi.markMessageRead(accessToken, activeOrganizationId, id);
+    else await professionalApi.resolveMessage(accessToken, activeOrganizationId, id);
+    setMessages(await professionalApi.messages(accessToken, activeOrganizationId));
   };
 
   const professionalName = useMemo(() => {
@@ -148,6 +159,18 @@ export const ProfessionalDashboardPage = (): ReactElement => {
               <p>La agenda del día se actualizará automáticamente.</p>
             </div>
           )}
+        </section>
+
+
+        <section className="pro-panel">
+          <header><h2>Mensajes de secretaría</h2><span>{messages.filter((m) => m.status === 'unread').length} no leídos</span></header>
+          {messages.length ? messages.slice(0, 6).map((m) => (
+            <div key={m._id ?? m.id} className="pro-agenda-row">
+              <span><b className={m.status === 'unread' ? 'pro-status pro-status--arrived' : 'pro-status'}>{m.status === 'unread' ? 'Mensaje no leído' : m.status}</b> {m.message}</span>
+              <button type="button" onClick={() => markMessage(m._id ?? m.id, 'read')}>Leído</button>
+              <button type="button" onClick={() => markMessage(m._id ?? m.id, 'resolve')}>Resolver</button>
+            </div>
+          )) : <div className="pro-empty"><strong>Sin mensajes operativos.</strong></div>}
         </section>
 
         <section className="pro-panel">

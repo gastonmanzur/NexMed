@@ -61,6 +61,7 @@ import { OrganizationSubscriptionPage } from '../features/subscription/Organizat
 import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
 import { ProfessionalShell } from '../features/professional/ProfessionalShell';
 import { ProfessionalDashboardPage } from '../features/professional/ProfessionalDashboardPage';
+import { ProfessionalAttentionPage } from '../features/professional/ProfessionalAttentionPage';
 
 const shell = (page: ReactElement): ReactElement => <AppShell>{page}</AppShell>;
 
@@ -165,6 +166,17 @@ export const App = (): ReactElement => {
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
             <ProfessionalShell>
               <ProfessionalDashboardPage />
+            </ProfessionalShell>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/app/professional/appointments/:appointmentId/attention"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalAttentionPage />
             </ProfessionalShell>
           </ProtectedRoute>
         }
