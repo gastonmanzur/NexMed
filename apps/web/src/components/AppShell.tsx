@@ -5,6 +5,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { useNotifications } from '../features/notifications/NotificationsContext';
 import { patientApi } from '../features/patient/patient-api';
+import { organizationApi, type InternalMessageDto } from '../features/organizations/organization-api';
+import { InternalMessageDetailModal, internalMessagePersonName, internalMessageTypeLabel } from '../features/organizations/InternalMessagesCard';
 import { resolveAvatarUrl } from '../lib/resolve-avatar-url';
 
 interface NavItem {
@@ -115,6 +117,10 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
   const [loadingMarkAll, setLoadingMarkAll] = useState(false);
   const [dropdownError, setDropdownError] = useState('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [internalMessagePopup, setInternalMessagePopup] = useState<InternalMessageDto | null>(null);
+  const [internalMessageDetail, setInternalMessageDetail] = useState<InternalMessageDto | null>(null);
+  const [markingInternalRead, setMarkingInternalRead] = useState(false);
+  const [internalMessagesRefreshKey, setInternalMessagesRefreshKey] = useState(0);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const mobileNavRef = useRef<HTMLDivElement | null>(null);
 
@@ -134,6 +140,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     [notificationItems]
   );
   const hasUnreadInDropdown = sortedTopNotifications.some((item) => !item.readAt);
+  const isCenterShell = !isSuperAdmin && !isPatient && Boolean(activeOrganizationId);
 
   const closeNotifications = () => {
     setIsNotificationsOpen(false);
@@ -207,6 +214,62 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
       await refreshUnreadCount();
     } finally {
       setLoadingMarkAll(false);
+    }
+  };
+
+
+
+  useEffect(() => {
+    if (!accessToken || !activeOrganizationId || !isCenterShell) {
+      setInternalMessagePopup(null);
+      return;
+    }
+
+    const notifiedKey = `nexmed:notifiedInternalMessages:${activeOrganizationId}`;
+    const readNotifiedIds = (): string[] => {
+      try {
+        const parsed = JSON.parse(window.sessionStorage.getItem(notifiedKey) ?? '[]');
+        return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+      } catch {
+        return [];
+      }
+    };
+    const rememberNotifiedId = (id: string): void => {
+      const next = Array.from(new Set([...readNotifiedIds(), id]));
+      window.sessionStorage.setItem(notifiedKey, JSON.stringify(next));
+    };
+
+    const pollInternalMessages = async (): Promise<void> => {
+      try {
+        const result = await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { status: 'unread', limit: 10 });
+        const notifiedIds = new Set(readNotifiedIds());
+        const nextMessage = result.items.find((message) => {
+          const id = message._id ?? message.id;
+          return Boolean(id) && !notifiedIds.has(id ?? '') && message.toRole === 'secretary' && message.fromRole === 'professional' && message.status === 'unread';
+        });
+        if (nextMessage) {
+          rememberNotifiedId(nextMessage._id ?? nextMessage.id ?? '');
+          setInternalMessagePopup(nextMessage);
+        }
+      } catch {
+        // El polling de mensajes internos no debe interrumpir la navegación del panel.
+      }
+    };
+
+    void pollInternalMessages();
+    const interval = window.setInterval(() => { void pollInternalMessages(); }, 12000);
+    return () => window.clearInterval(interval);
+  }, [accessToken, activeOrganizationId, isCenterShell, internalMessagesRefreshKey]);
+
+  const markInternalPopupRead = async (message: InternalMessageDto): Promise<void> => {
+    if (!accessToken || !activeOrganizationId) return;
+    setMarkingInternalRead(true);
+    try {
+      await organizationApi.markInternalMessageRead(accessToken, activeOrganizationId, message._id ?? message.id ?? '');
+      setInternalMessagePopup(null);
+      setInternalMessagesRefreshKey((current) => current + 1);
+    } finally {
+      setMarkingInternalRead(false);
     }
   };
 
@@ -487,6 +550,28 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
         </header>
 
         <div>{children}</div>
+
+        {internalMessagePopup ? (
+          <div className="nx-internal-alert" role="dialog" aria-modal="false" aria-label="Nuevo mensaje interno">
+            <button type="button" className="nx-internal-alert__overlay" aria-label="Cerrar aviso de mensaje interno" onClick={() => setInternalMessagePopup(null)} />
+            <section className="nx-internal-alert__card">
+              <span className="nx-internal-alert__eyebrow">Nuevo mensaje del profesional</span>
+              <h2>{internalMessagePersonName(internalMessagePopup.professionalId)}</h2>
+              <p><b>Tipo:</b> {internalMessageTypeLabel[internalMessagePopup.type] ?? internalMessagePopup.type}</p>
+              <p><b>Paciente:</b> {internalMessagePersonName(internalMessagePopup.patientProfileId)}</p>
+              <p className="nx-internal-alert__summary">{internalMessagePopup.message}</p>
+              <div className="nx-internal-alert__actions">
+                <button type="button" className="nx-btn-primary" onClick={() => { setInternalMessageDetail(internalMessagePopup); setInternalMessagePopup(null); }}>Ver mensaje</button>
+                <button type="button" className="nx-btn-secondary" disabled={markingInternalRead} onClick={() => void markInternalPopupRead(internalMessagePopup)}>{markingInternalRead ? 'Marcando...' : 'Marcar leído'}</button>
+                <button type="button" className="nx-btn-secondary" onClick={() => setInternalMessagePopup(null)}>Cerrar</button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {internalMessageDetail && accessToken && activeOrganizationId ? (
+          <InternalMessageDetailModal accessToken={accessToken} organizationId={activeOrganizationId} message={internalMessageDetail} allowReply onClose={() => setInternalMessageDetail(null)} onRefresh={() => { setInternalMessagesRefreshKey((current) => current + 1); }} />
+        ) : null}
       </div>
     </div>
   );
