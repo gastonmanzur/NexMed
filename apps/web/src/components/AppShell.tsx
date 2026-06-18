@@ -6,7 +6,7 @@ import { useAuth } from '../features/auth/AuthContext';
 import { useNotifications } from '../features/notifications/NotificationsContext';
 import { patientApi } from '../features/patient/patient-api';
 import { organizationApi, type InternalMessageDto } from '../features/organizations/organization-api';
-import { InternalMessageDetailModal, internalMessagePersonName, internalMessageTypeLabel } from '../features/organizations/InternalMessagesCard';
+import { InternalMessageDetailModal, InternalMessagePopup } from '../features/organizations/InternalMessagesCard';
 import { resolveAvatarUrl } from '../lib/resolve-avatar-url';
 
 interface NavItem {
@@ -552,21 +552,14 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
         <div>{children}</div>
 
         {internalMessagePopup ? (
-          <div className="nx-internal-alert" role="dialog" aria-modal="false" aria-label="Nuevo mensaje interno">
-            <button type="button" className="nx-internal-alert__overlay" aria-label="Cerrar aviso de mensaje interno" onClick={() => setInternalMessagePopup(null)} />
-            <section className="nx-internal-alert__card">
-              <span className="nx-internal-alert__eyebrow">Nuevo mensaje del profesional</span>
-              <h2>{internalMessagePersonName(internalMessagePopup.professionalId)}</h2>
-              <p><b>Tipo:</b> {internalMessageTypeLabel[internalMessagePopup.type] ?? internalMessagePopup.type}</p>
-              <p><b>Paciente:</b> {internalMessagePersonName(internalMessagePopup.patientProfileId)}</p>
-              <p className="nx-internal-alert__summary">{internalMessagePopup.message}</p>
-              <div className="nx-internal-alert__actions">
-                <button type="button" className="nx-btn-primary" onClick={() => { setInternalMessageDetail(internalMessagePopup); setInternalMessagePopup(null); }}>Ver mensaje</button>
-                <button type="button" className="nx-btn-secondary" disabled={markingInternalRead} onClick={() => void markInternalPopupRead(internalMessagePopup)}>{markingInternalRead ? 'Marcando...' : 'Marcar leído'}</button>
-                <button type="button" className="nx-btn-secondary" onClick={() => setInternalMessagePopup(null)}>Cerrar</button>
-              </div>
-            </section>
-          </div>
+          <InternalMessagePopup
+            message={internalMessagePopup}
+            currentRole="secretary"
+            markingRead={markingInternalRead}
+            onViewMessage={() => { setInternalMessageDetail(internalMessagePopup); setInternalMessagePopup(null); }}
+            onMarkRead={() => void markInternalPopupRead(internalMessagePopup)}
+            onClose={() => setInternalMessagePopup(null)}
+          />
         ) : null}
 
         {internalMessageDetail && accessToken && activeOrganizationId ? (

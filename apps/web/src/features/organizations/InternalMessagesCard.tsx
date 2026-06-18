@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { createPortal } from 'react-dom';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@starter/ui';
@@ -59,9 +60,11 @@ interface InternalMessageDetailModalProps {
   allowReply?: boolean;
   onClose: () => void;
   onRefresh: () => void | Promise<void>;
+  onMarkRead?: (messageId: string) => Promise<unknown>;
+  onResolve?: (messageId: string) => Promise<unknown>;
 }
 
-export const InternalMessageDetailModal = ({ accessToken, organizationId, message, allowReply = false, onClose, onRefresh }: InternalMessageDetailModalProps): ReactElement => {
+export const InternalMessageDetailModal = ({ accessToken, organizationId, message, allowReply = false, onClose, onRefresh, onMarkRead, onResolve }: InternalMessageDetailModalProps): ReactElement => {
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [success, setSuccess] = useState('');
@@ -70,8 +73,8 @@ export const InternalMessageDetailModal = ({ accessToken, organizationId, messag
     setBusy(action);
     setSuccess('');
     try {
-      if (action === 'read') await organizationApi.markInternalMessageRead(accessToken, organizationId, messageId(message));
-      else await organizationApi.resolveInternalMessage(accessToken, organizationId, messageId(message));
+      if (action === 'read') await (onMarkRead ? onMarkRead(messageId(message)) : organizationApi.markInternalMessageRead(accessToken, organizationId, messageId(message)));
+      else await (onResolve ? onResolve(messageId(message)) : organizationApi.resolveInternalMessage(accessToken, organizationId, messageId(message)));
       await onRefresh();
       setSuccess(action === 'read' ? 'Mensaje marcado como leído.' : 'Mensaje resuelto.');
     } finally {
@@ -97,7 +100,7 @@ export const InternalMessageDetailModal = ({ accessToken, organizationId, messag
   const appointment = message.appointmentId && typeof message.appointmentId === 'object' ? message.appointmentId : null;
   const appointmentId = typeof message.appointmentId === 'string' ? message.appointmentId : appointment?._id;
 
-  return <div className="nx-internal-modal" role="dialog" aria-modal="true" aria-labelledby={`internal-message-${messageId(message)}`}>
+  const modal = <div className="nx-internal-modal" role="dialog" aria-modal="true" aria-labelledby={`internal-message-${messageId(message)}`}>
     <button type="button" className="nx-internal-modal__overlay" aria-label="Cerrar detalle del mensaje" onClick={onClose} />
     <section className="nx-internal-modal__card">
       <header className="nx-internal-modal__header">
@@ -136,6 +139,47 @@ export const InternalMessageDetailModal = ({ accessToken, organizationId, messag
       </footer>
     </section>
   </div>;
+
+  return createPortal(modal, document.body);
+};
+
+
+
+interface InternalMessagePopupProps {
+  message: InternalMessageDto;
+  currentRole: 'secretary' | 'professional';
+  markingRead?: boolean;
+  onViewMessage: () => void;
+  onMarkRead: () => void;
+  onClose: () => void;
+}
+
+export const InternalMessagePopup = ({ message, currentRole, markingRead = false, onViewMessage, onMarkRead, onClose }: InternalMessagePopupProps): ReactElement => {
+  const senderLabel = currentRole === 'professional' ? 'Secretaría / Administración' : internalMessagePersonName(message.professionalId);
+  const title = currentRole === 'professional' ? 'Nuevo mensaje de secretaría' : 'Nuevo mensaje del profesional';
+  const appointment = message.appointmentId && typeof message.appointmentId === 'object' ? message.appointmentId : null;
+  const appointmentText = (appointment?._id || typeof message.appointmentId === 'string') ? 'Turno asociado' : '—';
+  const popup = <div className="nx-internal-alert" role="dialog" aria-modal="true" aria-label="Nuevo mensaje interno">
+    <button type="button" className="nx-internal-alert__overlay" aria-label="Cerrar aviso de mensaje interno" onClick={onClose} />
+    <section className="nx-internal-alert__card">
+      <span className="nx-internal-alert__eyebrow">Nuevo mensaje interno</span>
+      <h2>{title}</h2>
+      <div className="nx-internal-alert__badge">{internalMessageTypeLabel[message.type] ?? message.type}</div>
+      <dl className="nx-internal-alert__details">
+        <div><dt>De</dt><dd>{senderLabel}</dd></div>
+        <div><dt>Paciente</dt><dd>{internalMessagePersonName(message.patientProfileId)}</dd></div>
+        <div><dt>Turno</dt><dd>{appointmentText}</dd></div>
+      </dl>
+      <div className="nx-internal-alert__summary"><b>Mensaje:</b><p>{message.message || 'Sin texto adicional.'}</p></div>
+      <div className="nx-internal-alert__actions">
+        <button type="button" className="nx-btn-primary" onClick={onViewMessage}>Ver mensaje</button>
+        <button type="button" className="nx-btn-secondary" disabled={markingRead} onClick={onMarkRead}>{markingRead ? 'Marcando...' : 'Marcar leído'}</button>
+        <button type="button" className="nx-btn-secondary" onClick={onClose}>Cerrar</button>
+      </div>
+    </section>
+  </div>;
+
+  return createPortal(popup, document.body);
 };
 
 export const InternalMessagesCard = ({

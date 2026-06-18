@@ -1,4 +1,5 @@
 import type { AppointmentDto, ProfessionalDashboardDto, ProfessionalPanelMeDto } from '@starter/shared-types';
+import type { InternalMessageDto } from '../organizations/organization-api';
 
 const rawApiUrl = import.meta.env.VITE_API_URL;
 
@@ -99,8 +100,8 @@ export const professionalApi = {
     return result.data;
   },
 
-  messages: async (accessToken: string, organizationId: string): Promise<any[]> => {
-    const result = await request<{ success: true; data: any[] }>('/professional/messages', accessToken, organizationId);
+  messages: async (accessToken: string, organizationId: string): Promise<InternalMessageDto[]> => {
+    const result = await request<{ success: true; data: InternalMessageDto[] }>('/professional/messages', accessToken, organizationId);
     return result.data;
   },
 
