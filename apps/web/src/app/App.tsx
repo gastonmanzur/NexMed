@@ -63,6 +63,10 @@ import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
 import { ProfessionalShell } from '../features/professional/ProfessionalShell';
 import { ProfessionalDashboardPage } from '../features/professional/ProfessionalDashboardPage';
 import { ProfessionalAttentionPage } from '../features/professional/ProfessionalAttentionPage';
+import { ProfessionalPatientsPage } from '../features/professional/ProfessionalPatientsPage';
+import { ProfessionalClinicalHistoryPage } from '../features/professional/ProfessionalClinicalHistoryPage';
+import { ProfessionalMessagesPage } from '../features/professional/ProfessionalMessagesPage';
+import { ProfessionalProfilePage } from '../features/professional/ProfessionalProfilePage';
 
 const shell = (page: ReactElement): ReactElement => <AppShell>{page}</AppShell>;
 
@@ -155,9 +159,7 @@ export const App = (): ReactElement => {
         path="/app/professional/dashboard"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
-            <ProfessionalShell>
-              <ProfessionalDashboardPage />
-            </ProfessionalShell>
+            <Navigate to="/app/professional" replace />
           </ProtectedRoute>
         }
       />
@@ -165,9 +167,7 @@ export const App = (): ReactElement => {
         path="/app/professional/waiting-room"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
-            <ProfessionalShell>
-              <ProfessionalDashboardPage />
-            </ProfessionalShell>
+            <Navigate to="/app/professional" replace />
           </ProtectedRoute>
         }
       />
@@ -186,8 +186,46 @@ export const App = (): ReactElement => {
         path="/app/professional/appointments"
         element={
           <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <Navigate to="/app/professional" replace />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professional/patients"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
             <ProfessionalShell>
-              <ProfessionalDashboardPage />
+              <ProfessionalPatientsPage />
+            </ProfessionalShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professional/clinical-history"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalClinicalHistoryPage />
+            </ProfessionalShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professional/messages"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalMessagesPage />
+            </ProfessionalShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/app/professional/profile"
+        element={
+          <ProtectedRoute requireActiveOrganization allowedOrganizationRoles={['professional']}>
+            <ProfessionalShell>
+              <ProfessionalProfilePage />
             </ProfessionalShell>
           </ProtectedRoute>
         }

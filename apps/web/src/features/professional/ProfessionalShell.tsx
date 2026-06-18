@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { InternalMessageDto } from '../organizations/organization-api';
 import { InternalMessageDetailModal, InternalMessagePopup } from '../organizations/InternalMessagesCard';
@@ -9,6 +9,7 @@ import './professional.css';
 
 export const ProfessionalShell = ({ children }: { children: ReactNode }): ReactElement => {
   const { accessToken, activeOrganizationId, activeOrganizationSummary, user } = useAuth();
+  const location = useLocation();
   const [internalMessagePopup, setInternalMessagePopup] = useState<InternalMessageDto | null>(null);
   const [internalMessageDetail, setInternalMessageDetail] = useState<InternalMessageDto | null>(null);
   const [markingInternalRead, setMarkingInternalRead] = useState(false);
@@ -79,15 +80,11 @@ export const ProfessionalShell = ({ children }: { children: ReactNode }): ReactE
           </div>
         </div>
         <nav className="professional-nav" aria-label="Panel profesional">
-          <NavLink to="/app/professional">Inicio</NavLink>
-          <NavLink to="/app/professional/waiting-room">Sala de espera</NavLink>
-          <NavLink to="/app/professional/appointments">Agenda del día</NavLink>
-          <span>Atención actual</span>
-          <span>Pacientes</span>
-          <span>Historia clínica</span>
-          <span>Recetas / Indicaciones</span>
-          <span>Mensajes</span>
-          <span>Perfil</span>
+          <NavLink to="/app/professional" end className={() => location.pathname === '/app/professional' || location.pathname.startsWith('/app/professional/appointments') ? 'active' : undefined}>Agenda del día</NavLink>
+          <NavLink to="/app/professional/patients">Pacientes</NavLink>
+          <NavLink to="/app/professional/clinical-history">Historia clínica</NavLink>
+          <NavLink to="/app/professional/messages">Mensajes</NavLink>
+          <NavLink to="/app/professional/profile">Perfil</NavLink>
         </nav>
       </aside>
       <main className="professional-main">
