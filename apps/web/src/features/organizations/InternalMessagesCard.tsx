@@ -124,18 +124,18 @@ export const InternalMessageDetailModal = ({ accessToken, organizationId, messag
       </div>
 
       {allowReply && message.fromRole !== 'secretary' ? <div className="nx-internal-reply-box">
-        <label>Responder al profesional<textarea placeholder="Escribí una respuesta operativa" value={reply} onChange={(event) => setReply(event.target.value)} /></label>
-        <button type="button" className="nx-btn-primary" disabled={busy === 'reply' || !reply.trim()} onClick={() => void sendReply()}>{busy === 'reply' ? 'Enviando...' : 'Enviar respuesta'}</button>
+        <label>Responder al profesional<textarea className="nx-internal-textarea" placeholder="Escribí una respuesta operativa" value={reply} onChange={(event) => setReply(event.target.value)} /></label>
+        <button type="button" className="nx-btn-primary nx-internal-action nx-internal-action--primary" disabled={busy === 'reply' || !reply.trim()} onClick={() => void sendReply()}>{busy === 'reply' ? 'Enviando...' : 'Enviar respuesta'}</button>
       </div> : null}
 
       {success ? <p className="nx-internal-success" role="status">{success}</p> : null}
 
       <footer className="nx-internal-modal__actions">
         {message.status !== 'resolved' ? <>
-          <button type="button" className="nx-btn-secondary" disabled={message.status !== 'unread' || busy === 'read'} onClick={() => void runAction('read')}>Marcar como leído</button>
-          <button type="button" className="nx-btn-secondary" disabled={busy === 'resolve'} onClick={() => void runAction('resolve')}>Resolver</button>
+          <button type="button" className="nx-btn-secondary nx-internal-action nx-internal-action--secondary" disabled={message.status !== 'unread' || busy === 'read'} onClick={() => void runAction('read')}>Marcar como leído</button>
+          <button type="button" className="nx-btn-secondary nx-internal-action nx-internal-action--secondary" disabled={busy === 'resolve'} onClick={() => void runAction('resolve')}>Resolver</button>
         </> : <span className="nx-internal-resolved-note">Este mensaje ya está resuelto.</span>}
-        <button type="button" className="nx-btn-primary" onClick={onClose}>Cerrar</button>
+        <button type="button" className="nx-btn-primary nx-internal-action nx-internal-action--primary" onClick={onClose}>Cerrar</button>
       </footer>
     </section>
   </div>;
@@ -172,9 +172,9 @@ export const InternalMessagePopup = ({ message, currentRole, markingRead = false
       </dl>
       <div className="nx-internal-alert__summary"><b>Mensaje:</b><p>{message.message || 'Sin texto adicional.'}</p></div>
       <div className="nx-internal-alert__actions">
-        <button type="button" className="nx-btn-primary" onClick={onViewMessage}>Ver mensaje</button>
-        <button type="button" className="nx-btn-secondary" disabled={markingRead} onClick={onMarkRead}>{markingRead ? 'Marcando...' : 'Marcar leído'}</button>
-        <button type="button" className="nx-btn-secondary" onClick={onClose}>Cerrar</button>
+        <button type="button" className="nx-btn-primary nx-internal-action nx-internal-action--primary" onClick={onViewMessage}>Ver mensaje</button>
+        <button type="button" className="nx-btn-secondary nx-internal-action nx-internal-action--secondary" disabled={markingRead} onClick={onMarkRead}>{markingRead ? 'Marcando...' : 'Marcar leído'}</button>
+        <button type="button" className="nx-btn-secondary nx-internal-action nx-internal-action--secondary" onClick={onClose}>Cerrar</button>
       </div>
     </section>
   </div>;

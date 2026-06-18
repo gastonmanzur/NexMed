@@ -42,8 +42,12 @@ export const InternalMessagesPage = (): ReactElement => {
 
   return <main style={{ display: 'grid', gap: '1rem' }}>
     <Card title={`Mensajes internos${unreadCount ? ` (${unreadCount})` : ''}`} subtitle="Bandeja bidireccional entre profesionales y secretaría.">
-      <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-        {(['unread', 'all', 'resolved'] as Filter[]).map((item) => <button key={item} className={filter === item ? 'nx-btn-primary' : 'nx-btn-secondary'} type="button" onClick={() => setFilter(item)}>{item === 'unread' ? 'No leídos' : item === 'resolved' ? 'Resueltos' : 'Todos'}</button>)}
+      <div className="nx-internal-filters" role="tablist" aria-label="Filtrar mensajes internos">
+        {(['unread', 'all', 'resolved'] as Filter[]).map((item) => {
+          const active = filter === item;
+          const label = item === 'unread' ? 'No leídos' : item === 'resolved' ? 'Resueltos' : 'Todos';
+          return <button key={item} className={`nx-internal-filter${active ? ' nx-internal-filter--active' : ''}`} type="button" role="tab" aria-selected={active} onClick={() => setFilter(item)}>{label}</button>;
+        })}
       </div>
     </Card>
     <InternalMessagesCard accessToken={accessToken} organizationId={activeOrganizationId} messages={messages} loading={loading} error={error} onRefresh={load} allowReply />
