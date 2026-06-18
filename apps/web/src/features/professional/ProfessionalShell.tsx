@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { InternalMessageDto } from '../organizations/organization-api';
@@ -14,6 +14,8 @@ export const ProfessionalShell = ({ children }: { children: ReactNode }): ReactE
   const [internalMessageDetail, setInternalMessageDetail] = useState<InternalMessageDto | null>(null);
   const [markingInternalRead, setMarkingInternalRead] = useState(false);
   const [internalMessagesRefreshKey, setInternalMessagesRefreshKey] = useState(0);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const mobileNavRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId) {
@@ -57,6 +59,28 @@ export const ProfessionalShell = ({ children }: { children: ReactNode }): ReactE
     return () => window.clearInterval(interval);
   }, [accessToken, activeOrganizationId, internalMessagesRefreshKey]);
 
+
+  useEffect(() => {
+    if (!isMobileNavOpen) return undefined;
+
+    const onDocumentClick = (event: MouseEvent): void => {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(event.target as Node)) {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setIsMobileNavOpen(false);
+    };
+
+    document.addEventListener('mousedown', onDocumentClick);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocumentClick);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isMobileNavOpen]);
+
   const markInternalPopupRead = async (message: InternalMessageDto): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
     setMarkingInternalRead(true);
@@ -69,26 +93,63 @@ export const ProfessionalShell = ({ children }: { children: ReactNode }): ReactE
     }
   };
 
+  const professionalNavItems = [
+    { label: 'Agenda del día', to: '/app/professional', matches: location.pathname === '/app/professional' || location.pathname.startsWith('/app/professional/appointments') },
+    { label: 'Pacientes', to: '/app/professional/patients' },
+    { label: 'Historia clínica', to: '/app/professional/clinical-history' },
+    { label: 'Mensajes', to: '/app/professional/messages' },
+    { label: 'Perfil', to: '/app/professional/profile' },
+  ];
+
+  const renderProfessionalNav = (className: string, onNavigate?: () => void): ReactElement[] =>
+    professionalNavItems.map((item) => (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.to === '/app/professional'}
+        className={({ isActive }) => `${className}${item.matches || isActive ? ' is-active' : ''}`}
+        onClick={onNavigate}
+      >
+        <span className="nx-nav-link__dot" aria-hidden="true" />
+        {item.label}
+      </NavLink>
+    ));
+
   return (
-    <div className="professional-shell">
-      <aside className="professional-sidebar">
-        <div className="professional-brand">
-          <span className="professional-brand__mark">N</span>
+    <div className="professional-shell nx-shell">
+      <aside className="professional-sidebar nx-sidebar">
+        <div className="professional-brand nx-brand">
+          <span className="professional-brand__mark nx-brand__pill">N</span>
           <div>
-            <strong>NexMed Pro</strong>
-            <small>{activeOrganizationSummary?.displayName ?? activeOrganizationSummary?.name ?? 'Centro actual'}</small>
+            <h3>NexMed Pro</h3>
+            <p>{activeOrganizationSummary?.displayName ?? activeOrganizationSummary?.name ?? 'Centro actual'}</p>
           </div>
         </div>
-        <nav className="professional-nav" aria-label="Panel profesional">
-          <NavLink to="/app/professional" end className={() => location.pathname === '/app/professional' || location.pathname.startsWith('/app/professional/appointments') ? 'active' : undefined}>Agenda del día</NavLink>
-          <NavLink to="/app/professional/patients">Pacientes</NavLink>
-          <NavLink to="/app/professional/clinical-history">Historia clínica</NavLink>
-          <NavLink to="/app/professional/messages">Mensajes</NavLink>
-          <NavLink to="/app/professional/profile">Perfil</NavLink>
+        <nav className="professional-nav nx-nav" aria-label="Panel profesional">
+          {renderProfessionalNav('professional-nav__link nx-nav-link')}
         </nav>
       </aside>
-      <main className="professional-main">
-        <header className="professional-topbar">
+      <main className="professional-main nx-main">
+        <header className="professional-topbar nx-topbar">
+          <div className="nx-mobile-nav" ref={mobileNavRef}>
+            <button
+              type="button"
+              className={`nx-mobile-nav-toggle${isMobileNavOpen ? ' is-open' : ''}`}
+              aria-label="Abrir menú profesional"
+              aria-expanded={isMobileNavOpen}
+              aria-controls="professional-mobile-nav-panel"
+              onClick={() => setIsMobileNavOpen((current) => !current)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+            {isMobileNavOpen ? (
+              <nav id="professional-mobile-nav-panel" className="nx-mobile-nav__panel" aria-label="Menú profesional">
+                {renderProfessionalNav('nx-mobile-nav__item', () => setIsMobileNavOpen(false))}
+              </nav>
+            ) : null}
+          </div>
           <div>
             <span>Centro actual</span>
             <strong>{activeOrganizationSummary?.displayName ?? activeOrganizationSummary?.name ?? 'Sin centro seleccionado'}</strong>
