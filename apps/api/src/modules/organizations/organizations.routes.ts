@@ -131,14 +131,32 @@ organizationsRouter.post(
 organizationsRouter.get(
   '/:organizationId/whatsapp-settings',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin', 'staff')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
   asyncHandler(organizationWhatsAppSettingsController.get)
+);
+organizationsRouter.patch(
+  '/:organizationId/whatsapp-settings',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
+  asyncHandler(organizationWhatsAppSettingsController.upsert)
 );
 organizationsRouter.put(
   '/:organizationId/whatsapp-settings',
   asyncHandler(requireOrganizationMember),
-  asyncHandler(requireOrganizationRole('owner', 'admin')),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
   asyncHandler(organizationWhatsAppSettingsController.upsert)
+);
+organizationsRouter.get(
+  '/:organizationId/whatsapp-notifications',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
+  asyncHandler(appointmentNotificationController.listByOrganization)
+);
+organizationsRouter.post(
+  '/:organizationId/whatsapp/test',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager')),
+  asyncHandler(organizationWhatsAppSettingsController.test)
 );
 organizationsRouter.get(
   '/:organizationId/appointments/:appointmentId/notifications',

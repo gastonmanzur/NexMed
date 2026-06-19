@@ -22,6 +22,7 @@ import { feedbackRouter } from './modules/feedback/feedback.routes.js';
 import { plansRouter } from './modules/plans/plans.routes.js';
 import { professionalPanelRouter } from './modules/professional-panel/professional-panel.routes.js';
 import { professionalInvitesRouter } from './modules/professionals/professional-invites.routes.js';
+import { whatsappRouter } from './modules/whatsapp/whatsapp.routes.js';
 
 export const createApp = () => {
   const app = express();
@@ -76,6 +77,7 @@ export const createApp = () => {
   app.use('/api/plans', plansRouter);
   app.use('/api/professional', professionalPanelRouter);
   app.use('/api/professional-invites', professionalInvitesRouter);
+  app.use('/api/whatsapp', whatsappRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);
