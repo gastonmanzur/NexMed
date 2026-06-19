@@ -16,6 +16,10 @@ export class AppointmentNotificationRepository {
     return AppointmentNotificationModel.find({ organizationId, appointmentId }).sort({ createdAt: -1 }).exec();
   }
 
+  async listByOrganization(organizationId: string, limit = 100): Promise<AppointmentNotificationDocument[]> {
+    return AppointmentNotificationModel.find({ organizationId }).sort({ createdAt: -1 }).limit(limit).exec();
+  }
+
   async findPendingDue(now: Date, limit = 25): Promise<AppointmentNotificationDocument[]> {
     return AppointmentNotificationModel.find({ status: 'pending', scheduledFor: { $lte: now }, attempts: { $lt: 3 } })
       .sort({ scheduledFor: 1, createdAt: 1 })
@@ -25,8 +29,8 @@ export class AppointmentNotificationRepository {
 
   async markProcessing(id: string): Promise<AppointmentNotificationDocument | null> {
     return AppointmentNotificationModel.findOneAndUpdate(
-      { _id: id, status: 'pending', attempts: { $lt: 3 } },
-      { $set: { status: 'processing', lastAttemptAt: new Date(), error: null }, $inc: { attempts: 1 } },
+      { _id: id, status: 'pending', $expr: { $lt: ['$attempts', '$maxAttempts'] } },
+      { $set: { status: 'processing', lockedAt: new Date(), lastAttemptAt: new Date(), error: null, errorMessage: null }, $inc: { attempts: 1 } },
       { new: true }
     ).exec();
   }
@@ -42,7 +46,7 @@ export class AppointmentNotificationRepository {
         status: { $in: ['pending', 'processing'] satisfies Status[] },
         ...(types?.length ? { type: { $in: types } } : {})
       },
-      { $set: { status: 'cancelled', error } }
+      { $set: { status: 'cancelled', cancelledAt: new Date(), error, errorMessage: error } }
     ).exec();
     return result.modifiedCount;
   }

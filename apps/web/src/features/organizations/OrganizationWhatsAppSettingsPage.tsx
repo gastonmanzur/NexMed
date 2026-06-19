@@ -5,153 +5,51 @@ import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { organizationWhatsAppApi } from './organization-api';
 
-type FormState = {
-  enabled: boolean;
-  provider: 'manual' | 'noop' | 'meta_cloud_api';
-  displayPhoneNumber: string;
-  phoneNumberId: string;
-  businessAccountId: string;
-  apiVersion: string;
-  accessToken: string;
-  appointmentConfirmation: string;
-  appointmentReminder: string;
-  appointmentCancellation: string;
-  appointmentRescheduled: string;
-  reminderHoursBefore: number;
-  secondReminderHoursBefore: string;
-};
-
-const defaults: FormState = {
-  enabled: false,
-  provider: 'noop',
-  displayPhoneNumber: '',
-  phoneNumberId: '',
-  businessAccountId: '',
-  apiVersion: 'v22.0',
-  accessToken: '',
-  appointmentConfirmation: 'appointment_confirmation',
-  appointmentReminder: 'appointment_reminder',
-  appointmentCancellation: 'appointment_cancellation',
-  appointmentRescheduled: 'appointment_rescheduled',
-  reminderHoursBefore: 24,
-  secondReminderHoursBefore: ''
-};
+type Settings = any;
+type Log = { id: string; createdAt: string; type: string; status: string; scheduledFor: string; sentAt?: string | null; deliveredAt?: string | null; readAt?: string | null; failedAt?: string | null; errorMessage?: string | null; recipientPhone?: string };
+const badge: Record<string, string> = { pending: 'Pendiente', processing: 'Procesando', sent: 'Enviado', delivered: 'Entregado', read: 'Leído', failed: 'Fallido', skipped: 'Omitido', cancelled: 'Cancelado' };
 
 export const OrganizationWhatsAppSettingsPage = (): ReactElement => {
   const { accessToken, activeOrganizationId } = useAuth();
-  const [form, setForm] = useState(defaults);
-  const [hasToken, setHasToken] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [testPhone, setTestPhone] = useState('');
+  const [testName, setTestName] = useState('Paciente de prueba');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = async () => {
     if (!accessToken || !activeOrganizationId) return;
-    void (async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const settings = await organizationWhatsAppApi.getSettings(accessToken, activeOrganizationId);
-        if (settings) {
-          setForm({
-            enabled: settings.enabled,
-            provider: settings.provider,
-            displayPhoneNumber: settings.displayPhoneNumber ?? '',
-            phoneNumberId: settings.meta.phoneNumberId ?? '',
-            businessAccountId: settings.meta.businessAccountId ?? '',
-            apiVersion: settings.meta.apiVersion ?? 'v22.0',
-            accessToken: '',
-            appointmentConfirmation: settings.templates.appointmentConfirmation,
-            appointmentReminder: settings.templates.appointmentReminder,
-            appointmentCancellation: settings.templates.appointmentCancellation,
-            appointmentRescheduled: settings.templates.appointmentRescheduled,
-            reminderHoursBefore: settings.reminderHoursBefore,
-            secondReminderHoursBefore: settings.secondReminderHoursBefore?.toString() ?? ''
-          });
-          setHasToken(settings.meta.hasAccessToken);
-        }
-      } catch (cause) {
-        setError((cause as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [accessToken, activeOrganizationId]);
-
+    setLoading(true); setError('');
+    try { setSettings(await organizationWhatsAppApi.getSettings(accessToken, activeOrganizationId)); setLogs(await organizationWhatsAppApi.listNotifications(accessToken, activeOrganizationId)); }
+    catch (cause) { setError((cause as Error).message); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void load(); }, [accessToken, activeOrganizationId]);
   if (!accessToken) return <Navigate to="/login" replace />;
   if (!activeOrganizationId) return <Navigate to="/post-login" replace />;
-
-  const update = (key: keyof typeof defaults, value: string | boolean | number): void => setForm((current) => ({ ...current, [key]: value }));
-
-  return (
-    <main style={{ maxWidth: 860, margin: '2rem auto', padding: '1rem' }}>
-      <Card title="WhatsApp / Notificaciones" subtitle="Configurá el número emisor y los templates por centro.">
-        {loading ? <p>Cargando configuración...</p> : null}
-        {error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}
-        {message ? <p style={{ color: '#047857' }}>{message}</p> : null}
-        <form
-          style={{ display: 'grid', gap: '1rem' }}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void (async () => {
-              setSaving(true);
-              setError('');
-              setMessage('');
-              try {
-                const saved = await organizationWhatsAppApi.updateSettings(accessToken, activeOrganizationId, {
-                  enabled: form.enabled,
-                  provider: form.provider,
-                  displayPhoneNumber: form.displayPhoneNumber || null,
-                  meta: {
-                    phoneNumberId: form.phoneNumberId || null,
-                    businessAccountId: form.businessAccountId || null,
-                    apiVersion: form.apiVersion || null,
-                    accessToken: form.accessToken || null
-                  },
-                  templates: {
-                    appointmentConfirmation: form.appointmentConfirmation,
-                    appointmentReminder: form.appointmentReminder,
-                    appointmentCancellation: form.appointmentCancellation,
-                    appointmentRescheduled: form.appointmentRescheduled
-                  },
-                  reminderHoursBefore: Number(form.reminderHoursBefore),
-                  secondReminderHoursBefore: form.secondReminderHoursBefore ? Number(form.secondReminderHoursBefore) : null
-                });
-                setHasToken(saved.meta.hasAccessToken);
-                setForm((current) => ({ ...current, accessToken: '' }));
-                setMessage('Configuración guardada.');
-              } catch (cause) {
-                setError((cause as Error).message);
-              } finally {
-                setSaving(false);
-              }
-            })();
-          }}
-        >
-          <label><input type="checkbox" checked={form.enabled} onChange={(e) => update('enabled', e.target.checked)} /> Activar notificaciones por WhatsApp</label>
-          {!form.enabled || form.provider !== 'meta_cloud_api' ? <p>WhatsApp automático no configurado: las notificaciones se registrarán como pendientes/manuales según el proveedor.</p> : null}
-          <label>Proveedor
-            <select value={form.provider} onChange={(e) => update('provider', e.target.value as typeof form.provider)}>
-              <option value="noop">Noop</option>
-              <option value="manual">Manual</option>
-              <option value="meta_cloud_api">Meta Cloud API</option>
-            </select>
-          </label>
-          <label>Número visible del centro <input value={form.displayPhoneNumber} onChange={(e) => update('displayPhoneNumber', e.target.value)} /></label>
-          <label>Phone Number ID <input value={form.phoneNumberId} onChange={(e) => update('phoneNumberId', e.target.value)} /></label>
-          <label>Business Account ID <input value={form.businessAccountId} onChange={(e) => update('businessAccountId', e.target.value)} /></label>
-          <label>API version <input value={form.apiVersion} onChange={(e) => update('apiVersion', e.target.value)} /></label>
-          <label>Access token {hasToken ? '(ya hay uno guardado; dejá vacío para mantenerlo)' : ''}<input type="password" value={form.accessToken} onChange={(e) => update('accessToken', e.target.value)} /></label>
-          <label>Template confirmación <input value={form.appointmentConfirmation} onChange={(e) => update('appointmentConfirmation', e.target.value)} /></label>
-          <label>Template recordatorio <input value={form.appointmentReminder} onChange={(e) => update('appointmentReminder', e.target.value)} /></label>
-          <label>Template cancelación <input value={form.appointmentCancellation} onChange={(e) => update('appointmentCancellation', e.target.value)} /></label>
-          <label>Template reprogramación <input value={form.appointmentRescheduled} onChange={(e) => update('appointmentRescheduled', e.target.value)} /></label>
-          <label>Recordatorio: horas antes <input type="number" min="1" max="720" value={form.reminderHoursBefore} onChange={(e) => update('reminderHoursBefore', Number(e.target.value))} /></label>
-          <label>Segundo recordatorio opcional <input type="number" min="1" max="720" value={form.secondReminderHoursBefore} onChange={(e) => update('secondReminderHoursBefore', e.target.value)} /></label>
-          <button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</button>
-        </form>
-      </Card>
-    </main>
-  );
+  const update = (patch: Record<string, unknown>) => setSettings((current: Settings | null) => current ? { ...current, ...patch } : current);
+  const templates = settings?.templates as Record<string, string> | undefined;
+  return <main style={{ maxWidth: 1100, margin: '2rem auto', padding: '1rem', display: 'grid', gap: '1rem' }}>
+    <Card title="WhatsApp" subtitle="Notificaciones automáticas de turnos">
+      {loading ? <p>Cargando configuración...</p> : null}{error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}{message ? <p style={{ color: '#047857' }}>{message}</p> : null}
+      {settings ? <form style={{ display: 'grid', gap: '1rem' }} onSubmit={(event) => { event.preventDefault(); void (async () => { setSaving(true); setError(''); setMessage(''); try { const saved = await organizationWhatsAppApi.updateSettings(accessToken, activeOrganizationId, settings as any); setSettings(saved); setMessage('Configuración guardada.'); } catch (cause) { setError((cause as Error).message); } finally { setSaving(false); } })(); }}>
+        <section style={{ padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 12 }}><b>Proveedor:</b> Meta Cloud API · <b>Remitente:</b> {settings.senderDisplayName ?? 'NexMed'} · <b>Estado:</b> {settings.globalProviderConfigured ? 'Configurado' : 'No configurado'}</section>
+        <label><input type="checkbox" checked={settings.enabled} onChange={(e) => update({ enabled: e.target.checked })} /> Activar WhatsApp para este centro</label>
+        <label><input type="checkbox" checked={settings.sendConfirmation} onChange={(e) => update({ sendConfirmation: e.target.checked })} /> Enviar confirmación al reservar</label>
+        <label><input type="checkbox" checked={settings.sendMidpointReminder} onChange={(e) => update({ sendMidpointReminder: e.target.checked })} /> Enviar aviso de mitad de tiempo</label>
+        <label><input type="checkbox" checked={settings.sendReminder} onChange={(e) => update({ sendReminder: e.target.checked })} /> Enviar recordatorio antes del turno</label>
+        <label><input type="checkbox" checked={settings.sendSecondReminder} onChange={(e) => update({ sendSecondReminder: e.target.checked })} /> Enviar segundo recordatorio</label>
+        <label>Recordatorio principal: horas antes <input type="number" min={1} max={720} value={settings.reminderHoursBefore} onChange={(e) => update({ reminderHoursBefore: Number(e.target.value) })} /></label>
+        <label>Segundo recordatorio: horas antes <input type="number" min={1} max={720} value={settings.secondReminderHoursBefore ?? 2} onChange={(e) => update({ secondReminderHoursBefore: Number(e.target.value) })} /></label>
+        <label>Idioma template <select value={settings.templateLanguage} onChange={(e) => update({ templateLanguage: e.target.value as 'es' | 'es_AR' })}><option value="es">es</option><option value="es_AR">es_AR</option></select></label>
+        {templates ? <div style={{ display: 'grid', gap: '.5rem' }}>{(['confirmation','reminder','cancellation','rescheduled','notice'] as const).map((key) => <label key={key}>Template {key}<input value={templates[key] ?? ''} onChange={(e) => update({ templates: { ...templates, [key]: e.target.value } })} /></label>)}</div> : null}
+        <button className="nx-btn" disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</button>
+      </form> : null}
+    </Card>
+    <Card title="Enviar WhatsApp de prueba"><div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}><input placeholder="Número destino" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} /><input placeholder="Nombre de prueba" value={testName} onChange={(e) => setTestName(e.target.value)} /><button className="nx-btn" onClick={() => void organizationWhatsAppApi.sendTest(accessToken, activeOrganizationId, { phone: testPhone, patientName: testName }).then(() => { setMessage('Prueba encolada.'); return load(); }).catch((cause) => setError((cause as Error).message))}>Enviar prueba</button></div></Card>
+    <Card title="Logs"><table style={{ width: '100%' }}><thead><tr><th>Fecha</th><th>Destino</th><th>Tipo</th><th>Estado</th><th>Último evento</th><th>Error</th></tr></thead><tbody>{logs.map((item) => <tr key={item.id}><td>{new Date(item.createdAt).toLocaleString()}</td><td>{item.recipientPhone}</td><td>{item.type}</td><td>{badge[item.status] ?? item.status}</td><td>{item.readAt ?? item.deliveredAt ?? item.sentAt ?? item.failedAt ?? item.scheduledFor}</td><td>{item.errorMessage}</td></tr>)}</tbody></table></Card>
+  </main>;
 };

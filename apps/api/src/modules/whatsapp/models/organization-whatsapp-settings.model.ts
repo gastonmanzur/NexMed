@@ -1,13 +1,14 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
-export const whatsappProviders = ['manual', 'noop', 'meta_cloud_api'] as const;
+export const whatsappProviders = ['meta_cloud_api'] as const;
 
 const whatsappTemplatesSchema = new mongoose.Schema(
   {
-    appointmentConfirmation: { type: String, required: false, trim: true, default: 'appointment_confirmation' },
-    appointmentReminder: { type: String, required: false, trim: true, default: 'appointment_reminder' },
-    appointmentCancellation: { type: String, required: false, trim: true, default: 'appointment_cancellation' },
-    appointmentRescheduled: { type: String, required: false, trim: true, default: 'appointment_rescheduled' }
+    confirmation: { type: String, required: false, trim: true, default: 'appointment_confirmation' },
+    reminder: { type: String, required: false, trim: true, default: 'appointment_reminder' },
+    cancellation: { type: String, required: false, trim: true, default: 'appointment_cancellation' },
+    rescheduled: { type: String, required: false, trim: true, default: 'appointment_rescheduled' },
+    notice: { type: String, required: false, trim: true, default: 'appointment_notice' }
   },
   { _id: false }
 );
@@ -26,12 +27,19 @@ const organizationWhatsAppSettingsSchema = new mongoose.Schema(
   {
     organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization', unique: true, index: true },
     enabled: { type: Boolean, required: true, default: false, index: true },
-    provider: { type: String, enum: whatsappProviders, required: true, default: 'noop' },
+    provider: { type: String, enum: whatsappProviders, required: true, default: 'meta_cloud_api' },
+    senderDisplayName: { type: String, required: true, trim: true, default: 'NexMed' },
+    senderDisplayPhone: { type: String, required: false, trim: true, default: null },
     displayPhoneNumber: { type: String, required: false, trim: true, default: null },
     meta: { type: whatsappMetaSchema, required: false, default: () => ({}) },
     templates: { type: whatsappTemplatesSchema, required: true, default: () => ({}) },
+    templateLanguage: { type: String, enum: ['es', 'es_AR'], required: true, default: 'es' },
+    sendConfirmation: { type: Boolean, required: true, default: true },
+    sendReminder: { type: Boolean, required: true, default: true },
+    sendMidpointReminder: { type: Boolean, required: true, default: true },
+    sendSecondReminder: { type: Boolean, required: true, default: false },
     reminderHoursBefore: { type: Number, required: true, default: 24, min: 1, max: 720 },
-    secondReminderHoursBefore: { type: Number, required: false, default: null, min: 1, max: 720 }
+    secondReminderHoursBefore: { type: Number, required: false, default: 2, min: 1, max: 720 }
   },
   { timestamps: true }
 );

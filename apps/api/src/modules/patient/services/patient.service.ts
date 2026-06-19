@@ -512,6 +512,7 @@ export class PatientService {
           }
         | undefined;
       reason?: string | undefined;
+      whatsappOptIn?: boolean | undefined;
     },
     expressSessionToken?: string,
     userAgent?: string,
@@ -569,6 +570,7 @@ export class PatientService {
           identity,
           coverage,
           useSavedPatientData,
+          input.whatsappOptIn === true,
         );
 
       await this.links.upsertActive({
@@ -2265,6 +2267,7 @@ export class PatientService {
       insurancePlan: string | null;
     },
     preserveExistingPersonalData: boolean,
+    whatsappOptIn: boolean = false,
   ): Promise<{
     compatProfile: PatientProfileDocument;
     orgProfile: OrganizationPatientProfileDocument;
@@ -2374,6 +2377,7 @@ export class PatientService {
       defaultInsuranceMemberNumber: coverage.insuranceMemberNumber,
       source: "express_booking" as const,
       ownerUserId: null,
+      ...(whatsappOptIn || existingOrgProfile?.whatsappOptIn ? { whatsappOptIn: true, whatsappOptInAt: existingOrgProfile?.whatsappOptInAt ?? new Date(), whatsappOptInSource: existingOrgProfile?.whatsappOptInSource ?? 'public_booking', whatsappOptInText: 'Acepto recibir notificaciones de mi turno por WhatsApp de parte de NexMed y/o del centro donde reservo.' } : { whatsappOptIn: false }),
     };
 
     let orgProfile: OrganizationPatientProfileDocument;

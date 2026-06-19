@@ -28,6 +28,6 @@ export class MetaCloudApiWhatsAppProvider implements WhatsAppProvider {
     if (!response.ok) throw new Error(`meta_cloud_api_error_${response.status}: ${JSON.stringify(body)}`);
 
     const messageId = Array.isArray(body.messages) ? body.messages[0]?.id : undefined;
-    return { providerMessageId: messageId, payloadPreview: { provider: 'meta_cloud_api', payload: { ...payload, to: input.to } } };
+    return { providerMessageId: messageId, raw: body, payloadPreview: { provider: 'meta_cloud_api', payload: { ...payload, to: input.to } } };
   }
 }

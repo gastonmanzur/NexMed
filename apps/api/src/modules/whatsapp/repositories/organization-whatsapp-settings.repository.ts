@@ -1,26 +1,15 @@
+import { env } from '../../../config/env.js';
 import { OrganizationWhatsAppSettingsModel, type OrganizationWhatsAppSettingsDocument } from '../models/organization-whatsapp-settings.model.js';
-
-type Provider = OrganizationWhatsAppSettingsDocument['provider'];
 
 export interface UpsertOrganizationWhatsAppSettingsInput {
   organizationId: string;
   enabled: boolean;
-  provider: Provider;
-  displayPhoneNumber?: string | null | undefined;
-  meta?: {
-    phoneNumberId?: string | null | undefined;
-    businessAccountId?: string | null | undefined;
-    accessTokenEncrypted?: string | null | undefined;
-    apiVersion?: string | null | undefined;
-  };
-  templates: {
-    appointmentConfirmation?: string | null | undefined;
-    appointmentReminder?: string | null | undefined;
-    appointmentCancellation?: string | null | undefined;
-    appointmentRescheduled?: string | null | undefined;
-  };
-  reminderHoursBefore: number;
-  secondReminderHoursBefore?: number | null | undefined;
+  senderDisplayName?: string | null;
+  senderDisplayPhone?: string | null;
+  templates?: Partial<{ confirmation: string; reminder: string; cancellation: string; rescheduled: string; notice: string }>;
+  templateLanguage?: 'es' | 'es_AR';
+  sendConfirmation?: boolean; sendReminder?: boolean; sendMidpointReminder?: boolean; sendSecondReminder?: boolean;
+  reminderHoursBefore?: number; secondReminderHoursBefore?: number | null;
 }
 
 export class OrganizationWhatsAppSettingsRepository {
@@ -31,27 +20,28 @@ export class OrganizationWhatsAppSettingsRepository {
   async upsertByOrganizationId(input: UpsertOrganizationWhatsAppSettingsInput): Promise<OrganizationWhatsAppSettingsDocument> {
     return OrganizationWhatsAppSettingsModel.findOneAndUpdate(
       { organizationId: input.organizationId },
-      {
-        $set: {
-          enabled: input.enabled,
-          provider: input.provider,
-          displayPhoneNumber: input.displayPhoneNumber ?? null,
-          meta: {
-            phoneNumberId: input.meta?.phoneNumberId ?? null,
-            businessAccountId: input.meta?.businessAccountId ?? null,
-            accessTokenEncrypted: input.meta?.accessTokenEncrypted ?? null,
-            apiVersion: input.meta?.apiVersion ?? null
-          },
-          templates: {
-            appointmentConfirmation: input.templates.appointmentConfirmation ?? 'appointment_confirmation',
-            appointmentReminder: input.templates.appointmentReminder ?? 'appointment_reminder',
-            appointmentCancellation: input.templates.appointmentCancellation ?? 'appointment_cancellation',
-            appointmentRescheduled: input.templates.appointmentRescheduled ?? 'appointment_rescheduled'
-          },
-          reminderHoursBefore: input.reminderHoursBefore,
-          secondReminderHoursBefore: input.secondReminderHoursBefore ?? null
-        }
-      },
+      { $set: {
+        enabled: input.enabled,
+        provider: 'meta_cloud_api',
+        senderDisplayName: input.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME,
+        senderDisplayPhone: input.senderDisplayPhone ?? null,
+        displayPhoneNumber: input.senderDisplayPhone ?? null,
+        meta: { phoneNumberId: null, businessAccountId: null, accessTokenEncrypted: null, apiVersion: null },
+        templates: {
+          confirmation: input.templates?.confirmation ?? 'appointment_confirmation',
+          reminder: input.templates?.reminder ?? 'appointment_reminder',
+          cancellation: input.templates?.cancellation ?? 'appointment_cancellation',
+          rescheduled: input.templates?.rescheduled ?? 'appointment_rescheduled',
+          notice: input.templates?.notice ?? 'appointment_notice'
+        },
+        templateLanguage: input.templateLanguage ?? 'es',
+        sendConfirmation: input.sendConfirmation ?? true,
+        sendReminder: input.sendReminder ?? true,
+        sendMidpointReminder: input.sendMidpointReminder ?? true,
+        sendSecondReminder: input.sendSecondReminder ?? false,
+        reminderHoursBefore: input.reminderHoursBefore ?? 24,
+        secondReminderHoursBefore: input.secondReminderHoursBefore ?? 2
+      } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).exec() as Promise<OrganizationWhatsAppSettingsDocument>;
   }

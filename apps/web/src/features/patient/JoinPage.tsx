@@ -47,6 +47,7 @@ type ExpressForm = {
   insuranceMemberNumber: string;
   insurancePlan: string;
   reason: string;
+  whatsappOptIn: boolean;
 };
 
 const emptyForm: ExpressForm = {
@@ -61,6 +62,7 @@ const emptyForm: ExpressForm = {
   insuranceMemberNumber: "",
   insurancePlan: "",
   reason: "",
+  whatsappOptIn: false,
 };
 
 type SavedCoverageInput = {
@@ -227,6 +229,11 @@ const PatientPersonalFields = ({
         />
       </label>
     </div>
+    <label className="nx-public-booking__choice nx-public-booking__choice--full">
+      <input type="checkbox" checked={form.whatsappOptIn} onChange={(event) => onChange({ ...form, whatsappOptIn: event.target.checked })} />
+      <span>Acepto recibir notificaciones de mi turno por WhatsApp de parte de NexMed y/o del centro donde reservo.</span>
+    </label>
+    {!form.whatsappOptIn ? <p className="nx-public-booking__hint">Podés reservar igual, pero podrías no recibir confirmaciones o recordatorios por WhatsApp.</p> : null}
   </section>
 );
 
@@ -710,6 +717,7 @@ export const JoinPage = (): ReactElement => {
                 ...(form.birthDate ? { birthDate: form.birthDate } : {}),
               },
               coverage: buildCoverageInput(),
+              whatsappOptIn: form.whatsappOptIn,
               ...(form.reason ? { reason: form.reason } : {}),
             };
       const appointment = await patientApi.createExpressAppointment(

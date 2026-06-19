@@ -12,6 +12,7 @@ export interface WhatsAppProviderInput {
 export interface WhatsAppProviderResult {
   providerMessageId?: string;
   payloadPreview?: Record<string, unknown>;
+  raw?: unknown;
 }
 
 export interface WhatsAppProvider {

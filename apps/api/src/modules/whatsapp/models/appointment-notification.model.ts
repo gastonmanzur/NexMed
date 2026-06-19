@@ -1,8 +1,8 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 export const appointmentNotificationChannels = ['whatsapp'] as const;
-export const appointmentNotificationTypes = ['appointment_confirmation', 'appointment_reminder', 'appointment_cancellation', 'appointment_rescheduled'] as const;
-export const appointmentNotificationStatuses = ['pending', 'processing', 'sent', 'failed', 'skipped', 'manual_required', 'cancelled'] as const;
+export const appointmentNotificationTypes = ['confirmation', 'midpoint_reminder', 'reminder', 'second_reminder', 'cancellation', 'rescheduled', 'notice'] as const;
+export const appointmentNotificationStatuses = ['pending', 'processing', 'sent', 'delivered', 'read', 'failed', 'skipped', 'cancelled'] as const;
 
 const appointmentNotificationSchema = new mongoose.Schema(
   {
@@ -17,12 +17,24 @@ const appointmentNotificationSchema = new mongoose.Schema(
     sentAt: { type: Date, required: false, default: null },
     recipientPhone: { type: String, required: true, trim: true },
     normalizedRecipientPhone: { type: String, required: true, trim: true },
+    senderDisplayName: { type: String, required: true, trim: true, default: 'NexMed' },
     senderDisplayPhone: { type: String, required: false, trim: true, default: null },
-    provider: { type: String, enum: ['manual', 'noop', 'meta_cloud_api'], required: false, default: null },
+    provider: { type: String, enum: ['meta_cloud_api'], required: true, default: 'meta_cloud_api' },
     templateName: { type: String, required: false, trim: true, default: null },
-    templateParams: { type: mongoose.Schema.Types.Mixed, required: false, default: null },
+    templateLanguage: { type: String, required: true, trim: true, default: 'es' },
+    templateParams: { type: [String], required: true, default: [] },
     payloadPreview: { type: mongoose.Schema.Types.Mixed, required: false, default: null },
     providerMessageId: { type: String, required: false, trim: true, default: null },
+    maxAttempts: { type: Number, required: true, default: 3 },
+    lockedAt: { type: Date, required: false, default: null },
+    deliveredAt: { type: Date, required: false, default: null },
+    readAt: { type: Date, required: false, default: null },
+    failedAt: { type: Date, required: false, default: null },
+    skippedAt: { type: Date, required: false, default: null },
+    cancelledAt: { type: Date, required: false, default: null },
+    errorCode: { type: String, required: false, trim: true, default: null },
+    errorMessage: { type: String, required: false, trim: true, default: null },
+    providerResponse: { type: mongoose.Schema.Types.Mixed, required: false, default: null },
     error: { type: String, required: false, trim: true, default: null },
     attempts: { type: Number, required: true, default: 0 },
     lastAttemptAt: { type: Date, required: false, default: null }
@@ -31,7 +43,8 @@ const appointmentNotificationSchema = new mongoose.Schema(
 );
 
 appointmentNotificationSchema.index({ status: 1, scheduledFor: 1 });
-appointmentNotificationSchema.index({ appointmentId: 1, type: 1 });
+appointmentNotificationSchema.index({ organizationId: 1, appointmentId: 1, channel: 1, type: 1 });
+appointmentNotificationSchema.index({ providerMessageId: 1 });
 appointmentNotificationSchema.index({ organizationId: 1, createdAt: -1 });
 appointmentNotificationSchema.index(
   { appointmentId: 1, type: 1, channel: 1 },

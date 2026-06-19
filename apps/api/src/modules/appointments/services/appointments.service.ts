@@ -724,7 +724,7 @@ export class AppointmentsService {
 
   private async scheduleWhatsAppForCancelledAppointment(appointmentId: string): Promise<void> {
     try {
-      await this.whatsappNotifications.cancelPendingNotifications(appointmentId, ['appointment_reminder'], 'appointment_cancelled');
+      await this.whatsappNotifications.cancelPendingNotifications(appointmentId, ['midpoint_reminder', 'reminder', 'second_reminder'], 'appointment_cancelled');
       await this.whatsappNotifications.scheduleAppointmentCancellation(appointmentId);
     } catch (error) {
       logger.warn({ error, appointmentId }, 'whatsapp scheduling failed after appointment cancellation');
@@ -733,7 +733,7 @@ export class AppointmentsService {
 
   private async scheduleWhatsAppForRescheduledAppointment(originalAppointmentId: string, replacementAppointmentId: string): Promise<void> {
     try {
-      await this.whatsappNotifications.cancelPendingNotifications(originalAppointmentId, ['appointment_reminder'], 'appointment_rescheduled');
+      await this.whatsappNotifications.cancelPendingNotifications(originalAppointmentId, ['midpoint_reminder', 'reminder', 'second_reminder'], 'appointment_rescheduled');
       await this.whatsappNotifications.scheduleAppointmentRescheduled(replacementAppointmentId);
       await this.whatsappNotifications.scheduleAppointmentReminder(replacementAppointmentId);
     } catch (error) {

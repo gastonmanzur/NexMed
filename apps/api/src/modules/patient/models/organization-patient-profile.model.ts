@@ -20,7 +20,11 @@ const organizationPatientProfileSchema = new mongoose.Schema(
     defaultHealthInsuranceName: { type: String, required: false, trim: true, maxlength: 120, default: null },
     defaultInsuranceMemberNumber: { type: String, required: false, trim: true, maxlength: 60, default: null },
     source: { type: String, enum: organizationPatientProfileSources, required: true, default: 'express_booking', index: true },
-    ownerUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null, index: true }
+    ownerUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null, index: true },
+    whatsappOptIn: { type: Boolean, required: true, default: false },
+    whatsappOptInAt: { type: Date, required: false, default: null },
+    whatsappOptInSource: { type: String, enum: ['public_booking', 'patient_profile', 'staff_manual', null], required: false, default: null },
+    whatsappOptInText: { type: String, required: false, trim: true, default: null }
   },
   { timestamps: true }
 );
