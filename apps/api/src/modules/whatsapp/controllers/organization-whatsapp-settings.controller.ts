@@ -31,7 +31,23 @@ export const organizationWhatsAppSettingsController = {
   test: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId } = paramsSchema.parse(req.params);
     const body = testSchema.parse(req.body);
-    const data = await notifications.scheduleTestNotification(organizationId, body.phone, body.patientName);
-    res.status(201).json({ success: true, data });
+    try {
+      const created = await notifications.scheduleTestNotification(organizationId, body.phone, body.patientName);
+      const processed = await notifications.processWhatsAppNotification(created.id);
+      const row = processed.notification;
+      const data = {
+        ok: processed.status === 'sent',
+        notificationId: created.id,
+        status: row?.status ?? processed.status,
+        providerMessageId: row?.providerMessageId ?? null,
+        errorCode: row?.errorCode ?? (processed.status === 'ignored' ? processed.reason : null),
+        errorMessage: row?.errorMessage ?? null
+      };
+      res.status(200).json({ success: data.ok, data });
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'code' in error ? String((error as any).code) : 'WHATSAPP_TEST_FAILED';
+      const message = error instanceof Error ? error.message : 'No se pudo enviar la prueba de WhatsApp';
+      res.status(400).json({ success: false, data: { ok: false, notificationId: null, status: 'failed', errorCode: code, errorMessage: message } });
+    }
   }
 };

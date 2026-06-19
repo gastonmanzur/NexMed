@@ -7,7 +7,8 @@ export const appointmentNotificationStatuses = ['pending', 'processing', 'sent',
 const appointmentNotificationSchema = new mongoose.Schema(
   {
     organizationId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Organization', index: true },
-    appointmentId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Appointment', index: true },
+    appointmentId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'Appointment', index: true, default: null },
+    isTest: { type: Boolean, required: true, default: false, index: true },
     patientProfileId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'PatientProfile', index: true, default: null },
     patientIdentityId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'PatientIdentity', index: true, default: null },
     channel: { type: String, enum: appointmentNotificationChannels, required: true, default: 'whatsapp' },
@@ -48,7 +49,7 @@ appointmentNotificationSchema.index({ providerMessageId: 1 });
 appointmentNotificationSchema.index({ organizationId: 1, createdAt: -1 });
 appointmentNotificationSchema.index(
   { appointmentId: 1, type: 1, channel: 1 },
-  { unique: true, partialFilterExpression: { status: { $ne: 'cancelled' } } }
+  { unique: true, partialFilterExpression: { status: { $ne: 'cancelled' }, appointmentId: { $type: 'objectId' } } }
 );
 
 export type AppointmentNotificationDocument = InferSchemaType<typeof appointmentNotificationSchema> & { _id: mongoose.Types.ObjectId };

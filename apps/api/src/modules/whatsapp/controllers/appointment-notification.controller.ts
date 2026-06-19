@@ -8,7 +8,7 @@ const orgParamsSchema = z.object({ organizationId: z.string().trim().min(1) });
 const repo = new AppointmentNotificationRepository();
 const mask = (v: string) => v.length <= 4 ? '****' : `${'*'.repeat(Math.max(0, v.length - 4))}${v.slice(-4)}`;
 const toDto = (row: Awaited<ReturnType<AppointmentNotificationRepository['listByAppointment']>>[number]) => ({
-  id: row._id.toString(), organizationId: row.organizationId.toString(), appointmentId: row.appointmentId.toString(), channel: row.channel, type: row.type, status: row.status,
+  id: row._id.toString(), organizationId: row.organizationId.toString(), appointmentId: row.appointmentId?.toString() ?? null, isTest: row.isTest ?? false, channel: row.channel, type: row.type, status: row.status,
   scheduledFor: row.scheduledFor.toISOString(), sentAt: row.sentAt?.toISOString() ?? null, deliveredAt: row.deliveredAt?.toISOString() ?? null, readAt: row.readAt?.toISOString() ?? null, failedAt: row.failedAt?.toISOString() ?? null, skippedAt: row.skippedAt?.toISOString() ?? null,
   recipientPhone: mask(row.recipientPhone), normalizedRecipientPhone: mask(row.normalizedRecipientPhone), senderDisplayName: row.senderDisplayName ?? 'NexMed', provider: row.provider ?? 'meta_cloud_api', templateName: row.templateName ?? null, templateLanguage: row.templateLanguage ?? 'es', templateParams: row.templateParams ?? [], providerMessageId: row.providerMessageId ?? null, errorMessage: row.errorMessage ?? row.error ?? null, attempts: row.attempts, lastAttemptAt: row.lastAttemptAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString()
 });
