@@ -502,7 +502,7 @@ export const organizationWhatsAppApi = {
     return result.data;
   },
   sendTest: async (accessToken: string, organizationId: string, input: { phone: string; patientName?: string }) => {
-    const result = await request<{ success: true; data: { id: string; status: string } }>(`/organizations/${organizationId}/whatsapp/test`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });
+    const result = await request<{ success: boolean; data: { ok: boolean; notificationId: string | null; status: string; providerMessageId?: string | null; errorCode?: string | null; errorMessage?: string | null } }>(`/organizations/${organizationId}/whatsapp/test`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });
     return result.data;
   }
 };
