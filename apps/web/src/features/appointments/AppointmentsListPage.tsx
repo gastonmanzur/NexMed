@@ -221,6 +221,7 @@ export const AppointmentsListPage = (): ReactElement => {
               <button
                 key={action.status}
                 type="button"
+                className="nx-agenda-event__action-button"
                 disabled={updatingStatusId === appointment.id}
                 onClick={() => void updateAppointmentStatus(appointment, action.status, action.note)}
               >
