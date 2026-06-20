@@ -262,9 +262,31 @@
 
 .nx-agenda-event__link { color: inherit; display: grid; gap: 0.25rem; text-decoration: none; }
 .nx-agenda-event__pending { color: #92400e; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; }
-.nx-agenda-event__actions { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.35rem; }
-.nx-agenda-event__actions button { background: #fff; border: 1px solid #cbd5e1; border-radius: 999px; color: #0f172a; cursor: pointer; font-size: 0.62rem; font-weight: 700; padding: 0.18rem 0.4rem; }
-.nx-agenda-event__actions button:disabled { cursor: wait; opacity: 0.6; }
+.nx-agenda-event__actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 0.35rem; }
+.nx-agenda-event__action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  max-width: 100%;
+  min-height: 30px;
+  height: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.15;
+  padding: 6px 10px;
+  white-space: normal;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background-color 120ms ease;
+}
+.nx-agenda-event__action-button:hover:not(:disabled) { border-color: #93c5fd; background: #f8fbff; box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08); transform: translateY(-1px); }
+.nx-agenda-event__action-button:focus-visible { outline: 2px solid rgba(59, 130, 246, 0.45); outline-offset: 2px; }
+.nx-agenda-event__action-button:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.nx-agenda-event__action-button:disabled { cursor: wait; opacity: 0.6; box-shadow: none; }
 
 .nx-agenda-slot-group {
   display: grid;
@@ -498,9 +520,8 @@
   min-width: 0;
 }
 
-.nx-agenda-event__actions button {
-  max-width: 100%;
-  white-space: normal;
+.nx-agenda-event__action-button {
+  overflow-wrap: anywhere;
 }
 
 .nx-appointment-group-trigger {
@@ -647,11 +668,11 @@
   gap: 0.38rem;
 }
 
-.nx-appointment-group-card .nx-agenda-event__actions button {
-  flex: 1 1 112px;
-  min-height: 32px;
-  padding: 0.3rem 0.56rem;
-  font-size: 0.7rem;
+.nx-appointment-group-card .nx-agenda-event__action-button {
+  flex: 0 1 auto;
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
 }
 
 @media (max-width: 760px) {
