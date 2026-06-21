@@ -22,7 +22,7 @@ const appointmentNotificationSchema = new mongoose.Schema(
     senderDisplayPhone: { type: String, required: false, trim: true, default: null },
     provider: { type: String, enum: ['meta_cloud_api'], required: true, default: 'meta_cloud_api' },
     templateName: { type: String, required: false, trim: true, default: null },
-    templateLanguage: { type: String, required: true, trim: true, default: 'es' },
+    templateLanguage: { type: String, required: true, trim: true, default: 'es_AR' },
     templateParams: { type: [String], required: true, default: [] },
     payloadPreview: { type: mongoose.Schema.Types.Mixed, required: false, default: null },
     providerMessageId: { type: String, required: false, trim: true, default: null },

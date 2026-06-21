@@ -33,7 +33,7 @@ const organizationWhatsAppSettingsSchema = new mongoose.Schema(
     displayPhoneNumber: { type: String, required: false, trim: true, default: null },
     meta: { type: whatsappMetaSchema, required: false, default: () => ({}) },
     templates: { type: whatsappTemplatesSchema, required: true, default: () => ({}) },
-    templateLanguage: { type: String, enum: ['es', 'es_AR'], required: true, default: 'es' },
+    templateLanguage: { type: String, enum: ['es', 'es_AR'], required: true, default: 'es_AR' },
     sendConfirmation: { type: Boolean, required: true, default: true },
     sendReminder: { type: Boolean, required: true, default: true },
     sendMidpointReminder: { type: Boolean, required: true, default: true },

@@ -44,6 +44,7 @@ const envSchema = z
     META_WHATSAPP_ACCESS_TOKEN: z.string().optional(),
     META_WHATSAPP_VERIFY_TOKEN: z.string().optional(),
     META_WHATSAPP_SENDER_DISPLAY_NAME: z.string().trim().min(1).default('NexMed'),
+    META_WHATSAPP_CONFIRMATION_HEADER_IMAGE_URL: z.string().url().optional(),
     APP_PUBLIC_URL: z.string().url().optional(),
     WHATSAPP_PROVIDER: z.enum(['manual', 'noop', 'meta_cloud_api']).default('meta_cloud_api'),
     WHATSAPP_META_API_VERSION: z.string().trim().min(1).default('v22.0'),

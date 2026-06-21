@@ -41,13 +41,17 @@ export const organizationWhatsAppSettingsController = {
         status: row?.status ?? processed.status,
         providerMessageId: row?.providerMessageId ?? null,
         errorCode: row?.errorCode ?? (processed.status === 'ignored' ? processed.reason : null),
-        errorMessage: row?.errorMessage ?? null
+        errorMessage: row?.errorMessage ?? null,
+        providerResponse: row?.providerResponse ?? null,
+        payloadPreview: row?.payloadPreview ?? null,
+        templateName: row?.templateName ?? null,
+        templateLanguage: row?.templateLanguage ?? null
       };
       res.status(200).json({ success: data.ok, data });
     } catch (error) {
       const code = typeof error === 'object' && error && 'code' in error ? String((error as any).code) : 'WHATSAPP_TEST_FAILED';
       const message = error instanceof Error ? error.message : 'No se pudo enviar la prueba de WhatsApp';
-      res.status(400).json({ success: false, data: { ok: false, notificationId: null, status: 'failed', errorCode: code, errorMessage: message } });
+      res.status(400).json({ success: false, error: { code, message }, data: { ok: false, notificationId: null, status: 'failed', errorCode: code, errorMessage: message } });
     }
   }
 };
