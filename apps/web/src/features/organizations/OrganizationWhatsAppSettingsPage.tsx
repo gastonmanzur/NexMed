@@ -44,7 +44,7 @@ export const OrganizationWhatsAppSettingsPage = (): ReactElement => {
         <label><input type="checkbox" checked={settings.sendSecondReminder} onChange={(e) => update({ sendSecondReminder: e.target.checked })} /> Enviar segundo recordatorio</label>
         <label>Recordatorio principal: horas antes <input type="number" min={1} max={720} value={settings.reminderHoursBefore} onChange={(e) => update({ reminderHoursBefore: Number(e.target.value) })} /></label>
         <label>Segundo recordatorio: horas antes <input type="number" min={1} max={720} value={settings.secondReminderHoursBefore ?? 2} onChange={(e) => update({ secondReminderHoursBefore: Number(e.target.value) })} /></label>
-        <label>Idioma template <select value={settings.templateLanguage} onChange={(e) => update({ templateLanguage: e.target.value as 'es' | 'es_AR' })}><option value="es">es</option><option value="es_AR">es_AR</option></select></label>
+        <label>Idioma template <select value={settings.templateLanguage} onChange={(e) => update({ templateLanguage: e.target.value as 'es' | 'es_AR' })}><option value="es_AR">es_AR</option><option value="es">es</option></select></label>
         {templates ? <div style={{ display: 'grid', gap: '.5rem' }}>{(['confirmation','reminder','cancellation','rescheduled','notice'] as const).map((key) => <label key={key}>Template {key}<input value={templates[key] ?? ''} onChange={(e) => update({ templates: { ...templates, [key]: e.target.value } })} /></label>)}</div> : null}
         <button className="nx-btn" disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</button>
       </form> : null}

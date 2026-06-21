@@ -34,7 +34,7 @@ export class OrganizationWhatsAppSettingsRepository {
           rescheduled: input.templates?.rescheduled ?? 'appointment_rescheduled',
           notice: input.templates?.notice ?? 'appointment_notice'
         },
-        templateLanguage: input.templateLanguage ?? 'es',
+        templateLanguage: input.templateLanguage ?? 'es_AR',
         sendConfirmation: input.sendConfirmation ?? true,
         sendReminder: input.sendReminder ?? true,
         sendMidpointReminder: input.sendMidpointReminder ?? true,
