@@ -490,8 +490,8 @@ export const organizationWhatsAppApi = {
   updateSettings: async (accessToken: string, organizationId: string, input: {
     enabled: boolean;
     provider?: 'meta_cloud_api'; senderDisplayName?: string; globalProviderConfigured?: boolean;
-    templates: { confirmation?: string | null; reminder?: string | null; cancellation?: string | null; rescheduled?: string | null; notice?: string | null };
-    templateLanguage?: 'es' | 'es_AR'; sendConfirmation?: boolean; sendReminder?: boolean; sendMidpointReminder?: boolean; sendSecondReminder?: boolean;
+    templates: { confirmation?: string | null; test?: string | null; reminder?: string | null; cancellation?: string | null; rescheduled?: string | null; notice?: string | null };
+    templateLanguage?: 'es_AR'; sendConfirmation?: boolean; sendReminder?: boolean; sendMidpointReminder?: boolean; sendSecondReminder?: boolean;
     reminderHoursBefore?: number; secondReminderHoursBefore?: number | null;
   }) => {
     const result = await request<{ success: true; data: import('@starter/shared-types').OrganizationWhatsAppSettingsDto }>(`/organizations/${organizationId}/whatsapp-settings`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(input) });

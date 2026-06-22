@@ -6,8 +6,8 @@ export interface UpsertOrganizationWhatsAppSettingsInput {
   enabled: boolean;
   senderDisplayName?: string | null;
   senderDisplayPhone?: string | null;
-  templates?: Partial<{ confirmation: string; reminder: string; cancellation: string; rescheduled: string; notice: string }>;
-  templateLanguage?: 'es' | 'es_AR';
+  templates?: Partial<{ confirmation: string; test: string | null; reminder: string; cancellation: string; rescheduled: string; notice: string }>;
+  templateLanguage?: 'es_AR';
   sendConfirmation?: boolean; sendReminder?: boolean; sendMidpointReminder?: boolean; sendSecondReminder?: boolean;
   reminderHoursBefore?: number; secondReminderHoursBefore?: number | null;
 }
@@ -18,30 +18,29 @@ export class OrganizationWhatsAppSettingsRepository {
   }
 
   async upsertByOrganizationId(input: UpsertOrganizationWhatsAppSettingsInput): Promise<OrganizationWhatsAppSettingsDocument> {
+    const $set: Record<string, unknown> = { provider: 'meta_cloud_api' };
+    if (input.enabled !== undefined) $set.enabled = input.enabled;
+    if (input.senderDisplayName !== undefined) $set.senderDisplayName = input.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME;
+    if (input.senderDisplayPhone !== undefined) {
+      $set.senderDisplayPhone = input.senderDisplayPhone;
+      $set.displayPhoneNumber = input.senderDisplayPhone;
+    }
+    if (input.templates) {
+      for (const [key, value] of Object.entries(input.templates)) {
+        if (value !== undefined) $set[`templates.${key}`] = value;
+      }
+    }
+    if (input.templateLanguage !== undefined) $set.templateLanguage = input.templateLanguage;
+    for (const key of ['sendConfirmation','sendReminder','sendMidpointReminder','sendSecondReminder','reminderHoursBefore','secondReminderHoursBefore'] as const) {
+      if (input[key] !== undefined) $set[key] = input[key];
+    }
+
     return OrganizationWhatsAppSettingsModel.findOneAndUpdate(
       { organizationId: input.organizationId },
-      { $set: {
-        enabled: input.enabled,
-        provider: 'meta_cloud_api',
-        senderDisplayName: input.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME,
-        senderDisplayPhone: input.senderDisplayPhone ?? null,
-        displayPhoneNumber: input.senderDisplayPhone ?? null,
-        meta: { phoneNumberId: null, businessAccountId: null, accessTokenEncrypted: null, apiVersion: null },
-        templates: {
-          confirmation: input.templates?.confirmation ?? 'appointment_confirmation',
-          reminder: input.templates?.reminder ?? 'appointment_reminder',
-          cancellation: input.templates?.cancellation ?? 'appointment_cancellation',
-          rescheduled: input.templates?.rescheduled ?? 'appointment_rescheduled',
-          notice: input.templates?.notice ?? 'appointment_notice'
-        },
-        templateLanguage: input.templateLanguage ?? 'es_AR',
-        sendConfirmation: input.sendConfirmation ?? true,
-        sendReminder: input.sendReminder ?? true,
-        sendMidpointReminder: input.sendMidpointReminder ?? true,
-        sendSecondReminder: input.sendSecondReminder ?? false,
-        reminderHoursBefore: input.reminderHoursBefore ?? 24,
-        secondReminderHoursBefore: input.secondReminderHoursBefore ?? 2
-      } },
+      {
+        $set,
+        $setOnInsert: { organizationId: input.organizationId }
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).exec() as Promise<OrganizationWhatsAppSettingsDocument>;
   }
