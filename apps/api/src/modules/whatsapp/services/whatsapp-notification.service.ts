@@ -51,7 +51,7 @@ export class WhatsAppNotificationService {
   private async scheduleAllForAppointment(appointment: AppointmentDocument, includeConfirmation: boolean): Promise<void> {
     const settings = await this.settings.resolve(appointment.organizationId.toString());
     const now = new Date();
-    if (includeConfirmation && settings.sendConfirmation) await this.schedule(appointment._id.toString(), 'confirmation', now, appointment);
+    if (includeConfirmation && settings.sendConfirmation) await this.schedule(appointment._id.toString(), 'appointment_confirmation', now, appointment);
     if (!settings.sendReminder) return;
     const finalAt = new Date(appointment.startAt.getTime() - (settings.reminderHoursBefore ?? 24) * 60 * 60_000);
     if (finalAt > now) await this.schedule(appointment._id.toString(), 'reminder', finalAt, appointment);
@@ -67,11 +67,19 @@ export class WhatsAppNotificationService {
     if (!settings.enabled) throw Object.assign(new Error('WhatsApp está desactivado para esta organización'), { code: 'WHATSAPP_DISABLED_FOR_ORGANIZATION' });
     const normalized = normalizeArgentinaWhatsAppPhone(phone);
     const now = new Date();
+    const organization = await this.organizations.findById(organizationId);
+    const organizationName = organization?.displayName ?? organization?.name ?? settings.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME;
+    const date = now.toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+    const time = now.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' });
+    const professionalName = 'Profesional de prueba';
+    const templateLanguage = this.requireTemplateLanguage(settings.templateLanguage);
+    const templateName = settings.templates?.confirmation ?? 'appointment_confirmation';
+    const templateParameters = this.appointmentConfirmationParameters(patientName, organizationName, date, time, professionalName);
+    logger.info({ settingsId: settings._id.toString(), persistedTemplateLanguage: settings.templateLanguage, resolvedTemplateLanguage: templateLanguage, templateName }, '[WhatsAppTest] resolved appointment confirmation template');
     const row = await this.notifications.create({
-      organizationId: new mongoose.Types.ObjectId(organizationId), appointmentId: null, isTest: true, channel: 'whatsapp', type: 'confirmation', status: normalized.ok ? 'pending' : 'failed', scheduledFor: now,
-      recipientPhone: phone, normalizedRecipientPhone: normalized.ok ? normalized.normalized : '', senderDisplayName: settings.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME, provider: 'meta_cloud_api',
-      templateName: settings.templates?.test || settings.templates?.confirmation || 'appointment_confirmation', templateLanguage: settings.templateLanguage,
-      templateParams: [patientName, 'NexMed', now.toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }), now.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' }), 'Prueba'],
+      organizationId: new mongoose.Types.ObjectId(organizationId), appointmentId: null, isTest: true, channel: 'whatsapp', type: 'appointment_confirmation', status: normalized.ok ? 'pending' : 'failed', scheduledFor: now,
+      recipientPhone: phone, normalizedRecipientPhone: normalized.ok ? normalized.normalized : '', senderDisplayName: settings.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME, senderDisplayPhone: settings.senderDisplayPhone ?? null, provider: 'meta_cloud_api',
+      templateName, templateLanguage, templateParams: templateParameters.map((parameter) => parameter.value), templateParameters: templateParameters as any,
       errorCode: normalized.ok ? null : 'INVALID_RECIPIENT_PHONE', errorMessage: normalized.ok ? null : normalized.error, failedAt: normalized.ok ? null : new Date(), maxAttempts: 1
     });
     return { id: row._id.toString(), status: row.status };
@@ -107,10 +115,10 @@ export class WhatsAppNotificationService {
     if (notification.appointmentId && notification.patientProfileId) { const optIn = await OrganizationPatientProfileModel.findOne({ organizationId: notification.organizationId, patientProfileId: notification.patientProfileId }).exec(); if (!optIn?.whatsappOptIn) return { status: 'skipped', notification: await this.markNotificationSkipped(notificationId, 'MISSING_OPT_IN', 'El paciente no aceptó recibir WhatsApp'), reason: 'MISSING_OPT_IN' }; }
     try {
       const templateName = notification.templateName ?? 'appointment_confirmation';
-      const languageCode = notification.templateLanguage ?? settings.templateLanguage;
+      const languageCode = this.requireTemplateLanguage(notification.templateLanguage ?? settings.templateLanguage);
       const template = await this.templates.findApprovedTemplate({ name: templateName, language: languageCode });
       const header = await this.resolveTemplateHeader(template.headerFormat);
-      const parameters = this.namedBodyParameters(notification.templateParams ?? []);
+      const parameters = this.namedBodyParameters(notification.templateParameters?.length ? notification.templateParameters : (notification.templateParams ?? []));
       this.validateParameterNames(template.bodyParameterNames, parameters.map((parameter) => parameter.parameter_name).filter((name): name is string => Boolean(name)));
       logger.info({ ...meta(notification), templateHeaderType: template.headerFormat, parameterNames: parameters.map((parameter) => parameter.parameter_name).filter((name): name is string => Boolean(name)) }, '[WhatsAppWorker] resolved Meta template payload');
       const provider = new MetaCloudApiWhatsAppProvider();
@@ -129,12 +137,29 @@ export class WhatsAppNotificationService {
     }
   }
 
-  private namedBodyParameters(params: string[]): TemplateTextParameter[] {
+  private namedBodyParameters(params: string[] | { name: string; value: string }[]): TemplateTextParameter[] {
     const names = ['patient_name', 'center_name', 'appointment_date', 'appointment_time', 'professional_name'];
-    return params.map((text, index) => {
+    return params.map((parameter, index) => {
+      if (typeof parameter === 'object') return { type: 'text', parameter_name: parameter.name, text: parameter.value };
       const parameterName = names[index];
-      return parameterName ? { type: 'text', parameter_name: parameterName, text } : { type: 'text', text };
+      return parameterName ? { type: 'text', parameter_name: parameterName, text: parameter } : { type: 'text', text: parameter };
     });
+  }
+
+  private appointmentConfirmationParameters(patientName: string, organizationName: string, date: string, time: string, professionalName: string): { name: string; value: string }[] {
+    return [
+      { name: 'patient_name', value: patientName },
+      { name: 'center_name', value: organizationName },
+      { name: 'appointment_date', value: date },
+      { name: 'appointment_time', value: time },
+      { name: 'professional_name', value: professionalName }
+    ];
+  }
+
+  private requireTemplateLanguage(language?: string | null): string {
+    const templateLanguage = language?.trim();
+    if (!templateLanguage) throw new WhatsAppConfigurationError('TEMPLATE_LANGUAGE_NOT_CONFIGURED', 'No hay un idioma de plantilla configurado para esta organización.');
+    return templateLanguage;
   }
 
   private validateParameterNames(expected: string[], actual: string[]): void {
@@ -146,7 +171,7 @@ export class WhatsAppNotificationService {
   private async resolveTemplateHeader(headerFormat: string | null): Promise<TemplateHeader> {
     if (headerFormat !== 'IMAGE') return null;
     const link = env.META_WHATSAPP_CONFIRMATION_HEADER_IMAGE_URL;
-    if (!link) throw new WhatsAppConfigurationError('TEMPLATE_IMAGE_HEADER_REQUIRED', 'La plantilla requiere una imagen de encabezado.');
+    if (!link) throw new WhatsAppConfigurationError('TEMPLATE_IMAGE_HEADER_REQUIRED', 'La plantilla appointment_confirmation requiere una imagen de encabezado.');
     await this.validatePublicImageUrl(link);
     return { type: 'image', link };
   }
@@ -171,7 +196,7 @@ export class WhatsAppNotificationService {
     const normalized = normalizeArgentinaWhatsAppPhone(appointment.patientPhone); const common = await this.commonPayload(appointment, type);
     await this.createIgnoringDuplicate({ ...common, status: normalized.ok ? 'pending' : 'skipped', scheduledFor, normalizedRecipientPhone: normalized.ok ? normalized.normalized : '', errorCode: normalized.ok ? null : 'INVALID_RECIPIENT_PHONE', errorMessage: normalized.ok ? null : normalized.error, skippedAt: normalized.ok ? null : new Date() });
   }
-  private async commonPayload(appointment: AppointmentDocument, type: NotificationType): Promise<Partial<AppointmentNotificationDocument>> { const [settings, organization, professional] = await Promise.all([this.settings.resolve(appointment.organizationId.toString()), this.organizations.findById(appointment.organizationId.toString()), this.professionals.findByIdInOrganization(appointment.organizationId.toString(), appointment.professionalId.toString())]); const patientName = appointment.beneficiaryDisplayName ?? appointment.patientName; const organizationName = organization?.displayName ?? organization?.name ?? 'el centro'; const date = appointment.startAt.toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }); const time = appointment.startAt.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' }); const professionalName = professional?.displayName ?? (`${professional?.firstName ?? ''} ${professional?.lastName ?? ''}`.trim() || 'el profesional'); const params = type === 'cancellation' ? [patientName, organizationName, date, time] : [patientName, organizationName, date, time, professionalName]; const key = type === 'midpoint_reminder' || type === 'second_reminder' ? 'reminder' : type; return { organizationId: appointment.organizationId, appointmentId: appointment._id, patientProfileId: appointment.patientProfileId ?? null, channel: 'whatsapp', type, recipientPhone: appointment.patientPhone ?? '', senderDisplayName: settings.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME, senderDisplayPhone: settings.senderDisplayPhone ?? null, provider: 'meta_cloud_api', templateName: settings.templates?.[key as keyof typeof settings.templates] ?? (key === 'confirmation' ? 'appointment_confirmation' : `appointment_${key}`), templateLanguage: settings.templateLanguage, templateParams: params, attempts: 0, maxAttempts: 3 }; }
+  private async commonPayload(appointment: AppointmentDocument, type: NotificationType): Promise<Partial<AppointmentNotificationDocument>> { const [settings, organization, professional] = await Promise.all([this.settings.resolve(appointment.organizationId.toString()), this.organizations.findById(appointment.organizationId.toString()), this.professionals.findByIdInOrganization(appointment.organizationId.toString(), appointment.professionalId.toString())]); const patientName = appointment.beneficiaryDisplayName ?? appointment.patientName; const organizationName = organization?.displayName ?? organization?.name ?? 'el centro'; const date = appointment.startAt.toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' }); const time = appointment.startAt.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' }); const professionalName = professional?.displayName ?? (`${professional?.firstName ?? ''} ${professional?.lastName ?? ''}`.trim() || 'el profesional'); const params = type === 'cancellation' ? [patientName, organizationName, date, time] : [patientName, organizationName, date, time, professionalName]; const namedParams = type === 'appointment_confirmation' ? this.appointmentConfirmationParameters(patientName, organizationName, date, time, professionalName) : []; const key = type === 'midpoint_reminder' || type === 'second_reminder' ? 'reminder' : type === 'appointment_confirmation' ? 'confirmation' : type; return { organizationId: appointment.organizationId, appointmentId: appointment._id, patientProfileId: appointment.patientProfileId ?? null, channel: 'whatsapp', type, recipientPhone: appointment.patientPhone ?? '', senderDisplayName: settings.senderDisplayName ?? env.META_WHATSAPP_SENDER_DISPLAY_NAME, senderDisplayPhone: settings.senderDisplayPhone ?? null, provider: 'meta_cloud_api', templateName: settings.templates?.[key as keyof typeof settings.templates] ?? (key === 'confirmation' ? 'appointment_confirmation' : `appointment_${key}`), templateLanguage: this.requireTemplateLanguage(settings.templateLanguage), templateParams: params, templateParameters: namedParams as any, attempts: 0, maxAttempts: 3 }; }
   private async createIgnoringDuplicate(input: Partial<AppointmentNotificationDocument>): Promise<void> { try { await this.notifications.create(input); } catch (error) { if (error && typeof error === 'object' && 'code' in error && (error as any).code === 11000) return; throw error; } }
   private async findAppointment(appointmentId: string): Promise<AppointmentDocument | null> { if (!mongoose.isValidObjectId(appointmentId)) return null; return this.appointments.findById(appointmentId); }
 }
