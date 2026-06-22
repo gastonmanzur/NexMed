@@ -48,7 +48,7 @@ const envSchema = z
     APP_PUBLIC_URL: z.string().url().optional(),
     WHATSAPP_PROVIDER: z.enum(['manual', 'noop', 'meta_cloud_api']).default('meta_cloud_api'),
     WHATSAPP_META_API_VERSION: z.string().trim().min(1).default('v22.0'),
-    WHATSAPP_DEFAULT_LANGUAGE: z.string().trim().min(2).default('es'),
+    WHATSAPP_DEFAULT_LANGUAGE: z.string().trim().min(2).default('es_AR'),
     WHATSAPP_ACCESS_TOKEN: z.string().optional(),
     WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
     WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional(),
