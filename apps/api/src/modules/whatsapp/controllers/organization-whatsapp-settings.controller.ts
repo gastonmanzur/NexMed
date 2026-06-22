@@ -28,6 +28,12 @@ export const organizationWhatsAppSettingsController = {
     const update: any = { ...body }; if (templates) update.templates = templates;
     res.status(200).json({ success: true, data: await service.upsert(organizationId, update) });
   },
+  health: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { organizationId } = paramsSchema.parse(req.params);
+    const settings = await service.get(organizationId);
+    const headerImageConfigured = Boolean(settings.headerImageConfigured);
+    res.status(200).json({ success: true, data: { providerConfigured: settings.globalProviderConfigured, headerImageConfigured, headerImageReachable: headerImageConfigured, confirmationTemplate: { name: settings.templates.confirmation, language: settings.templateLanguage, approved: null, headerType: headerImageConfigured ? 'IMAGE' : 'NONE' } } });
+  },
   test: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId } = paramsSchema.parse(req.params);
     const body = testSchema.parse(req.body);

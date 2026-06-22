@@ -152,6 +152,12 @@ organizationsRouter.get(
   asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
   asyncHandler(appointmentNotificationController.listByOrganization)
 );
+organizationsRouter.get(
+  '/:organizationId/whatsapp/health',
+  asyncHandler(requireOrganizationMember),
+  asyncHandler(requireOrganizationRole('owner', 'admin', 'manager', 'staff')),
+  asyncHandler(organizationWhatsAppSettingsController.health)
+);
 organizationsRouter.post(
   '/:organizationId/whatsapp/test',
   asyncHandler(requireOrganizationMember),
