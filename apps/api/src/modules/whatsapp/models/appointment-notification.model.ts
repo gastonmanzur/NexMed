@@ -1,8 +1,26 @@
-import mongoose, { type InferSchemaType, type Model } from 'mongoose';
+import mongoose, { Schema, type InferSchemaType, type Model } from 'mongoose';
 
 export const appointmentNotificationChannels = ['whatsapp'] as const;
 export const appointmentNotificationTypes = ['appointment_confirmation', 'confirmation', 'midpoint_reminder', 'reminder', 'second_reminder', 'cancellation', 'rescheduled', 'notice'] as const;
 export const appointmentNotificationStatuses = ['pending', 'processing', 'sent', 'delivered', 'read', 'failed', 'skipped', 'cancelled'] as const;
+
+
+const templateHeaderSchema = new Schema(
+  {
+    type: { type: String, enum: ['image'], required: true },
+    link: { type: String, required: false, trim: true, default: null },
+    mediaId: { type: String, required: false, trim: true, default: null }
+  },
+  { _id: false }
+);
+
+const templateNamedParameterSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    value: { type: String, required: true }
+  },
+  { _id: false }
+);
 
 const appointmentNotificationSchema = new mongoose.Schema(
   {
@@ -30,14 +48,12 @@ const appointmentNotificationSchema = new mongoose.Schema(
       default: []
     },
     templateNamedParams: {
-      type: [{ name: { type: String, required: true, trim: true }, value: { type: String, required: true, trim: true } }],
+      type: [templateNamedParameterSchema],
       required: false,
-      default: null
+      default: []
     },
     templateHeader: {
-      type: { type: String, enum: ['image'], required: false },
-      link: { type: String, required: false, trim: true, default: null },
-      mediaId: { type: String, required: false, trim: true, default: null },
+      type: templateHeaderSchema,
       required: false,
       default: null
     },
