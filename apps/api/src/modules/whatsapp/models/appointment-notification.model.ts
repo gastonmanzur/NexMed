@@ -29,6 +29,18 @@ const appointmentNotificationSchema = new mongoose.Schema(
       required: true,
       default: []
     },
+    templateNamedParams: {
+      type: [{ name: { type: String, required: true, trim: true }, value: { type: String, required: true, trim: true } }],
+      required: false,
+      default: null
+    },
+    templateHeader: {
+      type: { type: String, enum: ['image'], required: false },
+      link: { type: String, required: false, trim: true, default: null },
+      mediaId: { type: String, required: false, trim: true, default: null },
+      required: false,
+      default: null
+    },
     payloadPreview: { type: mongoose.Schema.Types.Mixed, required: false, default: null },
     providerMessageId: { type: String, required: false, trim: true, default: null },
     maxAttempts: { type: Number, required: true, default: 3 },

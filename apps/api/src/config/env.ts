@@ -44,6 +44,7 @@ const envSchema = z
     META_WHATSAPP_ACCESS_TOKEN: z.string().optional(),
     META_WHATSAPP_VERIFY_TOKEN: z.string().optional(),
     META_WHATSAPP_SENDER_DISPLAY_NAME: z.string().trim().min(1).default('NexMed'),
+    META_WHATSAPP_HEADER_IMAGE_URL: z.string().url().optional(),
     META_WHATSAPP_CONFIRMATION_HEADER_IMAGE_URL: z.string().url().optional(),
     APP_PUBLIC_URL: z.string().url().optional(),
     WHATSAPP_PROVIDER: z.enum(['manual', 'noop', 'meta_cloud_api']).default('meta_cloud_api'),
@@ -103,6 +104,7 @@ const envSchema = z
       WHATSAPP_PHONE_NUMBER_ID: data.META_WHATSAPP_PHONE_NUMBER_ID ?? data.WHATSAPP_PHONE_NUMBER_ID,
       WHATSAPP_BUSINESS_ACCOUNT_ID: data.META_WHATSAPP_WABA_ID ?? data.WHATSAPP_BUSINESS_ACCOUNT_ID,
       WHATSAPP_PROVIDER: data.META_WHATSAPP_ENABLED === 'false' || data.META_WHATSAPP_ENABLED === false ? 'noop' : 'meta_cloud_api',
+      META_WHATSAPP_HEADER_IMAGE_URL: data.META_WHATSAPP_HEADER_IMAGE_URL ?? data.META_WHATSAPP_CONFIRMATION_HEADER_IMAGE_URL,
       MERCADOPAGO_WEBHOOK_SECRET: data.MERCADOPAGO_WEBHOOK_SECRET ?? data.MP_WEBHOOK_SECRET,
       CORS_ORIGIN: corsOrigins.length > 0 ? corsOrigins : [data.WEB_BASE_URL],
       AUTH_COOKIE_SECURE:
