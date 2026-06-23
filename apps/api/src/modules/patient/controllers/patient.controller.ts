@@ -185,8 +185,12 @@ const updateFamilyMemberSchema = z.object({
 const appointmentParamsSchema = z.object({ appointmentId: z.string().trim().min(1) });
 
 const listAppointmentsQuerySchema = z.object({
-  status: z.enum(['booked', 'confirmed_by_patient', 'arrived', 'canceled_by_staff', 'canceled_by_patient', 'rescheduled', 'completed', 'no_show']).optional(),
-  organizationId: z.string().trim().min(1).optional()
+  scope: z.enum(['upcoming', 'past', 'cancelled', 'all']).optional(),
+  status: z.enum(['booked', 'confirmed_by_patient', 'arrived', 'in_progress', 'canceled_by_staff', 'canceled_by_patient', 'rescheduled', 'completed', 'no_show']).optional(),
+  organizationId: z.string().trim().min(1).optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  sort: z.enum(['asc', 'desc']).optional()
 });
 
 const cancelSchema = z.object({ reason: z.string().trim().max(300).optional() });
@@ -198,6 +202,12 @@ const rescheduleSchema = z.object({
   newStartAt: z.string().trim().min(1),
   newEndAt: z.string().trim().min(1).optional(),
   reason: z.string().trim().max(300).optional()
+});
+
+const availableSlotsQuerySchema = z.object({
+  dateFrom: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  professionalId: z.string().trim().min(1).optional()
 });
 
 export const patientController = {
@@ -405,16 +415,31 @@ export const patientController = {
 
   listAppointments: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const query = listAppointmentsQuerySchema.parse(req.query);
-    const data = await service.listPatientAppointments(req.auth!.userId, {
+    const data = await service.listMyAppointments(req.auth!.userId, {
+      ...(query.scope !== undefined ? { scope: query.scope } : {}),
       ...(query.status !== undefined ? { status: query.status } : {}),
-      ...(query.organizationId !== undefined ? { organizationId: query.organizationId } : {})
+      ...(query.organizationId !== undefined ? { organizationId: query.organizationId } : {}),
+      ...(query.page !== undefined ? { page: query.page } : {}),
+      ...(query.limit !== undefined ? { limit: query.limit } : {}),
+      ...(query.sort !== undefined ? { sort: query.sort } : {})
     });
     res.status(200).json({ success: true, data });
   },
 
   getAppointment: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { appointmentId } = appointmentParamsSchema.parse(req.params);
-    const data = await service.getPatientAppointment(req.auth!.userId, appointmentId);
+    const data = await service.getMyAppointment(req.auth!.userId, appointmentId);
+    res.status(200).json({ success: true, data });
+  },
+
+  getAppointmentAvailableSlots: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const { appointmentId } = appointmentParamsSchema.parse(req.params);
+    const input = availableSlotsQuerySchema.parse(req.query);
+    const data = await service.getMyAppointmentAvailableSlots(req.auth!.userId, appointmentId, {
+      ...(input.dateFrom !== undefined ? { dateFrom: input.dateFrom } : {}),
+      ...(input.dateTo !== undefined ? { dateTo: input.dateTo } : {}),
+      ...(input.professionalId !== undefined ? { professionalId: input.professionalId } : {})
+    });
     res.status(200).json({ success: true, data });
   },
 

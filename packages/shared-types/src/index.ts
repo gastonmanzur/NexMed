@@ -305,6 +305,77 @@ export interface AppointmentDto {
   organization?: OrganizationDto | null;
 }
 
+export type PatientAppointmentScope = 'upcoming' | 'past' | 'cancelled' | 'all';
+
+export interface PatientAppointmentOrganizationDto {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  email?: string | null;
+  logoUrl: string | null;
+}
+
+export interface PatientAppointmentProfessionalDto {
+  id: string;
+  fullName: string;
+  avatarUrl: string | null;
+}
+
+export interface PatientAppointmentSpecialtyDto {
+  id: string;
+  name: string;
+}
+
+export interface PatientAppointmentListItemDto {
+  id: string;
+  organization: PatientAppointmentOrganizationDto;
+  professional: PatientAppointmentProfessionalDto | null;
+  specialty: PatientAppointmentSpecialtyDto | null;
+  serviceName: string | null;
+  startAt: string;
+  endAt: string | null;
+  timezone: string;
+  status: AppointmentStatus;
+  patientStatusLabel: string;
+  canCancel: boolean;
+  canReschedule: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientAppointmentDetailDto extends PatientAppointmentListItemDto {
+  instructions: string | null;
+}
+
+export interface PatientAppointmentPaginationDto {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+export interface PatientAppointmentsPageDto {
+  items: PatientAppointmentListItemDto[];
+  pagination: PatientAppointmentPaginationDto;
+}
+
+export interface PatientAppointmentSlotDto {
+  startAt: string;
+  endAt: string;
+}
+
+export interface PatientAppointmentAvailableSlotsDayDto {
+  date: string;
+  slots: PatientAppointmentSlotDto[];
+}
+
+export interface PatientAppointmentAvailableSlotsDto {
+  timezone: string;
+  days: PatientAppointmentAvailableSlotsDayDto[];
+}
+
 
 export interface ProfessionalPanelMeDto {
   organizationId: string;

@@ -13,6 +13,11 @@ import type {
   PatientOrganizationSummaryDto,
   PatientProfileDto,
   UserEventDto,
+  PatientAppointmentAvailableSlotsDto,
+  PatientAppointmentDetailDto,
+  PatientAppointmentListItemDto,
+  PatientAppointmentScope,
+  PatientAppointmentsPageDto,
 } from "@starter/shared-types";
 import { AppError } from "../../../core/errors.js";
 import { env } from "../../../config/env.js";
@@ -62,6 +67,28 @@ const hoursUntil = (iso: string): number => {
   const date = new Date(iso);
   return (date.getTime() - Date.now()) / 3600000;
 };
+
+const cancellableStatuses: AppointmentStatus[] = ["booked", "confirmed_by_patient"];
+
+export const getPatientAppointmentStatusLabel = (status: AppointmentStatus): string => {
+  const labels: Record<AppointmentStatus, string> = {
+    booked: "Pendiente de confirmación",
+    confirmed_by_patient: "Confirmado",
+    arrived: "Llegaste al centro",
+    in_progress: "En atención",
+    completed: "Atendido",
+    no_show: "Ausente",
+    canceled_by_patient: "Cancelado por vos",
+    canceled_by_staff: "Cancelado por el centro",
+    rescheduled: "Reprogramado",
+  };
+  return labels[status];
+};
+
+export const canPatientCancelAppointment = (appointment: Pick<AppointmentDto, "status" | "startAt">): boolean =>
+  cancellableStatuses.includes(appointment.status) && new Date(appointment.startAt).getTime() > Date.now();
+
+export const canPatientRescheduleAppointment = canPatientCancelAppointment;
 
 export interface ExpressMaskedPatientDto {
   displayName: string;
@@ -1588,6 +1615,59 @@ export class PatientService {
     return { upcoming, history };
   }
 
+  async listMyAppointments(
+    userId: string,
+    input: {
+      scope?: PatientAppointmentScope;
+      status?: AppointmentStatus;
+      organizationId?: string;
+      page?: number;
+      limit?: number;
+      sort?: "asc" | "desc";
+    },
+  ): Promise<PatientAppointmentsPageDto> {
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    if (input.organizationId) {
+      await this.assertAnyManagedProfileLinked(userId, input.organizationId);
+    }
+
+    const rows = await this.appointmentsService.listPatientAppointmentsForProfiles(profileIds, {
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+    });
+
+    const scope = input.scope ?? "upcoming";
+    const now = Date.now();
+    const cancelledStatuses: AppointmentStatus[] = ["canceled_by_patient", "canceled_by_staff"];
+    const filtered = rows.filter((item) => {
+      if (scope === "all") return true;
+      if (scope === "cancelled") return cancelledStatuses.includes(item.status);
+      if (scope === "past") return new Date(item.startAt).getTime() < now || ["completed", "no_show", "rescheduled"].includes(item.status);
+      return new Date(item.startAt).getTime() >= now && !cancelledStatuses.includes(item.status) && !["completed", "no_show", "rescheduled"].includes(item.status);
+    });
+
+    filtered.sort((a, b) => {
+      if (scope === "cancelled") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      const direction = scope === "past" || input.sort === "desc" ? -1 : 1;
+      return direction * (new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    });
+
+    const page = Math.max(1, input.page ?? 1);
+    const limit = Math.min(100, Math.max(1, input.limit ?? 20));
+    const total = filtered.length;
+    const items = filtered.slice((page - 1) * limit, page * limit);
+
+    return {
+      items: await this.toPatientAppointmentListItems(items),
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async getPatientAppointment(
     userId: string,
     appointmentId: string,
@@ -1599,6 +1679,51 @@ export class PatientService {
         appointmentId,
       );
     return this.attachOrganizationToAppointment(appointment);
+  }
+
+  async getMyAppointment(
+    userId: string,
+    appointmentId: string,
+  ): Promise<PatientAppointmentDetailDto> {
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    const appointment = await this.appointmentsService.getAppointmentForPatientProfiles(profileIds, appointmentId);
+    const [dto] = await this.toPatientAppointmentListItems([appointment], true);
+    if (!dto) throw new AppError("APPOINTMENT_NOT_FOUND", 404, "Appointment not found");
+    await this.userEvents.create({
+      userId,
+      organizationId: appointment.organizationId,
+      type: "patient_appointment_booked",
+      title: "Turno consultado",
+      body: null,
+    });
+    return { ...dto, instructions: appointment.notes ?? null };
+  }
+
+  async getMyAppointmentAvailableSlots(
+    userId: string,
+    appointmentId: string,
+    input: { dateFrom?: string; dateTo?: string; professionalId?: string },
+  ): Promise<PatientAppointmentAvailableSlotsDto> {
+    const profileIds = await this.getManagedPatientProfileIds(userId);
+    const appointment = await this.appointmentsService.getAppointmentForPatientProfiles(profileIds, appointmentId);
+    await this.assertPatientPolicyAllows(appointment, "reschedule");
+    const professionalId = input.professionalId ?? appointment.professionalId;
+    const from = input.dateFrom ?? new Date().toISOString().slice(0, 10);
+    const to = input.dateTo ?? new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10);
+    const availability = await this.availability.getCalculatedAvailability(appointment.organizationId, professionalId, {
+      startDate: from,
+      endDate: to,
+      ...(appointment.specialtyId ? { specialtyId: appointment.specialtyId } : {}),
+    });
+    return {
+      timezone: availability.timezone,
+      days: availability.days.map((day) => ({
+        date: day.date,
+        slots: day.slots
+          .filter((slot) => slot.available && new Date(slot.startsAtIso).getTime() > Date.now())
+          .map((slot) => ({ startAt: slot.startsAtIso, endAt: slot.endsAtIso })),
+      })),
+    };
   }
 
   async confirmAppointmentAttendance(
@@ -1945,6 +2070,74 @@ export class PatientService {
       ...appointment,
       organization: organization ? this.toOrganizationDto(organization) : null,
     };
+  }
+
+  private async toPatientAppointmentListItems(
+    appointments: AppointmentDto[],
+    includeEmail = false,
+  ): Promise<PatientAppointmentListItemDto[]> {
+    const organizationIds = [...new Set(appointments.map((item) => item.organizationId))];
+    const organizations = organizationIds.length > 0 ? await this.organizations.findByIds(organizationIds) : [];
+    const organizationsById = new Map(organizations.map((organization) => [organization._id.toString(), this.toOrganizationDto(organization)]));
+
+    const professionalsById = new Map<string, Awaited<ReturnType<ProfessionalRepository["findByIdInOrganization"]>>>();
+    const specialtiesById = new Map<string, Awaited<ReturnType<SpecialtyRepository["findByIdInOrganization"]>>>();
+
+    for (const appointment of appointments) {
+      const professionalKey = `${appointment.organizationId}:${appointment.professionalId}`;
+      if (!professionalsById.has(professionalKey)) {
+        professionalsById.set(professionalKey, await this.professionals.findByIdInOrganization(appointment.organizationId, appointment.professionalId));
+      }
+      if (appointment.specialtyId) {
+        const specialtyKey = `${appointment.organizationId}:${appointment.specialtyId}`;
+        if (!specialtiesById.has(specialtyKey)) {
+          specialtiesById.set(specialtyKey, await this.specialties.findByIdInOrganization(appointment.organizationId, appointment.specialtyId));
+        }
+      }
+    }
+
+    return appointments.map((appointment) => {
+      const organization = organizationsById.get(appointment.organizationId);
+      const professional = professionalsById.get(`${appointment.organizationId}:${appointment.professionalId}`);
+      const specialty = appointment.specialtyId ? specialtiesById.get(`${appointment.organizationId}:${appointment.specialtyId}`) : null;
+      const canCancel = canPatientCancelAppointment(appointment);
+      const canReschedule = canPatientRescheduleAppointment(appointment);
+      return {
+        id: appointment.id,
+        organization: {
+          id: organization?.id ?? appointment.organizationId,
+          name: organization?.displayName ?? organization?.name ?? "Centro médico",
+          address: organization?.address ?? null,
+          city: organization?.city ?? null,
+          phone: organization?.phone ?? null,
+          ...(includeEmail ? { email: organization?.contactEmail ?? null } : {}),
+          logoUrl: organization?.logoUrl ?? null,
+        },
+        professional: professional
+          ? {
+              id: professional._id.toString(),
+              fullName: professional.displayName ?? `${professional.firstName} ${professional.lastName}`.trim(),
+              avatarUrl: professional.avatarUrl ?? null,
+            }
+          : null,
+        specialty: specialty
+          ? {
+              id: specialty._id.toString(),
+              name: specialty.name,
+            }
+          : null,
+        serviceName: specialty?.name ?? null,
+        startAt: appointment.startAt,
+        endAt: appointment.endAt,
+        timezone: "America/Argentina/Buenos_Aires",
+        status: appointment.status,
+        patientStatusLabel: getPatientAppointmentStatusLabel(appointment.status),
+        canCancel,
+        canReschedule,
+        createdAt: appointment.createdAt,
+        updatedAt: appointment.updatedAt,
+      };
+    });
   }
 
   private async assertPatientPolicyAllows(
