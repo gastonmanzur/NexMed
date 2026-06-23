@@ -44,6 +44,7 @@ import { JoinPage } from '../features/patient/JoinPage';
 import { PatientOrganizationsPage } from '../features/patient/PatientOrganizationsPage';
 import { PatientBookPage } from '../features/patient/PatientBookPage';
 import { PatientAppointmentsPage } from '../features/patient/PatientAppointmentsPage';
+import { PatientAppointmentDetailPage } from '../features/patient/PatientAppointmentDetailPage';
 import { PatientReschedulePage } from '../features/patient/PatientReschedulePage';
 import { PatientProfilePage } from '../features/patient/PatientProfilePage';
 import { PatientNotificationsPage } from '../features/patient/PatientNotificationsPage';
@@ -522,6 +523,14 @@ export const App = (): ReactElement => {
         element={(
           <ProtectedRoute>
             {shell(<PatientAppointmentsPage />)}
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/patient/appointments/:appointmentId"
+        element={(
+          <ProtectedRoute>
+            {shell(<PatientAppointmentDetailPage />)}
           </ProtectedRoute>
         )}
       />

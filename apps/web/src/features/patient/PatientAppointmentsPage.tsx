@@ -1,179 +1,95 @@
 import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { AppointmentDto } from '@starter/shared-types';
+import type { PatientAppointmentListItemDto, PatientAppointmentScope } from '@starter/shared-types';
 import { Card } from '@starter/ui';
 import { useAuth } from '../auth/AuthContext';
 import { patientApi } from './patient-api';
-import { OrganizationLocationCard } from './OrganizationLocationCard';
-import { ConfirmActionButton } from '../../components/ConfirmActionButton';
 import { EmptyState, ErrorState, LoadingState } from '../../components/AsyncState';
-import { statusLabel } from '../appointments/appointment-status';
 import { formatArgentinaDate, formatArgentinaTimeRange } from '../../lib/argentina-date-time';
+
+type TabScope = Extract<PatientAppointmentScope, 'upcoming' | 'past' | 'cancelled'>;
+
+const emptyCopy: Record<TabScope, { title: string; description: string }> = {
+  upcoming: { title: 'No tenés próximos turnos.', description: 'Cuando reserves uno, aparecerá en esta sección.' },
+  past: { title: 'Todavía no tenés turnos anteriores.', description: 'Acá vas a ver tus turnos ya atendidos o cerrados.' },
+  cancelled: { title: 'No tenés turnos cancelados.', description: 'Los turnos cancelados aparecerán en esta sección.' }
+};
+
+const downloadIcs = (appointment: PatientAppointmentListItemDto): void => {
+  const formatIcsDate = (iso: string): string => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const summary = `Turno en ${appointment.organization.name}`;
+  const description = `Turno con ${appointment.professional?.fullName ?? 'profesional'}${appointment.specialty?.name ? ` — ${appointment.specialty.name}` : ''}`;
+  const location = [appointment.organization.address, appointment.organization.city].filter(Boolean).join(', ');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//NexMed//Mis turnos//ES', 'BEGIN:VEVENT', `UID:${appointment.id}@nexmedturnos.pro`, `SUMMARY:${summary}`, `DTSTART:${formatIcsDate(appointment.startAt)}`, `DTEND:${formatIcsDate(appointment.endAt ?? appointment.startAt)}`, `LOCATION:${location}`, `DESCRIPTION:${description}`, 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'turno-nexmed.ics';
+  anchor.click();
+  URL.revokeObjectURL(url);
+};
+
+const PatientAppointmentCard = ({ item, onCancel }: { item: PatientAppointmentListItemDto; onCancel: (item: PatientAppointmentListItemDto) => void }): ReactElement => (
+  <article className="nx-appointment-item">
+    <div>
+      <p className="nx-appointment-item__date">{formatArgentinaDate(item.startAt)} — {formatArgentinaTimeRange(item.startAt, item.endAt ?? item.startAt)}</p>
+      <p className="nx-appointment-item__status"><strong>{item.organization.name}</strong>{item.specialty?.name ? ` · ${item.specialty.name}` : item.serviceName ? ` · ${item.serviceName}` : ''}</p>
+      <p className="nx-appointment-item__status">Profesional: {item.professional?.fullName ?? 'A confirmar'}</p>
+      <p className="nx-appointment-item__status">Estado: {item.patientStatusLabel}</p>
+      {item.organization.address ? <p className="nx-appointment-item__status">{item.organization.address}{item.organization.city ? `, ${item.organization.city}` : ''}</p> : null}
+    </div>
+    <div className="nx-appointment-item__actions">
+      <Link className="nx-btn-secondary" to={`/patient/appointments/${item.id}`}>Ver detalles</Link>
+      {item.canReschedule ? <Link className="nx-btn-secondary" to={`/patient/appointments/${item.id}/reschedule`}>Reprogramar</Link> : null}
+      {item.canCancel ? <button className="nx-btn-secondary" type="button" onClick={() => onCancel(item)}>Cancelar</button> : null}
+      <button className="nx-btn-secondary" type="button" onClick={() => downloadIcs(item)}>Agregar al calendario</button>
+    </div>
+  </article>
+);
 
 export const PatientAppointmentsPage = (): ReactElement => {
   const { accessToken } = useAuth();
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
-  const [upcoming, setUpcoming] = useState<AppointmentDto[]>([]);
-  const [history, setHistory] = useState<AppointmentDto[]>([]);
+  const [activeTab, setActiveTab] = useState<TabScope>('upcoming');
+  const [items, setItems] = useState<PatientAppointmentListItemDto[]>([]);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  const reload = async (): Promise<void> => {
+  const tabs = useMemo<Array<{ scope: TabScope; label: string }>>(() => [{ scope: 'upcoming', label: 'Próximos' }, { scope: 'past', label: 'Anteriores' }, { scope: 'cancelled', label: 'Cancelados' }], []);
+
+  const reload = async (scope = activeTab, nextPage = page): Promise<void> => {
     if (!accessToken) return;
-    setLoading(true);
-    setError('');
-    setMessage('');
+    setLoading(true); setError(''); setMessage('');
     try {
-      const data = await patientApi.listAppointments(accessToken);
-      setUpcoming(data.upcoming);
-      setHistory(data.history);
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      setLoading(false);
-    }
+      const data = await patientApi.listAppointments(accessToken, { scope, page: nextPage, limit: 10 });
+      setItems(data.items); setPages(data.pagination.pages); setPage(data.pagination.page);
+    } catch (cause) { setError((cause as Error).message || 'No pudimos cargar tus turnos.'); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    void reload();
-  }, [accessToken]);
+  useEffect(() => { void reload(activeTab, 1); }, [accessToken, activeTab]);
 
-  return (
-    <main className="nx-page nx-page--appointments">
-      <Card title="Mis turnos" subtitle="Consultá el estado de tus turnos y gestioná cambios cuando lo necesites.">
-        <p>
-          <Link className="nx-btn-secondary" to="/feedback" state={{ fromPath: '/patient/appointments' }}>
-            Enviar feedback
-          </Link>
-        </p>
+  const cancel = async (item: PatientAppointmentListItemDto): Promise<void> => {
+    if (!accessToken || !window.confirm('¿Querés cancelar este turno?\nEsta acción puede liberar el horario para otro paciente.')) return;
+    setCancellingId(item.id);
+    try { await patientApi.cancelAppointment(accessToken, item.id, 'Cancelado por paciente'); setMessage('Turno cancelado.'); await reload(activeTab, page); }
+    catch (cause) { setError((cause as Error).message || 'No es posible cancelar este turno.'); }
+    finally { setCancellingId(null); }
+  };
 
-        <div className="nx-tabs" role="tablist" aria-label="Filtrar turnos">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'upcoming'}
-            className={`nx-tab${activeTab === 'upcoming' ? ' is-active' : ''}`}
-            onClick={() => setActiveTab('upcoming')}
-          >
-            Próximos ({upcoming.length})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'history'}
-            className={`nx-tab${activeTab === 'history' ? ' is-active' : ''}`}
-            onClick={() => setActiveTab('history')}
-          >
-            Historial ({history.length})
-          </button>
-        </div>
-
-        {loading ? <LoadingState message="Cargando turnos..." /> : null}
-        {!loading && error ? <ErrorState message={error} onRetry={() => void reload()} /> : null}
-        {message ? <p className="nx-form-success">{message}</p> : null}
-
-        {!loading && !error ? (
-          <>
-            {activeTab === 'upcoming' ? <h3 className="nx-section-title">Próximos</h3> : <h3 className="nx-section-title">Historial</h3>}
-
-            {activeTab === 'upcoming' && upcoming.length === 0 ? (
-              <EmptyState
-                title="Sin turnos próximos"
-                description="Cuando reserves un turno, lo verás acá."
-                action={
-                  <Link className="nx-btn" to="/patient/book">
-                    Reservar un turno
-                  </Link>
-                }
-                icon="🗓️"
-              />
-            ) : activeTab === 'upcoming' ? (
-              <ul className="nx-appointment-list">
-                {upcoming.map((item) => (
-                  <li key={item.id} className="nx-appointment-item">
-                    <div>
-                      <p className="nx-appointment-item__date">
-                        {formatArgentinaDate(item.startAt)} — {formatArgentinaTimeRange(item.startAt, item.endAt)}
-                      </p>
-                      <p className="nx-appointment-item__status">
-                        Paciente: {item.beneficiaryDisplayName ?? item.patientName}
-                        {item.beneficiaryType === 'family_member' && item.beneficiaryRelationship
-                          ? ` (${item.beneficiaryRelationship})`
-                          : ''}
-                      </p>
-                      <p className="nx-appointment-item__status">Estado: {statusLabel(item.status)}</p>
-                      <OrganizationLocationCard organization={item.organization} compact />
-                    </div>
-                    <div className="nx-appointment-item__actions">
-                      {item.status === 'booked' ? (
-                        <button
-                          className="nx-btn-secondary"
-                          type="button"
-                          onClick={async () => {
-                            if (!accessToken) return;
-                            try {
-                              await patientApi.confirmAppointmentAttendance(accessToken, item.id);
-                              await reload();
-                              setMessage('Confirmaste que vas a asistir al turno.');
-                            } catch (cause) {
-                              setError((cause as Error).message);
-                            }
-                          }}
-                        >
-                          Confirmar asistencia
-                        </button>
-                      ) : null}
-                      <ConfirmActionButton
-                        confirmationMessage="¿Seguro que querés cancelar este turno?"
-                        onConfirm={async () => {
-                          if (!accessToken) return;
-                          try {
-                            await patientApi.cancelAppointment(accessToken, item.id, 'Cancelado por paciente');
-                            await reload();
-                          } catch (cause) {
-                            setError((cause as Error).message);
-                          }
-                        }}
-                      >
-                        Cancelar
-                      </ConfirmActionButton>
-                      {['booked', 'confirmed_by_patient'].includes(item.status) ? (
-                        <Link className="nx-btn-secondary" to={`/patient/appointments/${item.id}/reschedule`}>
-                          Reprogramar
-                        </Link>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-
-            {activeTab === 'history' && history.length === 0 ? (
-              <EmptyState title="Sin historial todavía" description="Acá vas a ver tus turnos ya atendidos o cerrados." icon="🧾" />
-            ) : activeTab === 'history' ? (
-              <ul className="nx-appointment-list">
-                {history.map((item) => (
-                  <li key={item.id} className="nx-appointment-item nx-appointment-item--history">
-                    <p className="nx-appointment-item__date">
-                      {formatArgentinaDate(item.startAt)} — {formatArgentinaTimeRange(item.startAt, item.endAt)}
-                    </p>
-                    <p className="nx-appointment-item__status">
-                      Paciente: {item.beneficiaryDisplayName ?? item.patientName}
-                      {item.beneficiaryType === 'family_member' && item.beneficiaryRelationship
-                        ? ` (${item.beneficiaryRelationship})`
-                        : ''}
-                    </p>
-                    <p className="nx-appointment-item__status">Estado: {item.status}</p>
-                    <OrganizationLocationCard organization={item.organization} compact />
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </>
-        ) : null}
-      </Card>
-    </main>
-  );
+  return <main className="nx-page nx-page--appointments"><Card title="Mis turnos" subtitle="Consultá y gestioná tus próximos turnos.">
+    <div className="nx-tabs" role="tablist" aria-label="Filtrar turnos">{tabs.map((tab) => <button key={tab.scope} type="button" role="tab" aria-selected={activeTab === tab.scope} className={`nx-tab${activeTab === tab.scope ? ' is-active' : ''}`} onClick={() => { setActiveTab(tab.scope); setPage(1); }}>{tab.label}</button>)}</div>
+    {loading ? <LoadingState message="Cargando turnos..." /> : null}
+    {!loading && error ? <ErrorState message={error} onRetry={() => void reload()} /> : null}
+    {message ? <p className="nx-form-success">{message}</p> : null}
+    {!loading && !error && items.length === 0 ? <EmptyState title={emptyCopy[activeTab].title} description={emptyCopy[activeTab].description} {...(activeTab === 'upcoming' ? { action: <Link className="nx-btn" to="/patient/organizations">Reservar un turno</Link> } : {})} icon="🗓️" /> : null}
+    {!loading && !error && items.length > 0 ? <div className="nx-appointment-list">{items.map((item) => <PatientAppointmentCard key={item.id} item={item} onCancel={cancel} />)}</div> : null}
+    {cancellingId ? <p className="nx-appointment-item__status" role="status">Cancelando turno...</p> : null}
+    {pages > 1 ? <div className="nx-appointment-item__actions"><button className="nx-btn-secondary" type="button" disabled={page <= 1} onClick={() => void reload(activeTab, page - 1)}>Anterior</button><span>Página {page} de {pages}</span><button className="nx-btn-secondary" type="button" disabled={page >= pages} onClick={() => void reload(activeTab, page + 1)}>Siguiente</button></div> : null}
+  </Card></main>;
 };

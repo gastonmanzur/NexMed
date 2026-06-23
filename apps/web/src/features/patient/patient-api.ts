@@ -12,6 +12,10 @@ import type {
   UserEventDto,
   WaitlistRequestDto,
   OrganizationHealthInsuranceDto,
+  PatientAppointmentAvailableSlotsDto,
+  PatientAppointmentDetailDto,
+  PatientAppointmentScope,
+  PatientAppointmentsPageDto,
 } from "@starter/shared-types";
 const rawApiUrl = import.meta.env.VITE_API_URL;
 if (!rawApiUrl) throw new Error("Missing required VITE_API_URL");
@@ -380,16 +384,20 @@ export const patientApi = {
     ).data,
   listAppointments: async (
     accessToken: string,
-    params?: { status?: AppointmentStatus; organizationId?: string },
-  ): Promise<{ upcoming: AppointmentDto[]; history: AppointmentDto[] }> => {
+    params?: { scope?: PatientAppointmentScope; status?: AppointmentStatus; organizationId?: string; page?: number; limit?: number; sort?: 'asc' | 'desc' },
+  ): Promise<PatientAppointmentsPageDto> => {
     const query = new URLSearchParams();
+    if (params?.scope) query.set("scope", params.scope);
     if (params?.status) query.set("status", params.status);
     if (params?.organizationId)
       query.set("organizationId", params.organizationId);
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.limit) query.set("limit", String(params.limit));
+    if (params?.sort) query.set("sort", params.sort);
     return (
       await request<{
         success: true;
-        data: { upcoming: AppointmentDto[]; history: AppointmentDto[] };
+        data: PatientAppointmentsPageDto;
       }>(
         `/patient/appointments${query.size > 0 ? `?${query.toString()}` : ""}`,
         { method: "GET", headers: { Authorization: `Bearer ${accessToken}` } },
@@ -399,13 +407,29 @@ export const patientApi = {
   getAppointment: async (
     accessToken: string,
     appointmentId: string,
-  ): Promise<AppointmentDto> =>
+  ): Promise<PatientAppointmentDetailDto> =>
     (
-      await request<{ success: true; data: AppointmentDto }>(
+      await request<{ success: true; data: PatientAppointmentDetailDto }>(
         `/patient/appointments/${appointmentId}`,
         { method: "GET", headers: { Authorization: `Bearer ${accessToken}` } },
       )
     ).data,
+  getAppointmentAvailableSlots: async (
+    accessToken: string,
+    appointmentId: string,
+    params?: { dateFrom?: string; dateTo?: string; professionalId?: string },
+  ): Promise<PatientAppointmentAvailableSlotsDto> => {
+    const query = new URLSearchParams();
+    if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) query.set("dateTo", params.dateTo);
+    if (params?.professionalId) query.set("professionalId", params.professionalId);
+    return (
+      await request<{ success: true; data: PatientAppointmentAvailableSlotsDto }>(
+        `/patient/appointments/${appointmentId}/available-slots${query.size > 0 ? `?${query.toString()}` : ""}`,
+        { method: "GET", headers: { Authorization: `Bearer ${accessToken}` } },
+      )
+    ).data;
+  },
   confirmAppointmentAttendance: async (
     accessToken: string,
     appointmentId: string,
@@ -429,7 +453,7 @@ export const patientApi = {
       await request<{ success: true; data: AppointmentDto }>(
         `/patient/appointments/${appointmentId}/cancel`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: { Authorization: `Bearer ${accessToken}` },
           body: JSON.stringify({ reason }),
         },
@@ -451,7 +475,7 @@ export const patientApi = {
         success: true;
         data: { original: AppointmentDto; replacement: AppointmentDto };
       }>(`/patient/appointments/${appointmentId}/reschedule`, {
-        method: "PATCH",
+        method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify(input),
       })
