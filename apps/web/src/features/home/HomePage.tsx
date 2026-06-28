@@ -94,6 +94,7 @@ export const HomePage = (): ReactElement => {
           <a href="#beneficios">Beneficios</a>
           <a href="#faq">FAQ</a>
           <a href="#contacto">Contacto</a>
+          <Link to="/eliminacion-de-datos">Privacidad</Link>
         </nav>
         <div className="nx-landing__actions">
           <button type="button" className="nx-theme-toggle" onClick={() => setTheme(isDarkMode ? 'light' : 'dark')}>
@@ -263,7 +264,7 @@ export const HomePage = (): ReactElement => {
       </main>
 
       <footer className="nx-landing__footer">
-        <div><strong>NexMed</strong><p>{content.footer?.brandText || "Plataforma para consultorios, clínicas y centros de estética."}</p></div>
+        <div><strong>NexMed</strong><p>{content.footer?.brandText || "Plataforma para consultorios, clínicas y centros de estética."}</p><Link to="/eliminacion-de-datos">Eliminación de datos</Link></div>
       </footer>
     </div>
   );
