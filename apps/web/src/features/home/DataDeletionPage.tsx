@@ -36,7 +36,7 @@ export const DataDeletionPage = (): ReactElement => {
     <div className="nx-legal-page">
       <header className="nx-legal-page__header">
         <Link to="/" className="nx-legal-page__brand">NexMed</Link>
-        <Link to="/login" className="nx-btn-tertiary">Ingresar</Link>
+        <nav className="nx-legal-page__nav" aria-label="Navegación legal"><Link to="/privacy-policy">Política de Privacidad</Link><Link to="/login" className="nx-btn-tertiary">Ingresar</Link></nav>
       </header>
 
       <main className="nx-legal-page__content">
@@ -118,8 +118,7 @@ export const DataDeletionPage = (): ReactElement => {
         <section className="nx-legal-page__section nx-legal-page__section--cta">
           <h2>Consultas</h2>
           <p>
-            Para consultas relacionadas con privacidad y eliminación de datos, utilizá el correo de privacidad publicado
-            por NexMed.
+            Para consultas relacionadas con privacidad y eliminación de datos, revisá la <Link to="/privacy-policy">Política de Privacidad</Link> o utilizá el correo de privacidad publicado por NexMed.
           </p>
         </section>
       </main>

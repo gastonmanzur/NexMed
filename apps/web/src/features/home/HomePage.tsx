@@ -264,7 +264,7 @@ export const HomePage = (): ReactElement => {
       </main>
 
       <footer className="nx-landing__footer">
-        <div><strong>NexMed</strong><p>{content.footer?.brandText || "Plataforma para consultorios, clínicas y centros de estética."}</p><Link to="/eliminacion-de-datos">Eliminación de datos</Link></div>
+        <div><strong>NexMed</strong><p>{content.footer?.brandText || "Plataforma para consultorios, clínicas y centros de estética."}</p><Link to="/privacy-policy">Política de Privacidad</Link><Link to="/eliminacion-de-datos">Eliminación de datos</Link></div>
       </footer>
     </div>
   );
