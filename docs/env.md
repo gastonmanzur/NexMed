@@ -73,6 +73,11 @@
 - `VITE_FIREBASE_MESSAGING_SENDER_ID=<optional if no push>`
 - `VITE_FIREBASE_APP_ID=<optional if no push>`
 - `VITE_FIREBASE_WEB_PUSH_VAPID_KEY=<optional if no push>`
+- `VITE_LEGAL_OPERATOR_NAME=<responsable legal, requerido en producción>`
+- `VITE_LEGAL_TAX_ID=<identificación fiscal opcional>`
+- `VITE_LEGAL_ADDRESS=<domicilio legal público opcional>`
+- `VITE_PRIVACY_CONTACT_EMAIL=<correo de privacidad, requerido en producción>`
+- `VITE_SUPPORT_EMAIL=<correo de soporte opcional>`
 
 
 > En `NODE_ENV=production` se recomienda usar `https://` en `APP_BASE_URL`, `WEB_BASE_URL` y `CORS_ORIGIN`.

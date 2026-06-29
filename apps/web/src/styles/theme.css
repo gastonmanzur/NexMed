@@ -4786,3 +4786,54 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.nx-legal-page__nav,
+.nx-auth-links,
+.nx-landing__footer div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.nx-legal-page__content--reading {
+  width: min(980px, calc(100% - 2rem));
+}
+
+.nx-legal-page__toc ol {
+  columns: 2;
+  padding-left: 1.25rem;
+}
+
+.nx-legal-page a,
+.nx-auth-legal-note a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.nx-legal-page a:focus-visible,
+.nx-auth-legal-note a:focus-visible {
+  outline: 3px solid rgba(47, 128, 237, 0.35);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.nx-auth-legal-note {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .nx-legal-page__header,
+  .nx-legal-page__nav {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nx-legal-page__toc ol {
+    columns: 1;
+  }
+}

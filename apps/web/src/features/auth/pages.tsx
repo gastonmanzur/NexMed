@@ -199,6 +199,9 @@ export const RegisterPage = (): ReactElement => {
         </div>
 
         {error ? <p className="nx-auth-message nx-auth-message--error">{error}</p> : null}
+        <p className="nx-auth-legal-note">
+          Al crear una cuenta, podés consultar cómo tratamos los datos en la <Link to="/privacy-policy">Política de Privacidad</Link> y las condiciones aplicables en los términos legales vigentes.
+        </p>
         <p className="nx-auth-footer-link">
           <Link to="/login">{t('auth.common.goLogin')}</Link>
         </p>
@@ -299,6 +302,7 @@ export const LoginPage = (): ReactElement => {
         <div className="nx-auth-links">
           <Link to="/register">Registrar mi centro</Link>
           <Link to="/forgot-password">{t('auth.login.forgot')}</Link>
+          <Link to="/privacy-policy">Política de Privacidad</Link>
         </div>
       </Card>
     </AuthLayout>

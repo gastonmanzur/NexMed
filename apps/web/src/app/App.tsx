@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomePage } from '../features/home/HomePage';
 import { DataDeletionPage } from '../features/home/DataDeletionPage';
+import { PrivacyPolicyPage } from '../features/home/PrivacyPolicyPage';
 import { DemoAppPage } from '../features/demo/DemoAppPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { AdminOrganizationsPage } from '../features/admin/AdminOrganizationsPage';
@@ -78,6 +79,8 @@ export const App = (): ReactElement => {
       <Route path="/" element={<HomePage />} />
       <Route path="/data-deletion" element={<DataDeletionPage />} />
       <Route path="/eliminacion-de-datos" element={<DataDeletionPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/politica-de-privacidad" element={<PrivacyPolicyPage />} />
       <Route path="/app/demo" element={<Navigate to="/demo" replace />} />
       <Route path="/demo" element={<DemoAppPage />} />
 

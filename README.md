@@ -99,6 +99,8 @@ npm run build
 - Troubleshooting: `docs/troubleshooting.md`
 - Integración de push: `docs/push-notifications.md`
 - Integración de pagos: `docs/payments-mercadopago.md`
+- Rutas legales públicas: `docs/legal-public-routes.md`
+- Configuración Meta Developers: `docs/meta.md`
 
 
 ## Staging y deploy (Etapa 9)
@@ -114,3 +116,11 @@ npm run build
 ```
 
 Luego validar smoke post-deploy según runbook (health, login, organización, agenda, turnos, join paciente, reserva self-service, waitlist/notificaciones).
+
+
+## URLs legales públicas
+
+- Meta Privacy Policy URL: `https://www.nexmedturnos.pro/privacy-policy`
+- Meta Data Deletion Instructions URL: `https://www.nexmedturnos.pro/data-deletion`
+
+Configurar los datos legales públicos del frontend con `VITE_LEGAL_OPERATOR_NAME`, `VITE_LEGAL_TAX_ID`, `VITE_LEGAL_ADDRESS`, `VITE_PRIVACY_CONTACT_EMAIL` y `VITE_SUPPORT_EMAIL`. No colocar secretos en variables `VITE_*`.
