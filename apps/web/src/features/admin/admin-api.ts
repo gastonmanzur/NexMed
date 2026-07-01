@@ -29,6 +29,7 @@ export interface AdminSummary {
   activeOrganizations: number;
   trialOrganizations: number;
   paidOrganizations: number;
+  bonifiedOrganizations?: number;
   suspendedOrPastDueOrganizations: number;
   estimatedMonthlyRevenue: number;
   recentOrganizations: Array<{
@@ -134,7 +135,14 @@ export interface AdminSubscriptionItem {
   status: CommercialStatus;
   planId: string;
   planName: string | null;
+  originalAmount: number | null;
   monthlyAmount: number | null;
+  discountAmount: number | null;
+  discountType: 'percentage' | 'fixed' | null;
+  discountValue: number | null;
+  discountCode: string | null;
+  isFullyBonified: boolean;
+  isInternalAdminAccount: boolean;
   currency: string | null;
   provider: string;
   startedAt: string | null;

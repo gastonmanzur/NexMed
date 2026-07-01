@@ -20,6 +20,7 @@ import { PatientOrganizationLinkModel } from '../patient/models/patient-organiza
 import { AppointmentModel } from '../appointments/models/appointment.model.js';
 import { OrganizationMemberModel } from '../organizations/models/organization-member.model.js';
 import { DiscountRepository } from '../payments/repositories/discount.repository.js';
+import { resolveSubscriptionEffectiveAmount } from '../payments/utils/subscription-effective-amount.js';
 
 export class AdminService {
   constructor(
@@ -147,7 +148,6 @@ export class AdminService {
       acc[row._id] = row.count;
       return acc;
     }, {});
-    const paidOrganizations = subscriptionsByStatusMap.active ?? 0;
     const trialOrganizations = subscriptionsByStatusMap.trial ?? 0;
     const suspendedOrPastDueOrganizations = (subscriptionsByStatusMap.suspended ?? 0) + (subscriptionsByStatusMap.past_due ?? 0);
     const problematicSubscriptions = await OrganizationSubscriptionModel.find({ status: { $in: ['past_due', 'suspended'] } })
@@ -155,10 +155,36 @@ export class AdminService {
       .limit(8)
       .lean();
     const activeSubscriptions = await OrganizationSubscriptionModel.find({ status: 'active' }).lean();
-    const planIds = Array.from(new Set(activeSubscriptions.map((item) => item.planId.toString())));
-    const plans = await PlanModel.find({ _id: { $in: planIds } }).lean();
+    const activeSubscriptionOrgIds = Array.from(new Set(activeSubscriptions.map((item) => item.organizationId.toString())));
+    const activeSubscriptionPlanIds = Array.from(new Set(activeSubscriptions.map((item) => item.planId.toString())));
+    const activeSubscriptionOrganizations = await OrganizationModel.find({ _id: { $in: activeSubscriptionOrgIds } }, { createdByUserId: 1 }).lean();
+    const organizationById = new Map(activeSubscriptionOrganizations.map((item) => [item._id.toString(), item]));
+    const creatorUserIds = Array.from(new Set(activeSubscriptionOrganizations.map((item) => item.createdByUserId.toString())));
+    const [creatorUsers, plans] = await Promise.all([
+      UserModel.find({ _id: { $in: creatorUserIds } }, { role: 1, globalRole: 1 }).lean(),
+      PlanModel.find({ _id: { $in: activeSubscriptionPlanIds } }).lean()
+    ]);
+    const creatorUserById = new Map(creatorUsers.map((item) => [item._id.toString(), item]));
     const plansById = new Map(plans.map((item) => [item._id.toString(), item]));
-    const estimatedMonthlyRevenue = activeSubscriptions.reduce((acc, item) => acc + (plansById.get(item.planId.toString())?.billingPriceArs ?? plansById.get(item.planId.toString())?.price ?? 0), 0);
+    let estimatedMonthlyRevenue = 0;
+    let paidOrganizations = 0;
+    let bonifiedOrganizations = 0;
+
+    for (const subscription of activeSubscriptions) {
+      const organization = organizationById.get(subscription.organizationId.toString());
+      const creator = organization ? creatorUserById.get(organization.createdByUserId.toString()) : null;
+      const isInternalAdminAccount = creator?.globalRole === 'super_admin' || creator?.role === 'admin';
+      if (isInternalAdminAccount) continue;
+
+      const effectiveAmount = resolveSubscriptionEffectiveAmount(subscription, plansById.get(subscription.planId.toString()));
+      estimatedMonthlyRevenue += effectiveAmount;
+      if (effectiveAmount > 0) {
+        paidOrganizations += 1;
+      } else {
+        bonifiedOrganizations += 1;
+      }
+    }
+    estimatedMonthlyRevenue = Math.round(estimatedMonthlyRevenue * 100) / 100;
 
     const recentOrganizationIds = recentOrganizations.map((item) => item._id);
     const recentSubscriptions = await OrganizationSubscriptionModel.find({ organizationId: { $in: recentOrganizationIds } }).lean();
@@ -177,6 +203,7 @@ export class AdminService {
       activeOrganizations: organizationsActive,
       trialOrganizations,
       paidOrganizations,
+      bonifiedOrganizations,
       suspendedOrPastDueOrganizations,
       estimatedMonthlyRevenue,
       onboardingPending,
@@ -592,27 +619,42 @@ export class AdminService {
       PlanModel.find({ _id: { $in: planIds } }).lean()
     ]);
     const organizationsById = new Map(organizations.map((item) => [item._id.toString(), item]));
+    const creatorUserIds = Array.from(new Set(organizations.map((item) => item.createdByUserId.toString())));
+    const creatorUsers = await UserModel.find({ _id: { $in: creatorUserIds } }, { role: 1, globalRole: 1 }).lean();
+    const creatorUserById = new Map(creatorUsers.map((item) => [item._id.toString(), item]));
     const plansById = new Map(plans.map((item) => [item._id.toString(), item]));
 
     return {
-      items: items.map((subscription) => ({
-        id: subscription._id.toString(),
-        organizationId: subscription.organizationId.toString(),
-        organizationName: organizationsById.get(subscription.organizationId.toString())?.displayName ??
-          organizationsById.get(subscription.organizationId.toString())?.name ??
-          'Organización',
-        status: subscription.status,
-        planId: subscription.planId.toString(),
-        planName: plansById.get(subscription.planId.toString())?.name ?? null,
-        monthlyAmount: plansById.get(subscription.planId.toString())?.billingPriceArs ?? plansById.get(subscription.planId.toString())?.price ?? null,
-        currency: plansById.get(subscription.planId.toString())?.billingCurrency ?? plansById.get(subscription.planId.toString())?.currency ?? null,
-        provider: subscription.provider,
-        startedAt: subscription.startedAt ? subscription.startedAt.toISOString() : null,
-        renewalOrExpiryAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null,
-        isPaymentIssue: subscription.status === 'past_due' || subscription.status === 'suspended',
-        createdAt: subscription.createdAt.toISOString(),
-        updatedAt: subscription.updatedAt.toISOString()
-      })),
+      items: items.map((subscription) => {
+        const organization = organizationsById.get(subscription.organizationId.toString());
+        const creator = organization ? creatorUserById.get(organization.createdByUserId.toString()) : null;
+        const plan = plansById.get(subscription.planId.toString());
+        const monthlyAmount = resolveSubscriptionEffectiveAmount(subscription, plan);
+
+        return {
+          id: subscription._id.toString(),
+          organizationId: subscription.organizationId.toString(),
+          organizationName: organization?.displayName ?? organization?.name ?? 'Organización',
+          status: subscription.status,
+          planId: subscription.planId.toString(),
+          planName: plan?.name ?? null,
+          originalAmount: subscription.originalAmount ?? plan?.billingPriceArs ?? plan?.price ?? null,
+          monthlyAmount,
+          discountAmount: subscription.discountAmount ?? null,
+          discountType: subscription.discountType ?? null,
+          discountValue: subscription.discountValue ?? null,
+          discountCode: subscription.discountCode ?? null,
+          isFullyBonified: monthlyAmount === 0,
+          isInternalAdminAccount: creator?.globalRole === 'super_admin' || creator?.role === 'admin',
+          currency: plan?.billingCurrency ?? plan?.currency ?? null,
+          provider: subscription.provider,
+          startedAt: subscription.startedAt ? subscription.startedAt.toISOString() : null,
+          renewalOrExpiryAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null,
+          isPaymentIssue: subscription.status === 'past_due' || subscription.status === 'suspended',
+          createdAt: subscription.createdAt.toISOString(),
+          updatedAt: subscription.updatedAt.toISOString()
+        };
+      }),
       total,
       page: filters.page,
       limit: filters.limit

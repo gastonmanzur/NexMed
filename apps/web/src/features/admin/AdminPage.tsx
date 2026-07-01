@@ -49,6 +49,7 @@ export const AdminPage = (): ReactElement => {
             <div className="nx-kpi"><span>Pagando</span><p>{summary.paidOrganizations}</p></div>
             <div className="nx-kpi"><span>Vencidas / suspendidas</span><p>{summary.suspendedOrPastDueOrganizations}</p></div>
             <div className="nx-kpi"><span>Ingreso mensual estimado</span><p>{money.format(summary.estimatedMonthlyRevenue)}</p></div>
+            {typeof summary.bonifiedOrganizations === 'number' ? <div className="nx-kpi"><span>Cuentas bonificadas</span><p>{summary.bonifiedOrganizations}</p></div> : null}
           </div>
         ) : null}
       </Card>
