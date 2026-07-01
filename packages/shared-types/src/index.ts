@@ -1,3 +1,7 @@
+export const WHATSAPP_APPOINTMENT_OPT_IN_TEXT = 'Quiero recibir por WhatsApp la confirmación y los recordatorios relacionados con este turno.';
+
+export const WHATSAPP_APPOINTMENT_OPT_IN_DESCRIPTION = 'NexMed y el centro podrán enviarte únicamente mensajes relacionados con tus turnos. Podés retirar esta autorización posteriormente.';
+
 export type UserRole = 'admin' | 'user';
 export type AuthProvider = 'local' | 'google';
 export type GlobalRole = 'super_admin' | 'user';

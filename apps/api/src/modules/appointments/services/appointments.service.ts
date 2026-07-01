@@ -716,7 +716,6 @@ export class AppointmentsService {
   private async scheduleWhatsAppForCreatedAppointment(appointmentId: string): Promise<void> {
     try {
       await this.whatsappNotifications.scheduleAppointmentConfirmation(appointmentId);
-      await this.whatsappNotifications.scheduleAppointmentReminder(appointmentId);
     } catch (error) {
       logger.warn({ error, appointmentId }, 'whatsapp scheduling failed after appointment creation');
     }
