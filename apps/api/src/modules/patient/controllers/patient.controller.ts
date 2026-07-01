@@ -44,7 +44,8 @@ const expressAppointmentSchema = z.object({
   patientLookupToken: z.string().trim().min(1).optional(),
   patient: expressPatientSchema.optional(),
   coverage: expressCoverageSchema.optional(),
-  reason: z.string().trim().max(500).optional()
+  reason: z.string().trim().max(500).optional(),
+  whatsappOptIn: z.boolean().optional()
 }).superRefine((value, ctx) => {
   const usesSavedPatient = value.useCurrentExpressPatient === true || value.useSavedPatientData === true;
   if (value.useSavedPatientData === true && !value.patientLookupToken) {
@@ -123,7 +124,8 @@ const createAppointmentSchema = z.object({
   notes: z.string().trim().max(500).optional(),
   beneficiaryType: z.enum(['self', 'family_member']).optional(),
   familyMemberId: z.string().trim().min(1).optional(),
-  patientProfileId: z.string().trim().min(1).optional()
+  patientProfileId: z.string().trim().min(1).optional(),
+  whatsappOptIn: z.boolean().optional()
 });
 
 const createFamilyMemberSchema = z.object({

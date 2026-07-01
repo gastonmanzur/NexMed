@@ -19,6 +19,7 @@ import type {
   PatientAppointmentScope,
   PatientAppointmentsPageDto,
 } from "@starter/shared-types";
+import { WHATSAPP_APPOINTMENT_OPT_IN_TEXT } from "@starter/shared-types";
 import { AppError } from "../../../core/errors.js";
 import { env } from "../../../config/env.js";
 import { logger } from "../../../config/logger.js";
@@ -38,6 +39,7 @@ import { PatientIdentityRepository } from "../repositories/patient-identity.repo
 import { OrganizationPatientProfileRepository } from "../repositories/organization-patient-profile.repository.js";
 import { OrganizationHealthInsuranceRepository } from "../../organizations/repositories/organization-health-insurance.repository.js";
 import { PatientExpressSessionRepository } from "../repositories/patient-express-session.repository.js";
+import { WhatsAppNotificationService } from "../../whatsapp/services/whatsapp-notification.service.js";
 import { PatientProfileRepository } from "../repositories/patient-profile.repository.js";
 import { UserEventRepository } from "../repositories/user-event.repository.js";
 import type { PatientProfileDocument } from "../models/patient-profile.model.js";
@@ -196,6 +198,7 @@ export class PatientService {
     private readonly organizationPatientProfiles = new OrganizationPatientProfileRepository(),
     private readonly healthInsurances = new OrganizationHealthInsuranceRepository(),
     private readonly expressSessions = new PatientExpressSessionRepository(),
+    private readonly whatsappNotifications = new WhatsAppNotificationService(),
   ) {}
 
   private isDuplicateKeyError(error: unknown): boolean {
@@ -957,6 +960,17 @@ export class PatientService {
         "Patient profile not found",
       );
 
+    if (input.acceptsWhatsAppCommunications !== undefined) {
+      await this.organizationPatientProfiles.syncWhatsAppOptInForOwner(
+        userId,
+        input.acceptsWhatsAppCommunications,
+        WHATSAPP_APPOINTMENT_OPT_IN_TEXT,
+      );
+      if (input.acceptsWhatsAppCommunications === false) {
+        await this.cancelPendingWhatsAppForOwner(userId);
+      }
+    }
+
     const requiredMissing =
       !updated.firstName ||
       !updated.lastName ||
@@ -974,6 +988,21 @@ export class PatientService {
       );
 
     return this.toPatientProfileDto(updated);
+  }
+
+  private async cancelPendingWhatsAppForOwner(userId: string): Promise<void> {
+    const orgProfiles = await this.organizationPatientProfiles.listByOwner(userId);
+    await Promise.all(
+      orgProfiles
+        .filter((profile) => profile.patientProfileId)
+        .map((profile) =>
+          this.whatsappNotifications.cancelPendingNotificationsForPatient(
+            profile.organizationId.toString(),
+            profile.patientProfileId!.toString(),
+            'patient_whatsapp_opt_out',
+          ),
+        ),
+    );
   }
 
   async listFamilyMembers(userId: string): Promise<PatientFamilyMemberDto[]> {
@@ -2460,7 +2489,7 @@ export class PatientService {
       insurancePlan: string | null;
     },
     preserveExistingPersonalData: boolean,
-    whatsappOptIn: boolean = false,
+    whatsappOptIn?: boolean,
   ): Promise<{
     compatProfile: PatientProfileDocument;
     orgProfile: OrganizationPatientProfileDocument;
@@ -2570,7 +2599,32 @@ export class PatientService {
       defaultInsuranceMemberNumber: coverage.insuranceMemberNumber,
       source: "express_booking" as const,
       ownerUserId: null,
-      ...(whatsappOptIn || existingOrgProfile?.whatsappOptIn ? { whatsappOptIn: true, whatsappOptInAt: existingOrgProfile?.whatsappOptInAt ?? new Date(), whatsappOptInSource: existingOrgProfile?.whatsappOptInSource ?? 'public_booking', whatsappOptInText: 'Acepto recibir notificaciones de mi turno por WhatsApp de parte de NexMed y/o del centro donde reservo.' } : { whatsappOptIn: false }),
+      ...(whatsappOptIn === true
+        ? {
+            whatsappOptIn: true,
+            whatsappOptInAt: existingOrgProfile?.whatsappOptInAt ?? new Date(),
+            whatsappOptInSource: existingOrgProfile?.whatsappOptInSource ?? 'public_booking',
+            whatsappOptInText: existingOrgProfile?.whatsappOptInText ?? WHATSAPP_APPOINTMENT_OPT_IN_TEXT,
+            whatsappOptOutAt: null,
+            whatsappOptOutSource: null,
+          }
+        : existingOrgProfile
+          ? {
+              whatsappOptIn: existingOrgProfile.whatsappOptIn ?? false,
+              whatsappOptInAt: existingOrgProfile.whatsappOptInAt ?? null,
+              whatsappOptInSource: existingOrgProfile.whatsappOptInSource ?? null,
+              whatsappOptInText: existingOrgProfile.whatsappOptInText ?? null,
+              whatsappOptOutAt: existingOrgProfile.whatsappOptOutAt ?? null,
+              whatsappOptOutSource: existingOrgProfile.whatsappOptOutSource ?? null,
+            }
+          : {
+              whatsappOptIn: false,
+              whatsappOptInAt: null,
+              whatsappOptInSource: null,
+              whatsappOptInText: null,
+              whatsappOptOutAt: null,
+              whatsappOptOutSource: null,
+            }),
     };
 
     let orgProfile: OrganizationPatientProfileDocument;

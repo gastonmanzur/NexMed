@@ -50,4 +50,13 @@ export class AppointmentNotificationRepository {
     ).exec();
     return result.modifiedCount;
   }
+
+  async cancelPendingByPatient(organizationId: string, patientProfileId: string, error = 'patient_whatsapp_opt_out'): Promise<number> {
+    const result = await AppointmentNotificationModel.updateMany(
+      { organizationId, patientProfileId, status: 'pending', scheduledFor: { $gte: new Date() } },
+      { $set: { status: 'cancelled', cancelledAt: new Date(), error, errorMessage: error } }
+    ).exec();
+    return result.modifiedCount;
+  }
+
 }

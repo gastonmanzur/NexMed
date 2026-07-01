@@ -23,8 +23,10 @@ const organizationPatientProfileSchema = new mongoose.Schema(
     ownerUserId: { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'User', default: null, index: true },
     whatsappOptIn: { type: Boolean, required: true, default: false },
     whatsappOptInAt: { type: Date, required: false, default: null },
-    whatsappOptInSource: { type: String, enum: ['public_booking', 'patient_profile', 'staff_manual', null], required: false, default: null },
-    whatsappOptInText: { type: String, required: false, trim: true, default: null }
+    whatsappOptInSource: { type: String, enum: ['public_booking', 'patient_profile', 'staff_manual', 'support', null], required: false, default: null },
+    whatsappOptInText: { type: String, required: false, trim: true, default: null },
+    whatsappOptOutAt: { type: Date, required: false, default: null },
+    whatsappOptOutSource: { type: String, enum: ['patient_profile', 'public_booking', 'support', null], required: false, default: null }
   },
   { timestamps: true }
 );

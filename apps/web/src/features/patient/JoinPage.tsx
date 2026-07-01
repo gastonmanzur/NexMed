@@ -6,6 +6,7 @@ import type {
   JoinOrganizationPreviewDto,
   OrganizationHealthInsuranceDto,
 } from "@starter/shared-types";
+import { WHATSAPP_APPOINTMENT_OPT_IN_TEXT, WHATSAPP_APPOINTMENT_OPT_IN_DESCRIPTION } from "@starter/shared-types";
 import { Card } from "@starter/ui";
 import { useParams } from "react-router-dom";
 import {
@@ -231,9 +232,9 @@ const PatientPersonalFields = ({
     </div>
     <label className="nx-public-booking__choice nx-public-booking__choice--full">
       <input type="checkbox" checked={form.whatsappOptIn} onChange={(event) => onChange({ ...form, whatsappOptIn: event.target.checked })} />
-      <span>Acepto recibir notificaciones de mi turno por WhatsApp de parte de NexMed y/o del centro donde reservo.</span>
+      <span>{WHATSAPP_APPOINTMENT_OPT_IN_TEXT}</span>
     </label>
-    {!form.whatsappOptIn ? <p className="nx-public-booking__hint">Podés reservar igual, pero podrías no recibir confirmaciones o recordatorios por WhatsApp.</p> : null}
+    {!form.whatsappOptIn ? <p className="nx-public-booking__hint">{WHATSAPP_APPOINTMENT_OPT_IN_DESCRIPTION}</p> : null}
   </section>
 );
 
