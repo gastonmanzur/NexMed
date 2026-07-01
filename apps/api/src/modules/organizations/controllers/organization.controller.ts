@@ -217,7 +217,7 @@ export const organizationController = {
   getSubscription: async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const { organizationId } = organizationIdSchema.parse(req.params);
     const query = subscriptionQuerySchema.parse(req.query);
-    const context = { organizationId, actorUserId: req.auth!.userId };
+    const context = { organizationId, actorUserId: req.auth!.userId, actorGlobalRole: req.auth!.globalRole };
     const data = query.sync ? await service.syncOrganizationSubscriptionForUser(context) : await service.getOrganizationSubscriptionForUser(context);
 
     res.status(200).json({ success: true, data });
@@ -231,6 +231,7 @@ export const organizationController = {
       const data = await service.validateOrganizationDiscountForUser({
         organizationId,
         actorUserId: req.auth!.userId,
+        actorGlobalRole: req.auth!.globalRole,
         planId,
         code
       });
@@ -251,6 +252,7 @@ export const organizationController = {
     const data = await service.startOrganizationCheckout({
       organizationId,
       actorUserId: req.auth!.userId,
+      actorGlobalRole: req.auth!.globalRole,
       planId,
       discountCode
     });

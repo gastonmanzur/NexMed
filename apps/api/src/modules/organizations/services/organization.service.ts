@@ -24,6 +24,7 @@ import { OrganizationSettingsRepository } from '../repositories/organization-set
 import { OrganizationAccessLinkRepository } from '../repositories/organization-access-link.repository.js';
 import { PlanRepository } from '../../payments/repositories/plan.repository.js';
 import { OrganizationSubscriptionRepository } from '../../payments/repositories/organization-subscription.repository.js';
+import { resolveSubscriptionEffectiveAmount } from '../../payments/utils/subscription-effective-amount.js';
 import { DiscountRepository } from '../../payments/repositories/discount.repository.js';
 import { DiscountRedemptionRepository } from '../../payments/repositories/discount-redemption.repository.js';
 import { UserRepository } from '../../auth/repositories/user.repository.js';
@@ -626,10 +627,14 @@ export class OrganizationService {
     }));
   }
 
-  async getOrganizationSubscriptionForUser(input: { organizationId: string; actorUserId: string }) {
+  async getOrganizationSubscriptionForUser(input: { organizationId: string; actorUserId: string; actorGlobalRole: 'super_admin' | 'user' }) {
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
-    if (!membership || membership.status !== 'active') {
+    if ((!membership || membership.status !== 'active') && input.actorGlobalRole !== 'super_admin') {
       throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
+    }
+
+    if (input.actorGlobalRole === 'super_admin' && membership?.status === 'active') {
+      return this.toNotApplicableSubscriptionDto();
     }
 
     await this.plans.ensureDefaults();
@@ -680,6 +685,8 @@ export class OrganizationService {
         startedAt: subscription.startedAt ? subscription.startedAt.toISOString() : null,
         expiresAt: subscription.expiresAt ? subscription.expiresAt.toISOString() : null,
         autoRenew: subscription.autoRenew ?? false,
+        billingMode: subscription.billingMode ?? (subscription.finalAmount === 0 ? 'complimentary' : 'standard'),
+        billingExemptionReason: subscription.billingExemptionReason ?? null,
         createdAt: subscription.createdAt.toISOString(),
         updatedAt: subscription.updatedAt.toISOString()
       },
@@ -698,12 +705,20 @@ export class OrganizationService {
         description: plan.description ?? null
       },
       limits: {
+        unlimited: false,
         maxProfessionalsActive: plan.maxProfessionalsActive
-      }
+      },
+      billingApplicable: true,
+      billingMode: subscription.billingMode ?? (subscription.finalAmount === 0 ? 'complimentary' : 'standard'),
+      billingExemptionReason: subscription.billingExemptionReason ?? null,
+      effectiveMonthlyAmount: resolveSubscriptionEffectiveAmount(subscription, plan)
     };
   }
 
-  async validateOrganizationDiscountForUser(input: { organizationId: string; actorUserId: string; planId: string; code: string }) {
+  async validateOrganizationDiscountForUser(input: { organizationId: string; actorUserId: string; actorGlobalRole: 'super_admin' | 'user'; planId: string; code: string }) {
+    if (input.actorGlobalRole === 'super_admin') {
+      throw new AppError('BILLING_NOT_APPLICABLE', 409, 'Billing does not apply to internal administrator accounts');
+    }
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
     if (!membership || membership.status !== 'active' || !['owner', 'admin'].includes(membership.role)) {
       throw new AppError('FORBIDDEN', 403, 'You do not have access to validate subscription discounts');
@@ -723,7 +738,10 @@ export class OrganizationService {
     });
   }
 
-  async startOrganizationCheckout(input: { organizationId: string; actorUserId: string; planId: string; discountCode?: string | undefined }) {
+  async startOrganizationCheckout(input: { organizationId: string; actorUserId: string; actorGlobalRole: 'super_admin' | 'user'; planId: string; discountCode?: string | undefined }) {
+    if (input.actorGlobalRole === 'super_admin') {
+      throw new AppError('BILLING_NOT_APPLICABLE', 409, 'Billing does not apply to internal administrator accounts');
+    }
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
     if (!membership || membership.status !== 'active' || !['owner', 'admin'].includes(membership.role)) {
       throw new AppError('FORBIDDEN', 403, 'You do not have access to manage organization subscription');
@@ -767,7 +785,10 @@ export class OrganizationService {
         originalAmount: discountResult.originalAmount,
         finalAmount: discountResult.finalAmount,
         discountAppliedAt: new Date(),
-        discountAppliedBy: input.actorUserId
+        discountAppliedBy: input.actorUserId,
+        billingMode: 'complimentary',
+        billingExemptionReason: 'test_account',
+        billingExemptAt: new Date()
       });
 
       await this.recordDiscountUse({
@@ -848,7 +869,11 @@ export class OrganizationService {
     };
   }
 
-  async syncOrganizationSubscriptionForUser(input: { organizationId: string; actorUserId: string }) {
+  async syncOrganizationSubscriptionForUser(input: { organizationId: string; actorUserId: string; actorGlobalRole: 'super_admin' | 'user' }) {
+    if (input.actorGlobalRole === 'super_admin') {
+      return this.getOrganizationSubscriptionForUser(input);
+    }
+
     const membership = await this.members.findByOrganizationAndUser(input.organizationId, input.actorUserId);
     if (!membership || membership.status !== 'active') {
       throw new AppError('FORBIDDEN', 403, 'You do not have access to this organization');
@@ -886,6 +911,22 @@ export class OrganizationService {
     });
 
     return this.getOrganizationSubscriptionForUser(input);
+  }
+
+  private toNotApplicableSubscriptionDto() {
+    return {
+      billingApplicable: false,
+      billingMode: 'not_applicable' as const,
+      effectiveMonthlyAmount: 0,
+      billingExemptionReason: 'internal_admin' as const,
+      subscription: null,
+      plan: null,
+      limits: {
+        unlimited: true,
+        maxProfessionalsActive: null
+      },
+      message: 'La facturación no aplica a las cuentas internas de administración.'
+    };
   }
 
   async getPlanLimitSnapshot(organizationId: string): Promise<{ maxProfessionalsActive: number; subscriptionStatus: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled' } | null> {

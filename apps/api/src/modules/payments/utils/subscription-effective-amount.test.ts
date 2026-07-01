@@ -4,6 +4,14 @@ import { resolveSubscriptionEffectiveAmount } from './subscription-effective-amo
 const plan = { billingPriceArs: 30_000, price: 29_000 };
 
 describe('resolveSubscriptionEffectiveAmount', () => {
+  it('returns zero for not-applicable internal accounts without falling back to the plan price', () => {
+    expect(resolveSubscriptionEffectiveAmount({ billingMode: 'not_applicable', finalAmount: undefined }, plan)).toBe(0);
+  });
+
+  it('returns zero for complimentary accounts', () => {
+    expect(resolveSubscriptionEffectiveAmount({ billingMode: 'complimentary', originalAmount: 30_000 }, plan)).toBe(0);
+  });
+
   it('uses the plan price when there is no discount', () => {
     expect(resolveSubscriptionEffectiveAmount({}, plan)).toBe(30_000);
   });

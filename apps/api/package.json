@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "fix:patient-profile-indexes": "node scripts/fix-patient-profile-indexes.mjs",
-    "fix:patient-identity-indexes": "node scripts/fix-patient-identity-indexes.mjs"
+    "fix:patient-identity-indexes": "node scripts/fix-patient-identity-indexes.mjs",
+    "migrate:internal-admin-subscriptions": "node scripts/migrate-internal-admin-subscriptions.mjs"
   },
   "dependencies": {
     "@starter/shared-types": "0.1.0",
