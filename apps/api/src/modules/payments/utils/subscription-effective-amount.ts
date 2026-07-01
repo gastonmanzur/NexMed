@@ -1,6 +1,7 @@
 type DiscountType = "percentage" | "fixed";
 
 type AmountSource = {
+  billingMode?: 'standard' | 'complimentary' | 'not_applicable' | string | null;
   finalAmount?: number | null;
   originalAmount?: number | null;
   discountAmount?: number | null;
@@ -34,6 +35,10 @@ export const resolveSubscriptionEffectiveAmount = (
   subscription: AmountSource,
   plan?: PlanAmountSource | null,
 ): number => {
+  if (subscription.billingMode === 'not_applicable' || subscription.billingMode === 'complimentary') {
+    return 0;
+  }
+
   const finalAmount = finiteNumberOrNull(subscription.finalAmount);
   if (finalAmount !== null) {
     return clampAndRoundAmount(finalAmount);

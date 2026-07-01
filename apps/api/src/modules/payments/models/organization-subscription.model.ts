@@ -1,6 +1,8 @@
 import mongoose, { type InferSchemaType, type Model } from 'mongoose';
 
 export const organizationSubscriptionStatuses = ['trial', 'active', 'past_due', 'suspended', 'canceled'] as const;
+export const billingModes = ['standard', 'complimentary', 'not_applicable'] as const;
+export const billingExemptionReasons = ['internal_admin', 'test_account', 'manual'] as const;
 
 const organizationSubscriptionSchema = new mongoose.Schema(
   {
@@ -19,6 +21,9 @@ const organizationSubscriptionSchema = new mongoose.Schema(
     discountAmount: { type: Number, required: false, min: 0 },
     originalAmount: { type: Number, required: false, min: 0 },
     finalAmount: { type: Number, required: false, min: 0 },
+    billingMode: { type: String, enum: billingModes, required: true, default: 'standard', index: true },
+    billingExemptionReason: { type: String, enum: billingExemptionReasons, required: false },
+    billingExemptAt: { type: Date, required: false },
     discountAppliedAt: { type: Date, required: false },
     discountAppliedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }
   },

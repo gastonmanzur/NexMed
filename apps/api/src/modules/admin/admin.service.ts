@@ -154,7 +154,7 @@ export class AdminService {
       .sort({ updatedAt: -1 })
       .limit(8)
       .lean();
-    const activeSubscriptions = await OrganizationSubscriptionModel.find({ status: 'active' }).lean();
+    const activeSubscriptions = await OrganizationSubscriptionModel.find({ status: 'active', billingMode: { $ne: 'not_applicable' } }).lean();
     const activeSubscriptionOrgIds = Array.from(new Set(activeSubscriptions.map((item) => item.organizationId.toString())));
     const activeSubscriptionPlanIds = Array.from(new Set(activeSubscriptions.map((item) => item.planId.toString())));
     const activeSubscriptionOrganizations = await OrganizationModel.find({ _id: { $in: activeSubscriptionOrgIds } }, { createdByUserId: 1 }).lean();
@@ -171,6 +171,7 @@ export class AdminService {
     let bonifiedOrganizations = 0;
 
     for (const subscription of activeSubscriptions) {
+      if (subscription.billingMode === 'not_applicable') continue;
       const organization = organizationById.get(subscription.organizationId.toString());
       const creator = organization ? creatorUserById.get(organization.createdByUserId.toString()) : null;
       const isInternalAdminAccount = creator?.globalRole === 'super_admin' || creator?.role === 'admin';
@@ -178,7 +179,9 @@ export class AdminService {
 
       const effectiveAmount = resolveSubscriptionEffectiveAmount(subscription, plansById.get(subscription.planId.toString()));
       estimatedMonthlyRevenue += effectiveAmount;
-      if (effectiveAmount > 0) {
+      if (subscription.billingMode === 'complimentary') {
+        bonifiedOrganizations += 1;
+      } else if (effectiveAmount > 0) {
         paidOrganizations += 1;
       } else {
         bonifiedOrganizations += 1;
@@ -629,7 +632,9 @@ export class AdminService {
         const organization = organizationsById.get(subscription.organizationId.toString());
         const creator = organization ? creatorUserById.get(organization.createdByUserId.toString()) : null;
         const plan = plansById.get(subscription.planId.toString());
-        const monthlyAmount = resolveSubscriptionEffectiveAmount(subscription, plan);
+        const billingMode = subscription.billingMode ?? (subscription.finalAmount === 0 ? 'complimentary' : 'standard');
+        const billingApplicable = billingMode !== 'not_applicable';
+        const monthlyAmount = billingApplicable ? resolveSubscriptionEffectiveAmount(subscription, plan) : 0;
 
         return {
           id: subscription._id.toString(),
@@ -637,14 +642,18 @@ export class AdminService {
           organizationName: organization?.displayName ?? organization?.name ?? 'Organización',
           status: subscription.status,
           planId: subscription.planId.toString(),
-          planName: plan?.name ?? null,
+          planName: billingApplicable ? plan?.name ?? null : 'No aplica',
           originalAmount: subscription.originalAmount ?? plan?.billingPriceArs ?? plan?.price ?? null,
           monthlyAmount,
+          effectiveMonthlyAmount: monthlyAmount,
+          billingMode,
+          billingApplicable,
+          billingExemptionReason: subscription.billingExemptionReason ?? null,
           discountAmount: subscription.discountAmount ?? null,
           discountType: subscription.discountType ?? null,
           discountValue: subscription.discountValue ?? null,
           discountCode: subscription.discountCode ?? null,
-          isFullyBonified: monthlyAmount === 0,
+          isFullyBonified: billingMode === 'complimentary' || (billingApplicable && monthlyAmount === 0),
           isInternalAdminAccount: creator?.globalRole === 'super_admin' || creator?.role === 'admin',
           currency: plan?.billingCurrency ?? plan?.currency ?? null,
           provider: subscription.provider,

@@ -21,6 +21,9 @@ export class OrganizationSubscriptionRepository {
     discountAmount?: number;
     originalAmount?: number;
     finalAmount?: number;
+    billingMode?: 'standard' | 'complimentary' | 'not_applicable';
+    billingExemptionReason?: 'internal_admin' | 'test_account' | 'manual';
+    billingExemptAt?: Date;
     discountAppliedAt?: Date;
     discountAppliedBy?: string;
   }): Promise<OrganizationSubscriptionDocument> {
@@ -42,6 +45,9 @@ export class OrganizationSubscriptionRepository {
           ...(input.discountAmount !== undefined ? { discountAmount: input.discountAmount } : {}),
           ...(input.originalAmount !== undefined ? { originalAmount: input.originalAmount } : {}),
           ...(input.finalAmount !== undefined ? { finalAmount: input.finalAmount } : {}),
+          ...(input.billingMode !== undefined ? { billingMode: input.billingMode } : {}),
+          ...(input.billingExemptionReason !== undefined ? { billingExemptionReason: input.billingExemptionReason } : {}),
+          ...(input.billingExemptAt !== undefined ? { billingExemptAt: input.billingExemptAt } : {}),
           ...(input.discountAppliedAt !== undefined ? { discountAppliedAt: input.discountAppliedAt } : {}),
           ...(input.discountAppliedBy !== undefined ? { discountAppliedBy: input.discountAppliedBy } : {})
         }
@@ -63,6 +69,9 @@ export class OrganizationSubscriptionRepository {
     discountAmount?: number;
     originalAmount?: number;
     finalAmount?: number;
+    billingMode?: 'standard' | 'complimentary' | 'not_applicable';
+    billingExemptionReason?: 'internal_admin' | 'test_account' | 'manual';
+    billingExemptAt?: Date;
     discountAppliedAt?: Date;
     discountAppliedBy?: string;
   }): Promise<OrganizationSubscriptionDocument | null> {
@@ -81,6 +90,9 @@ export class OrganizationSubscriptionRepository {
           ...(input.discountAmount !== undefined ? { discountAmount: input.discountAmount } : {}),
           ...(input.originalAmount !== undefined ? { originalAmount: input.originalAmount } : {}),
           ...(input.finalAmount !== undefined ? { finalAmount: input.finalAmount } : {}),
+          ...(input.billingMode !== undefined ? { billingMode: input.billingMode } : {}),
+          ...(input.billingExemptionReason !== undefined ? { billingExemptionReason: input.billingExemptionReason } : {}),
+          ...(input.billingExemptAt !== undefined ? { billingExemptAt: input.billingExemptAt } : {}),
           ...(input.discountAppliedAt !== undefined ? { discountAppliedAt: input.discountAppliedAt } : {}),
           ...(input.discountAppliedBy !== undefined ? { discountAppliedBy: input.discountAppliedBy } : {})
         }

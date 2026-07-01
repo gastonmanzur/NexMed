@@ -49,6 +49,10 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
   const [discountError, setDiscountError] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
   const [summary, setSummary] = useState<{
+    billingApplicable: boolean;
+    billingMode: 'standard' | 'complimentary' | 'not_applicable';
+    effectiveMonthlyAmount: number;
+    message?: string;
     subscription: {
       id: string;
       status: SubscriptionStatus;
@@ -56,9 +60,9 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
       startedAt: string | null;
       expiresAt: string | null;
       autoRenew: boolean;
-    };
-    plan: PlanItem;
-    limits: { maxProfessionalsActive: number };
+    } | null;
+    plan: PlanItem | null;
+    limits: { unlimited?: boolean; maxProfessionalsActive: number | null };
   } | null>(null);
 
   const loadData = async (options?: { forceSync?: boolean }): Promise<void> => {
@@ -113,9 +117,9 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
 
         setSummary(next);
 
-        if (next.subscription.status !== 'past_due') {
+        if (!next.subscription || next.subscription.status !== 'past_due') {
           setIsConfirmingPayment(false);
-          setMessage(next.subscription.status === 'active' ? '¡Pago confirmado! Tu suscripción ya está activa.' : 'Actualizamos el estado de tu suscripción.');
+          setMessage(next.subscription?.status === 'active' ? '¡Pago confirmado! Tu suscripción ya está activa.' : 'Actualizamos el estado de tu suscripción.');
           return;
         }
 
@@ -145,7 +149,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
   useEffect(() => {
     if (!accessToken || !activeOrganizationId || !summary) return;
     if (didRunPastDueFallbackSync) return;
-    if (summary.subscription.provider !== 'mercadopago' || summary.subscription.status !== 'past_due') return;
+    if (!summary.billingApplicable || !summary.subscription || summary.subscription.provider !== 'mercadopago' || summary.subscription.status !== 'past_due') return;
 
     setDidRunPastDueFallbackSync(true);
     setMessage('Verificando estado de tu suscripción con Mercado Pago...');
@@ -236,7 +240,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
     }
   };
 
-  const requiresSubscription = !!summary && ['trial', 'past_due', 'suspended', 'canceled'].includes(summary.subscription.status);
+  const requiresSubscription = !!summary?.billingApplicable && !!summary.subscription && ['trial', 'past_due', 'suspended', 'canceled'].includes(summary.subscription.status);
 
   const statusMeta: { label: string; tone: 'active' | 'warn' | 'danger'; message: string } = (() => {
     if (!summary) {
@@ -245,6 +249,14 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
         tone: 'warn',
         message: 'No pudimos cargar el estado de la suscripción de tu organización.'
       };
+    }
+
+    if (!summary.billingApplicable) {
+      return { label: 'Cuenta interna', tone: 'active', message: 'La facturación no aplica a administradores globales.' };
+    }
+
+    if (!summary.subscription || !summary.plan) {
+      return { label: 'Sin suscripción', tone: 'warn', message: 'No pudimos cargar el plan de esta organización.' };
     }
 
     if (summary.subscription.status === 'active') {
@@ -293,14 +305,23 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
         {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
         {message ? <p style={{ color: '#1f6f43' }}>{message}</p> : null}
 
-        {summary ? (
+        {summary && !summary.billingApplicable ? (
+          <section className="nx-subscription-status nx-subscription-status--active">
+            <div>
+              <span className="nx-subscription-status__badge">Cuenta interna de NexMed</span>
+              <p className="nx-subscription-status__message">La facturación no aplica a administradores globales.</p>
+              <p><strong>Plan actual:</strong> No aplica</p>
+              <p><strong>Importe mensual:</strong> {money(summary.effectiveMonthlyAmount, 'ARS')}</p>
+            </div>
+          </section>
+        ) : summary && summary.subscription && summary.plan ? (
           <section className={`nx-subscription-status nx-subscription-status--${statusMeta.tone}`}>
             <div>
               <span className="nx-subscription-status__badge">{statusMeta.label}</span>
               <p className="nx-subscription-status__message">{statusMeta.message}</p>
               <p><strong>Plan actual:</strong> {summary.plan.name}</p>
               <p><strong>Estado:</strong> {summary.subscription.status}</p>
-              <p><strong>Límite de profesionales activos:</strong> {summary.limits.maxProfessionalsActive}</p>
+              <p><strong>Límite de profesionales activos:</strong> {summary.limits.unlimited ? 'Ilimitado' : summary.limits.maxProfessionalsActive}</p>
               {summary.subscription.expiresAt ? <p><strong>Vence:</strong> {new Date(summary.subscription.expiresAt).toLocaleDateString('es-AR')}</p> : null}
             </div>
             {isConfirmingPayment ? <p style={{ color: '#7a5d00' }}>Estamos confirmando tu pago...</p> : null}
@@ -320,10 +341,10 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
         ) : null}
       </Card>
 
-      <Card title="Planes disponibles" subtitle="Todos los planes son pagos y se activan al iniciar la suscripción.">
+      {summary?.billingApplicable === false ? null : <Card title="Planes disponibles" subtitle="Todos los planes son pagos y se activan al iniciar la suscripción.">
         <div id="planes-disponibles" className="nx-subscription-grid">
           {plans.map((plan) => {
-            const isCurrent = summary?.plan.id === plan.id;
+            const isCurrent = summary?.plan?.id === plan.id;
             const isRecommended = plan.code === 'growth';
             const isStarter = plan.code === 'starter';
 
@@ -396,7 +417,7 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
             );
           })}
         </div>
-      </Card>
+      </Card>}
     </main>
   );
 };

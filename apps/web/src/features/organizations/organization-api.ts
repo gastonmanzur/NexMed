@@ -337,6 +337,11 @@ export const organizationApi = {
   },
 
   getSubscription: async (accessToken: string, organizationId: string, options?: { sync?: boolean }): Promise<{
+    billingApplicable: boolean;
+    billingMode: 'standard' | 'complimentary' | 'not_applicable';
+    effectiveMonthlyAmount: number;
+    billingExemptionReason?: 'internal_admin' | 'test_account' | 'manual' | null;
+    message?: string;
     subscription: {
       id: string;
       status: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
@@ -344,7 +349,7 @@ export const organizationApi = {
       startedAt: string | null;
       expiresAt: string | null;
       autoRenew: boolean;
-    };
+    } | null;
     plan: {
       id: string;
       code: string;
@@ -358,11 +363,16 @@ export const organizationApi = {
       maxProfessionalsActive: number;
       status: 'active' | 'inactive';
       description: string | null;
-    };
-    limits: { maxProfessionalsActive: number };
+    } | null;
+    limits: { unlimited?: boolean; maxProfessionalsActive: number | null };
   }> => {
     const query = options?.sync ? '?sync=true' : '';
     const result = await request<{ success: true; data: {
+      billingApplicable: boolean;
+      billingMode: 'standard' | 'complimentary' | 'not_applicable';
+      effectiveMonthlyAmount: number;
+      billingExemptionReason?: 'internal_admin' | 'test_account' | 'manual' | null;
+      message?: string;
       subscription: {
         id: string;
         status: 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
@@ -370,7 +380,7 @@ export const organizationApi = {
         startedAt: string | null;
         expiresAt: string | null;
         autoRenew: boolean;
-      };
+      } | null;
       plan: {
         id: string;
         code: string;
@@ -384,8 +394,8 @@ export const organizationApi = {
         maxProfessionalsActive: number;
         status: 'active' | 'inactive';
         description: string | null;
-      };
-      limits: { maxProfessionalsActive: number };
+      } | null;
+      limits: { unlimited?: boolean; maxProfessionalsActive: number | null };
     } }>(`/organizations/${organizationId}/subscription${query}`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${accessToken}` }
