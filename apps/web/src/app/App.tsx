@@ -12,6 +12,7 @@ import { AdminPlansPage } from '../features/admin/AdminPlansPage';
 import { AdminDiscountsPage } from '../features/admin/AdminDiscountsPage';
 import { AdminDiscountCreatePage } from '../features/admin/AdminDiscountCreatePage';
 import { AdminDiscountDetailPage } from '../features/admin/AdminDiscountDetailPage';
+import { AdminWhatsAppSettingsPage } from '../features/admin/AdminWhatsAppSettingsPage';
 import {
   LoginPage,
   RegisterPage,
@@ -481,6 +482,15 @@ export const App = (): ReactElement => {
         element={
           <ProtectedRoute allowedGlobalRoles={['super_admin']}>
             {shell(<AdminDiscountCreatePage />)}
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/whatsapp"
+        element={
+          <ProtectedRoute allowedGlobalRoles={['super_admin']}>
+            {shell(<AdminWhatsAppSettingsPage />)}
           </ProtectedRoute>
         }
       />

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../../core/async-handler.js';
 import { requireAuth, requireRoles } from '../auth/middleware/auth.middleware.js';
 import { AdminController } from './admin.controller.js';
+import { organizationWhatsAppSettingsController } from '../whatsapp/controllers/organization-whatsapp-settings.controller.js';
 
 const controller = new AdminController();
 
@@ -33,3 +34,6 @@ adminRouter.patch('/organizations/:organizationId/status', asyncHandler(controll
 adminRouter.patch('/organizations/:organizationId/beta', asyncHandler(controller.updateOrganizationBeta));
 adminRouter.get('/monetization-config', asyncHandler(controller.getMonetizationConfig));
 adminRouter.patch('/monetization-config', asyncHandler(controller.updateMonetizationConfig));
+adminRouter.get('/whatsapp-settings', asyncHandler(organizationWhatsAppSettingsController.getGlobal));
+adminRouter.patch('/whatsapp-settings', asyncHandler(organizationWhatsAppSettingsController.upsertGlobal));
+adminRouter.patch('/organizations/:organizationId/whatsapp-suspension', asyncHandler(organizationWhatsAppSettingsController.setOrganizationSuspended));
