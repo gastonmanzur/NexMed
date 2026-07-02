@@ -355,5 +355,31 @@ export const adminApi = {
       headers: { Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify(input)
     });
+  },
+
+  getWhatsAppSettings: async (accessToken: string) => {
+    const result = await request<{ success: true; data: import('@starter/shared-types').GlobalWhatsAppSettingsDto }>('/admin/whatsapp-settings', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return result.data;
+  },
+
+  updateWhatsAppSettings: async (accessToken: string, input: Partial<import('@starter/shared-types').GlobalWhatsAppSettingsDto>) => {
+    const result = await request<{ success: true; data: import('@starter/shared-types').GlobalWhatsAppSettingsDto }>('/admin/whatsapp-settings', {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input)
+    });
+    return result.data;
+  },
+
+  setOrganizationWhatsAppSuspension: async (accessToken: string, organizationId: string, suspended: boolean) => {
+    const result = await request<{ success: true; data: import('@starter/shared-types').OrganizationWhatsAppSettingsDto }>(`/admin/organizations/${organizationId}/whatsapp-suspension`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ suspended })
+    });
+    return result.data;
   }
 };

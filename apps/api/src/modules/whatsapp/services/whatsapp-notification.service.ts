@@ -65,7 +65,7 @@ export class WhatsAppNotificationService {
 
   async scheduleTestNotification(organizationId: string, phone: string, patientName = 'Paciente de prueba'): Promise<{ id: string; status: string }> {
     const settings = await this.settings.resolve(organizationId);
-    if (!settings.enabled) throw Object.assign(new Error('WhatsApp está desactivado para esta organización'), { code: 'WHATSAPP_DISABLED_FOR_ORGANIZATION' });
+    if (!this.settings.isEnabledForOrganization(settings, organizationId)) throw Object.assign(new Error('WhatsApp está desactivado para esta organización'), { code: 'WHATSAPP_DISABLED_FOR_ORGANIZATION' });
     const normalized = normalizeArgentinaWhatsAppPhone(phone);
     const now = new Date();
     const organization = await this.organizations.findById(organizationId);
@@ -111,7 +111,7 @@ export class WhatsAppNotificationService {
     if (!supportedTypes.has(notification.type)) return { status: 'failed', notification: await this.markNotificationFailed(notificationId, 'UNSUPPORTED_NOTIFICATION_TYPE', 'Tipo de notificación WhatsApp no soportado'), reason: 'UNSUPPORTED_NOTIFICATION_TYPE' };
     if (!supportedProviders.has(notification.provider)) return { status: 'failed', notification: await this.markNotificationFailed(notificationId, 'UNSUPPORTED_PROVIDER', 'Proveedor WhatsApp no soportado o mal configurado'), reason: 'UNSUPPORTED_PROVIDER' };
     const settings = await this.settings.resolve(notification.organizationId.toString());
-    if (!settings.enabled) return { status: 'failed', notification: await this.markNotificationFailed(notificationId, 'WHATSAPP_DISABLED_FOR_ORGANIZATION', 'WhatsApp está desactivado para esta organización'), reason: 'WHATSAPP_DISABLED_FOR_ORGANIZATION' };
+    if (!this.settings.isEnabledForOrganization(settings, notification.organizationId.toString())) return { status: 'failed', notification: await this.markNotificationFailed(notificationId, 'WHATSAPP_DISABLED_FOR_ORGANIZATION', 'WhatsApp está desactivado para esta organización'), reason: 'WHATSAPP_DISABLED_FOR_ORGANIZATION' };
     if (!env.WHATSAPP_ACCESS_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) return { status: 'failed', notification: await this.markNotificationFailed(notificationId, 'META_WHATSAPP_GLOBAL_PROVIDER_NOT_CONFIGURED', 'Proveedor WhatsApp no soportado o mal configurado'), reason: 'META_WHATSAPP_GLOBAL_PROVIDER_NOT_CONFIGURED' };
     if (!notification.normalizedRecipientPhone) return { status: 'failed', notification: await this.markNotificationFailed(notificationId, 'INVALID_RECIPIENT_PHONE', 'Número destino inválido'), reason: 'INVALID_RECIPIENT_PHONE' };
     if (notification.appointmentId && notification.patientProfileId) { const optIn = await OrganizationPatientProfileModel.findOne({ organizationId: notification.organizationId, patientProfileId: notification.patientProfileId }).exec(); if (!optIn?.whatsappOptIn) return { status: 'skipped', notification: await this.markNotificationSkipped(notificationId, 'MISSING_OPT_IN', 'El paciente no aceptó recibir WhatsApp'), reason: 'MISSING_OPT_IN' }; }
@@ -200,7 +200,7 @@ export class WhatsAppNotificationService {
 
   private async schedule(appointmentId: string, type: NotificationType, scheduledFor: Date, prefetched?: AppointmentDocument): Promise<void> {
     const appointment = prefetched ?? await this.findAppointment(appointmentId); if (!appointment) return;
-    const settings = await this.settings.resolve(appointment.organizationId.toString()); if (!settings.enabled) return;
+    const settings = await this.settings.resolve(appointment.organizationId.toString()); if (!this.settings.isEnabledForOrganization(settings, appointment.organizationId.toString())) return;
     const normalized = normalizeArgentinaWhatsAppPhone(appointment.patientPhone);
     const orgPatientProfile = await OrganizationPatientProfileModel.findOne({ organizationId: appointment.organizationId, patientProfileId: appointment.patientProfileId }).exec()
       ?? (normalized.ok ? await OrganizationPatientProfileModel.findOne({ organizationId: appointment.organizationId, normalizedPhone: normalized.normalized }).exec() : null);

@@ -681,8 +681,15 @@ export type AppointmentNotificationStatus = 'pending' | 'processing' | 'sent' | 
 export interface OrganizationWhatsAppSettingsDto {
   organizationId: string;
   enabled: boolean;
+  inheritedFromGlobal?: boolean;
+  suspendedForOrganization?: boolean;
   provider: WhatsAppProviderName;
+  senderDisplayName?: string;
+  senderDisplayPhone?: string | null;
   displayPhoneNumber: string | null;
+  globalProviderConfigured?: boolean;
+  providerConfigured?: boolean;
+  headerImageConfigured?: boolean;
   meta: {
     phoneNumberId: string | null;
     businessAccountId: string | null;
@@ -694,11 +701,27 @@ export interface OrganizationWhatsAppSettingsDto {
     appointmentReminder: string;
     appointmentCancellation: string;
     appointmentRescheduled: string;
+    confirmation?: string;
+    test?: string | null;
+    reminder?: string;
+    cancellation?: string;
+    rescheduled?: string;
+    notice?: string;
   };
+  templateLanguage?: 'es_AR';
+  sendConfirmation?: boolean;
+  sendReminder?: boolean;
+  sendMidpointReminder?: boolean;
+  sendSecondReminder?: boolean;
   reminderHoursBefore: number;
   secondReminderHoursBefore: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface GlobalWhatsAppSettingsDto extends Omit<OrganizationWhatsAppSettingsDto, 'organizationId' | 'inheritedFromGlobal' | 'suspendedForOrganization'> {
+  key: 'global';
+  suspendedOrganizationIds: string[];
 }
 
 export interface AppointmentNotificationDto {

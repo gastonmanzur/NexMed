@@ -47,6 +47,7 @@ const adminItems: NavItem[] = [
   { id: 'admin-subscriptions', label: 'Suscripciones', to: '/admin/subscriptions' },
   { id: 'admin-plans', label: 'Planes y promociones', to: '/admin/plans' },
   { id: 'admin-discounts', label: 'Descuentos', to: '/admin/discounts' },
+  { id: 'admin-whatsapp', label: 'WhatsApp', to: '/admin/whatsapp' },
 ];
 
 const initialsFor = (firstName?: string, lastName?: string, email?: string): string => {
