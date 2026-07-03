@@ -157,11 +157,13 @@ textarea {
 .nx-brand {
   padding: 0.45rem 0.5rem;
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "pill title"
-    "pill subtitle";
-  column-gap: 0.55rem;
+  gap: 0.35rem;
+}
+.nx-brand__logo {
+  display: block;
+  width: 168px;
+  max-width: 100%;
+  height: auto;
 }
 .nx-brand__pill {
   grid-area: pill;
@@ -182,7 +184,7 @@ textarea {
   font-size: 1.1rem;
 }
 .nx-brand p {
-  margin: 0.35rem 0 0;
+  margin: 0;
   font-size: 0.83rem;
   color: var(--text-soft);
 }
