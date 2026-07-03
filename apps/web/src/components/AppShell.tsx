@@ -368,8 +368,11 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     <div className="nx-shell">
       <aside className="nx-sidebar">
         <div className="nx-brand">
-          <span className="nx-brand__pill">N</span>
-          <h3>NexMed</h3>
+          <img
+            src="/branding/nexmed-sidebar-logo.png"
+            alt="NexMed Turnos"
+            className="nx-brand__logo"
+          />
           <p>{sectionTitle}</p>
         </div>
 
