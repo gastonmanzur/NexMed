@@ -5,7 +5,7 @@ const plan = { billingPriceArs: 30_000, price: 29_000 };
 
 describe('resolveSubscriptionEffectiveAmount', () => {
   it('returns zero for not-applicable internal accounts without falling back to the plan price', () => {
-    expect(resolveSubscriptionEffectiveAmount({ billingMode: 'not_applicable', finalAmount: undefined }, plan)).toBe(0);
+    expect(resolveSubscriptionEffectiveAmount({ billingMode: 'not_applicable' }, plan)).toBe(0);
   });
 
   it('returns zero for complimentary accounts', () => {
