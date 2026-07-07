@@ -21,6 +21,46 @@ interface PlanItem {
 
 type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
 
+
+const planCardContentByCode: Record<string, { title: string; subtitle: string; benefits: string[]; badge?: string }> = {
+  starter: {
+    title: 'Starter',
+    subtitle: 'Para profesionales independientes y centros pequeños.',
+    benefits: [
+      'Hasta 3 profesionales.',
+      'Agenda y gestión de turnos.',
+      'Pacientes.',
+      'Recordatorios automáticos.',
+      '450 notificaciones de WhatsApp incluidas.'
+    ]
+  },
+  growth: {
+    title: 'Growth',
+    subtitle: 'Para centros en crecimiento.',
+    benefits: [
+      'Hasta 10 profesionales.',
+      'Todas las funciones de Starter.',
+      'Mensajería interna.',
+      'Mayor capacidad operativa.',
+      '900 notificaciones incluidas.',
+      'Soporte preferencial.'
+    ],
+    badge: 'Más elegido'
+  },
+  scale: {
+    title: 'Scale',
+    subtitle: 'Para clínicas y centros con equipos amplios.',
+    benefits: [
+      'Hasta 50 profesionales.',
+      'Todas las funciones de Growth.',
+      'Configuración asistida.',
+      'Capacitación inicial.',
+      'Soporte prioritario.',
+      '2.500 notificaciones incluidas.'
+    ]
+  }
+};
+
 interface AppliedDiscount {
   valid: true;
   code: string;
@@ -345,23 +385,26 @@ export const OrganizationSubscriptionPage = (): ReactElement => {
         <div id="planes-disponibles" className="nx-subscription-grid">
           {plans.map((plan) => {
             const isCurrent = summary?.plan?.id === plan.id;
-            const isRecommended = plan.code === 'growth';
-            const isStarter = plan.code === 'starter';
+            const cardContent = planCardContentByCode[plan.code] ?? {
+              title: plan.name,
+              subtitle: plan.description ?? 'Plan para gestionar la operación de tu centro.',
+              benefits: [
+                `Hasta ${plan.maxProfessionalsActive} profesionales activos`,
+                'Gestión de turnos y agenda',
+                'Soporte de suscripción'
+              ]
+            };
 
             return (
-              <Card key={plan.id} title={plan.name} className="nx-subscription-plan-card">
+              <Card key={plan.id} title={cardContent.title} className="nx-subscription-plan-card">
                 <div className="nx-subscription-plan-badges">
                   {isCurrent ? <span className="nx-badge">Plan actual</span> : null}
-                  {isRecommended ? <span className="nx-badge">Recomendado</span> : null}
-                  {isStarter ? <span className="nx-badge">Ideal para consultorios</span> : null}
+                  {cardContent.badge ? <span className="nx-badge">{cardContent.badge}</span> : null}
                 </div>
                 <p className="nx-subscription-price">{money(plan.displayPriceUsd, plan.displayCurrency)}<span>/mes</span></p>
-                <p>El precio comercial se muestra en USD. El cobro real en Mercado Pago se procesa en ARS por {money(plan.billingPriceArs, plan.billingCurrency)} / mes.</p>
-                <p>{plan.description ?? 'Plan para gestionar la operación de tu centro.'}</p>
+                <p>{cardContent.subtitle}</p>
                 <ul className="nx-subscription-benefits">
-                  <li>Hasta {plan.maxProfessionalsActive} profesionales activos</li>
-                  <li>Gestión de turnos y agenda</li>
-                  <li>Soporte de suscripción</li>
+                  {cardContent.benefits.map((benefit) => <li key={benefit}>{benefit}</li>)}
                 </ul>
                 {selectedPlanId === plan.id ? (
                   <section className="nx-discount-box" aria-label="Código de descuento">
