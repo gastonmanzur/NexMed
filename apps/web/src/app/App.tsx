@@ -75,6 +75,8 @@ import { AdminSellersPage } from "../features/sales/AdminSellersPage";
 import { AdminSellerDetailPage } from "../features/sales/AdminSellerDetailPage";
 import { SellerDashboardPage } from "../features/sales/SellerDashboardPage";
 import { SellerInvitePage } from "../features/sales/SellerInvitePage";
+import { SellerShell } from "../features/sales/SellerShell";
+import { SellerProtectedRoute } from "../features/sales/SellerProtectedRoute";
 
 const shell = (page: ReactElement): ReactElement => <AppShell>{page}</AppShell>;
 
@@ -565,10 +567,32 @@ export const App = (): ReactElement => {
       />
       <Route
         path="/seller"
-        element={
-          <ProtectedRoute>{shell(<SellerDashboardPage />)}</ProtectedRoute>
-        }
+        element={<Navigate to="/seller/dashboard" replace />}
       />
+      {(
+        [
+          ["dashboard", "dashboard"],
+          ["customers", "customers"],
+          ["commissions", "commissions"],
+          ["payouts", "payouts"],
+          ["referral-link", "referral"],
+          ["profile", "profile"],
+        ] as const
+      ).map(([path, section]) => (
+        <Route
+          key={path}
+          path={`/seller/${path}`}
+          element={
+            <ProtectedRoute>
+              <SellerProtectedRoute>
+                <SellerShell>
+                  <SellerDashboardPage section={section} />
+                </SellerShell>
+              </SellerProtectedRoute>
+            </ProtectedRoute>
+          }
+        />
+      ))}
       <Route
         path="/admin/organizations/:organizationId"
         element={

@@ -10,6 +10,7 @@ import { authApi } from './auth-api';
 import { useAuth } from './AuthContext';
 import { clearJoinIntent, readJoinIntent } from '../patient/join-intent';
 import { patientApi } from '../patient/patient-api';
+import { salesApi } from '../sales/sales-api';
 
 const viewStyle = { maxWidth: 560, margin: '2rem auto', padding: '1rem' };
 const authSurfaceStyle = { maxWidth: 480 };
@@ -324,6 +325,7 @@ export const PostLoginResolverPage = (): ReactElement => {
   const [hasPatientOrganizations, setHasPatientOrganizations] = useState(false);
   const [joinResolutionFailed, setJoinResolutionFailed] = useState(false);
   const [accountIntent, setAccountIntent] = useState<AccountIntent | null>(null);
+  const [hasActiveSellerProfile, setHasActiveSellerProfile] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -344,12 +346,14 @@ export const PostLoginResolverPage = (): ReactElement => {
         setHasPatientOrganizations(false);
         setJoinResolutionFailed(false);
         setAccountIntent(readAccountIntent());
+        setHasActiveSellerProfile(false);
       }
 
       const pendingJoin = readJoinIntent();
 
       let joinResolved = !pendingJoin;
       let patientOrganizationsDetected = false;
+      let sellerProfileDetected = false;
 
       try {
         if (pendingJoin) {
@@ -361,9 +365,17 @@ export const PostLoginResolverPage = (): ReactElement => {
         joinResolved = false;
       }
 
+      try {
+        await salesApi.dashboard(accessToken);
+        sellerProfileDetected = true;
+      } catch {
+        sellerProfileDetected = false;
+      }
+
       if (!cancelled) {
         setHasPatientOrganizations(patientOrganizationsDetected);
         setJoinResolutionFailed(Boolean(pendingJoin) && !joinResolved);
+        setHasActiveSellerProfile(sellerProfileDetected);
         setBootstrapResolved(true);
       }
 
@@ -450,6 +462,11 @@ export const PostLoginResolverPage = (): ReactElement => {
     clearAccountIntent();
     if (!activeOrganizationId && activeProfessionalMemberships.length > 1) return <Navigate to="/select-organization" replace />;
     return <Navigate to="/app/professional" replace />;
+  }
+
+  if (activeCenterMemberships.length === 0 && activeProfessionalMemberships.length === 0 && hasActiveSellerProfile) {
+    clearAccountIntent();
+    return <Navigate to="/seller/dashboard" replace />;
   }
 
   if (shouldGoToPatient) {
