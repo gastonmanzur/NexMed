@@ -1,13 +1,19 @@
-import type { ReactElement, ReactNode } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { NotificationDto } from '@starter/shared-types';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../features/auth/AuthContext';
-import { useNotifications } from '../features/notifications/NotificationsContext';
-import { patientApi } from '../features/patient/patient-api';
-import { organizationApi, type InternalMessageDto } from '../features/organizations/organization-api';
-import { InternalMessageDetailModal, InternalMessagePopup } from '../features/organizations/InternalMessagesCard';
-import { resolveAvatarUrl } from '../lib/resolve-avatar-url';
+import type { ReactElement, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { NotificationDto } from "@starter/shared-types";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../features/auth/AuthContext";
+import { useNotifications } from "../features/notifications/NotificationsContext";
+import { patientApi } from "../features/patient/patient-api";
+import {
+  organizationApi,
+  type InternalMessageDto,
+} from "../features/organizations/organization-api";
+import {
+  InternalMessageDetailModal,
+  InternalMessagePopup,
+} from "../features/organizations/InternalMessagesCard";
+import { resolveAvatarUrl } from "../lib/resolve-avatar-url";
 
 interface NavItem {
   id: string;
@@ -16,132 +22,220 @@ interface NavItem {
 }
 
 const centerItems: NavItem[] = [
-  { id: 'center-dashboard', label: 'Inicio', to: '/app' },
-  { id: 'center-professionals', label: 'Profesionales', to: '/app/professionals' },
-  { id: 'center-specialties', label: 'Especialidades', to: '/app/specialties' },
-  { id: 'center-appointments', label: 'Agenda', to: '/app/appointments' },
-  { id: 'center-internal-messages', label: 'Mensajes', to: '/app/internal-messages' },
-  { id: 'center-patients', label: 'Pacientes', to: '/app/patients' },
-  { id: 'center-health-insurances', label: 'Obras sociales', to: '/app/health-insurances' },
-  { id: 'center-analytics', label: 'Métricas', to: '/app/analytics' },
-  { id: 'center-invite', label: 'Invitación', to: '/app/invite' },
-  { id: 'center-subscription', label: 'Suscripción', to: '/app/subscription' },
-  { id: 'center-reminders', label: 'Recordatorios', to: '/organization/settings/reminders' },
-  { id: 'center-whatsapp', label: 'WhatsApp', to: '/organization/settings/whatsapp' },
-  { id: 'center-settings', label: 'Configuración', to: '/organization/profile' }
+  { id: "center-dashboard", label: "Inicio", to: "/app" },
+  {
+    id: "center-professionals",
+    label: "Profesionales",
+    to: "/app/professionals",
+  },
+  { id: "center-specialties", label: "Especialidades", to: "/app/specialties" },
+  { id: "center-appointments", label: "Agenda", to: "/app/appointments" },
+  {
+    id: "center-internal-messages",
+    label: "Mensajes",
+    to: "/app/internal-messages",
+  },
+  { id: "center-patients", label: "Pacientes", to: "/app/patients" },
+  {
+    id: "center-health-insurances",
+    label: "Obras sociales",
+    to: "/app/health-insurances",
+  },
+  { id: "center-analytics", label: "Métricas", to: "/app/analytics" },
+  { id: "center-invite", label: "Invitación", to: "/app/invite" },
+  { id: "center-subscription", label: "Suscripción", to: "/app/subscription" },
+  {
+    id: "center-reminders",
+    label: "Recordatorios",
+    to: "/organization/settings/reminders",
+  },
+  {
+    id: "center-whatsapp",
+    label: "WhatsApp",
+    to: "/organization/settings/whatsapp",
+  },
+  {
+    id: "center-settings",
+    label: "Configuración",
+    to: "/organization/profile",
+  },
 ];
 
 const patientItems: NavItem[] = [
-  { id: 'patient-organizations', label: 'Mis centros', to: '/patient/organizations' },
+  {
+    id: "patient-organizations",
+    label: "Mis centros",
+    to: "/patient/organizations",
+  },
   // { id: 'patient-book', label: 'Reservar turno', to: '/patient/book' },
-  { id: 'patient-appointments', label: 'Mis turnos', to: '/patient/appointments' },
-  { id: 'patient-family-members', label: 'Familiares', to: '/patient/family-members' },
-  { id: 'patient-waitlist', label: 'Waitlist', to: '/patient/waitlist' },
-  { id: 'patient-notifications', label: 'Notificaciones', to: '/patient/notifications' },
-  { id: 'patient-profile', label: 'Perfil', to: '/patient/profile' }
+  {
+    id: "patient-appointments",
+    label: "Mis turnos",
+    to: "/patient/appointments",
+  },
+  {
+    id: "patient-family-members",
+    label: "Familiares",
+    to: "/patient/family-members",
+  },
+  { id: "patient-waitlist", label: "Waitlist", to: "/patient/waitlist" },
+  {
+    id: "patient-notifications",
+    label: "Notificaciones",
+    to: "/patient/notifications",
+  },
+  { id: "patient-profile", label: "Perfil", to: "/patient/profile" },
 ];
 
 const adminItems: NavItem[] = [
-  { id: 'admin-home', label: 'Inicio', to: '/admin' },
-  { id: 'admin-organizations', label: 'Organizaciones', to: '/admin/organizations' },
-  { id: 'admin-subscriptions', label: 'Suscripciones', to: '/admin/subscriptions' },
-  { id: 'admin-plans', label: 'Planes y promociones', to: '/admin/plans' },
-  { id: 'admin-discounts', label: 'Descuentos', to: '/admin/discounts' },
-  { id: 'admin-whatsapp', label: 'WhatsApp', to: '/admin/whatsapp' },
+  { id: "admin-home", label: "Inicio", to: "/admin" },
+  {
+    id: "admin-organizations",
+    label: "Organizaciones",
+    to: "/admin/organizations",
+  },
+  { id: "admin-sellers", label: "Vendedores", to: "/admin/sellers" },
+  {
+    id: "admin-subscriptions",
+    label: "Suscripciones",
+    to: "/admin/subscriptions",
+  },
+  { id: "admin-plans", label: "Planes y promociones", to: "/admin/plans" },
+  { id: "admin-discounts", label: "Descuentos", to: "/admin/discounts" },
+  { id: "admin-whatsapp", label: "WhatsApp", to: "/admin/whatsapp" },
 ];
 
-const initialsFor = (firstName?: string, lastName?: string, email?: string): string => {
-  const fullInitials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.trim().toUpperCase();
+const initialsFor = (
+  firstName?: string,
+  lastName?: string,
+  email?: string,
+): string => {
+  const fullInitials = `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`
+    .trim()
+    .toUpperCase();
   if (fullInitials) {
     return fullInitials;
   }
-  return (email?.[0] ?? 'U').toUpperCase();
+  return (email?.[0] ?? "U").toUpperCase();
 };
 
 const notificationTypeLabel = (item: NotificationDto): string => {
   switch (item.type) {
-    case 'appointment_booked':
-      return 'Turno confirmado';
-    case 'appointment_canceled':
-      return 'Turno cancelado';
-    case 'appointment_rescheduled':
-      return 'Turno reprogramado';
-    case 'appointment_reminder':
-      return 'Recordatorio';
-    case 'availability_alert':
-      return 'Disponibilidad';
+    case "appointment_booked":
+      return "Turno confirmado";
+    case "appointment_canceled":
+      return "Turno cancelado";
+    case "appointment_rescheduled":
+      return "Turno reprogramado";
+    case "appointment_reminder":
+      return "Recordatorio";
+    case "availability_alert":
+      return "Disponibilidad";
     default:
-      return 'Novedad';
+      return "Novedad";
   }
 };
 
 const notificationTypeIcon = (item: NotificationDto): string => {
   switch (item.type) {
-    case 'appointment_booked':
-      return '✅';
-    case 'appointment_canceled':
-      return '❌';
-    case 'appointment_rescheduled':
-      return '🔄';
-    case 'appointment_reminder':
-      return '⏰';
-    case 'availability_alert':
-      return '📣';
+    case "appointment_booked":
+      return "✅";
+    case "appointment_canceled":
+      return "❌";
+    case "appointment_rescheduled":
+      return "🔄";
+    case "appointment_reminder":
+      return "⏰";
+    case "availability_alert":
+      return "📣";
     default:
-      return '🔔';
+      return "🔔";
   }
 };
 
 const relativeTime = (isoDate: string): string => {
   const diffMs = Date.now() - new Date(isoDate).getTime();
   const seconds = Math.max(Math.floor(diffMs / 1000), 0);
-  if (seconds < 60) return 'Ahora';
+  if (seconds < 60) return "Ahora";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `Hace ${minutes} min`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `Hace ${hours} h`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `Hace ${days} d`;
-  return new Date(isoDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+  return new Date(isoDate).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
 };
 
-export const AppShell = ({ children }: { children: ReactNode }): ReactElement => {
+export const AppShell = ({
+  children,
+}: {
+  children: ReactNode;
+}): ReactElement => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, memberships, activeOrganizationId, activeOrganizationSummary, clearSession, accessToken } =
-    useAuth();
-  const { unreadCount, loadingUnread, refreshUnreadCount, markOneAsReadLocally, markManyAsReadLocally } =
-    useNotifications();
+  const {
+    user,
+    memberships,
+    activeOrganizationId,
+    activeOrganizationSummary,
+    clearSession,
+    accessToken,
+  } = useAuth();
+  const {
+    unreadCount,
+    loadingUnread,
+    refreshUnreadCount,
+    markOneAsReadLocally,
+    markManyAsReadLocally,
+  } = useNotifications();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [notificationItems, setNotificationItems] = useState<NotificationDto[]>([]);
+  const [notificationItems, setNotificationItems] = useState<NotificationDto[]>(
+    [],
+  );
   const [loadingDropdown, setLoadingDropdown] = useState(false);
   const [loadingMarkAll, setLoadingMarkAll] = useState(false);
-  const [dropdownError, setDropdownError] = useState('');
+  const [dropdownError, setDropdownError] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [internalMessagePopup, setInternalMessagePopup] = useState<InternalMessageDto | null>(null);
-  const [internalMessageDetail, setInternalMessageDetail] = useState<InternalMessageDto | null>(null);
+  const [internalMessagePopup, setInternalMessagePopup] =
+    useState<InternalMessageDto | null>(null);
+  const [internalMessageDetail, setInternalMessageDetail] =
+    useState<InternalMessageDto | null>(null);
   const [markingInternalRead, setMarkingInternalRead] = useState(false);
-  const [internalMessagesRefreshKey, setInternalMessagesRefreshKey] = useState(0);
+  const [internalMessagesRefreshKey, setInternalMessagesRefreshKey] =
+    useState(0);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const mobileNavRef = useRef<HTMLDivElement | null>(null);
 
   const membership = memberships.find(
-    (item) => item.organizationId === activeOrganizationId && item.status === 'active'
+    (item) =>
+      item.organizationId === activeOrganizationId && item.status === "active",
   );
 
-  const isSuperAdmin = user?.globalRole === 'super_admin';
-  const isPatient = membership?.role === 'patient' || location.pathname.startsWith('/patient');
-  const notificationsPath = isPatient ? '/patient/notifications' : '/app/notifications';
+  const isSuperAdmin = user?.globalRole === "super_admin";
+  const isPatient =
+    membership?.role === "patient" || location.pathname.startsWith("/patient");
+  const notificationsPath = isPatient
+    ? "/patient/notifications"
+    : "/app/notifications";
   const canUseNotifications = !isSuperAdmin;
   const sortedTopNotifications = useMemo(
     () =>
       [...notificationItems]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
         .slice(0, 5),
-    [notificationItems]
+    [notificationItems],
   );
-  const hasUnreadInDropdown = sortedTopNotifications.some((item) => !item.readAt);
-  const isCenterShell = !isSuperAdmin && !isPatient && Boolean(activeOrganizationId);
+  const hasUnreadInDropdown = sortedTopNotifications.some(
+    (item) => !item.readAt,
+  );
+  const isCenterShell =
+    !isSuperAdmin && !isPatient && Boolean(activeOrganizationId);
 
   const closeNotifications = () => {
     setIsNotificationsOpen(false);
@@ -153,7 +247,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     }
     setIsNotificationsOpen(true);
     setLoadingDropdown(true);
-    setDropdownError('');
+    setDropdownError("");
     try {
       const rows = await patientApi.listNotifications(accessToken);
       setNotificationItems(rows);
@@ -182,8 +276,10 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
         await patientApi.markNotificationRead(accessToken, item.id);
         setNotificationItems((current) =>
           current.map((entry) =>
-            entry.id === item.id ? { ...entry, readAt: new Date().toISOString(), status: 'read' } : entry
-          )
+            entry.id === item.id
+              ? { ...entry, readAt: new Date().toISOString(), status: "read" }
+              : entry,
+          ),
         );
         markOneAsReadLocally();
       } catch {
@@ -205,10 +301,16 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
     setLoadingMarkAll(true);
     try {
-      await Promise.all(unreadItems.map((item) => patientApi.markNotificationRead(accessToken, item.id)));
+      await Promise.all(
+        unreadItems.map((item) =>
+          patientApi.markNotificationRead(accessToken, item.id),
+        ),
+      );
       const now = new Date().toISOString();
       setNotificationItems((current) =>
-        current.map((item) => (!item.readAt ? { ...item, readAt: now, status: 'read' } : item))
+        current.map((item) =>
+          !item.readAt ? { ...item, readAt: now, status: "read" } : item,
+        ),
       );
       markManyAsReadLocally(unreadItems.length);
     } catch {
@@ -217,8 +319,6 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
       setLoadingMarkAll(false);
     }
   };
-
-
 
   useEffect(() => {
     if (!accessToken || !activeOrganizationId || !isCenterShell) {
@@ -229,8 +329,12 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     const notifiedKey = `nexmed:notifiedInternalMessages:${activeOrganizationId}`;
     const readNotifiedIds = (): string[] => {
       try {
-        const parsed = JSON.parse(window.sessionStorage.getItem(notifiedKey) ?? '[]');
-        return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+        const parsed = JSON.parse(
+          window.sessionStorage.getItem(notifiedKey) ?? "[]",
+        );
+        return Array.isArray(parsed)
+          ? parsed.filter((item): item is string => typeof item === "string")
+          : [];
       } catch {
         return [];
       }
@@ -242,14 +346,24 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
     const pollInternalMessages = async (): Promise<void> => {
       try {
-        const result = await organizationApi.listInternalMessages(accessToken, activeOrganizationId, { status: 'unread', limit: 10 });
+        const result = await organizationApi.listInternalMessages(
+          accessToken,
+          activeOrganizationId,
+          { status: "unread", limit: 10 },
+        );
         const notifiedIds = new Set(readNotifiedIds());
         const nextMessage = result.items.find((message) => {
           const id = message._id ?? message.id;
-          return Boolean(id) && !notifiedIds.has(id ?? '') && message.toRole === 'secretary' && message.fromRole === 'professional' && message.status === 'unread';
+          return (
+            Boolean(id) &&
+            !notifiedIds.has(id ?? "") &&
+            message.toRole === "secretary" &&
+            message.fromRole === "professional" &&
+            message.status === "unread"
+          );
         });
         if (nextMessage) {
-          rememberNotifiedId(nextMessage._id ?? nextMessage.id ?? '');
+          rememberNotifiedId(nextMessage._id ?? nextMessage.id ?? "");
           setInternalMessagePopup(nextMessage);
         }
       } catch {
@@ -258,15 +372,28 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     };
 
     void pollInternalMessages();
-    const interval = window.setInterval(() => { void pollInternalMessages(); }, 12000);
+    const interval = window.setInterval(() => {
+      void pollInternalMessages();
+    }, 12000);
     return () => window.clearInterval(interval);
-  }, [accessToken, activeOrganizationId, isCenterShell, internalMessagesRefreshKey]);
+  }, [
+    accessToken,
+    activeOrganizationId,
+    isCenterShell,
+    internalMessagesRefreshKey,
+  ]);
 
-  const markInternalPopupRead = async (message: InternalMessageDto): Promise<void> => {
+  const markInternalPopupRead = async (
+    message: InternalMessageDto,
+  ): Promise<void> => {
     if (!accessToken || !activeOrganizationId) return;
     setMarkingInternalRead(true);
     try {
-      await organizationApi.markInternalMessageRead(accessToken, activeOrganizationId, message._id ?? message.id ?? '');
+      await organizationApi.markInternalMessageRead(
+        accessToken,
+        activeOrganizationId,
+        message._id ?? message.id ?? "",
+      );
       setInternalMessagePopup(null);
       setInternalMessagesRefreshKey((current) => current + 1);
     } finally {
@@ -279,21 +406,24 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
       return;
     }
     const onPointerDown = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsNotificationsOpen(false);
       }
     };
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setIsNotificationsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onEscape);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onEscape);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onEscape);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onEscape);
     };
   }, [isNotificationsOpen]);
 
@@ -307,35 +437,44 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
     }
 
     const onPointerDown = (event: MouseEvent) => {
-      if (mobileNavRef.current && !mobileNavRef.current.contains(event.target as Node)) {
+      if (
+        mobileNavRef.current &&
+        !mobileNavRef.current.contains(event.target as Node)
+      ) {
         setIsMobileNavOpen(false);
       }
     };
 
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setIsMobileNavOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onEscape);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onEscape);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onEscape);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onEscape);
     };
   }, [isMobileNavOpen]);
 
-  const items = isSuperAdmin ? adminItems : isPatient ? patientItems : centerItems;
+  const items = isSuperAdmin
+    ? adminItems
+    : isPatient
+      ? patientItems
+      : centerItems;
   const renderNavigationItems = (className: string, onNavigate?: () => void) =>
     items.map((item) => {
-      const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+      const active =
+        location.pathname === item.to ||
+        location.pathname.startsWith(`${item.to}/`);
 
       return (
         <Link
           key={item.id}
           to={item.to}
-          className={`${className}${active ? ' is-active' : ''}`}
+          className={`${className}${active ? " is-active" : ""}`}
           onClick={onNavigate}
         >
           <span className="nx-nav-link__dot" aria-hidden="true" />
@@ -344,19 +483,23 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
       );
     });
 
-  const sectionTitle =
-    isSuperAdmin
-      ? 'Panel Super Admin'
-      : isPatient
-        ? 'Portal Paciente'
-        : activeOrganizationSummary?.displayName ?? activeOrganizationSummary?.name ?? 'Centro';
+  const sectionTitle = isSuperAdmin
+    ? "Panel Super Admin"
+    : isPatient
+      ? "Portal Paciente"
+      : (activeOrganizationSummary?.displayName ??
+        activeOrganizationSummary?.name ??
+        "Centro");
 
-  const personalAvatarUrl = user?.avatar?.url ? resolveAvatarUrl(user.avatar.url) : null;
+  const personalAvatarUrl = user?.avatar?.url
+    ? resolveAvatarUrl(user.avatar.url)
+    : null;
   const organizationLogoUrl = activeOrganizationSummary?.logoUrl
     ? resolveAvatarUrl(activeOrganizationSummary.logoUrl)
     : null;
-  const isGoogleAuth = user?.provider === 'google';
-  const shouldUseOrganizationLogo = !isPatient && !isSuperAdmin && !isGoogleAuth;
+  const isGoogleAuth = user?.provider === "google";
+  const shouldUseOrganizationLogo =
+    !isPatient && !isSuperAdmin && !isGoogleAuth;
 
   const navbarAvatarUrl = isGoogleAuth
     ? personalAvatarUrl
@@ -376,9 +519,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
           <p>{sectionTitle}</p>
         </div>
 
-        <nav className="nx-nav">
-          {renderNavigationItems('nx-nav-link')}
-        </nav>
+        <nav className="nx-nav">{renderNavigationItems("nx-nav-link")}</nav>
       </aside>
 
       <div className="nx-main">
@@ -389,7 +530,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
             <div className="nx-mobile-nav" ref={mobileNavRef}>
               <button
                 type="button"
-                className={`nx-mobile-nav-toggle${isMobileNavOpen ? ' is-open' : ''}`}
+                className={`nx-mobile-nav-toggle${isMobileNavOpen ? " is-open" : ""}`}
                 aria-label="Abrir menú de navegación"
                 aria-expanded={isMobileNavOpen}
                 aria-controls="nx-mobile-nav-panel"
@@ -403,8 +544,12 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
               </button>
 
               {isMobileNavOpen ? (
-                <nav id="nx-mobile-nav-panel" className="nx-mobile-nav__panel" aria-label="Menú de navegación">
-                  {renderNavigationItems('nx-mobile-nav__item', () => {
+                <nav
+                  id="nx-mobile-nav-panel"
+                  className="nx-mobile-nav__panel"
+                  aria-label="Menú de navegación"
+                >
+                  {renderNavigationItems("nx-mobile-nav__item", () => {
                     setIsMobileNavOpen(false);
                   })}
                 </nav>
@@ -415,8 +560,8 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
               <div className="nx-notifications" ref={dropdownRef}>
                 <button
                   type="button"
-                  className={`nx-bell-button${unreadCount > 0 ? ' has-unread' : ''}`}
-                  aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ''}`}
+                  className={`nx-bell-button${unreadCount > 0 ? " has-unread" : ""}`}
+                  aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ""}`}
                   title="Ver notificaciones"
                   disabled={loadingUnread}
                   onClick={onBellClick}
@@ -438,17 +583,25 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
                   </svg>
                   {unreadCount > 0 ? (
                     <span className="nx-bell-badge" aria-hidden="true">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+                      {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   ) : null}
                 </button>
 
                 {isNotificationsOpen ? (
-                  <div className="nx-notifications-dropdown" role="dialog" aria-label="Notificaciones">
+                  <div
+                    className="nx-notifications-dropdown"
+                    role="dialog"
+                    aria-label="Notificaciones"
+                  >
                     <div className="nx-notifications-header">
                       <h4>Notificaciones</h4>
                       {hasUnreadInDropdown ? (
-                        <button type="button" onClick={() => void markAllAsRead()} disabled={loadingMarkAll}>
+                        <button
+                          type="button"
+                          onClick={() => void markAllAsRead()}
+                          disabled={loadingMarkAll}
+                        >
                           Marcar todas como leídas
                         </button>
                       ) : null}
@@ -456,9 +609,15 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
                     <div className="nx-notifications-body">
                       {loadingDropdown ? (
-                        <div className="nx-notification-skeleton-list" aria-hidden="true">
+                        <div
+                          className="nx-notification-skeleton-list"
+                          aria-hidden="true"
+                        >
                           {[0, 1, 2].map((idx) => (
-                            <div key={idx} className="nx-notification-skeleton-row">
+                            <div
+                              key={idx}
+                              className="nx-notification-skeleton-row"
+                            >
                               <span className="nx-notification-skeleton-icon" />
                               <div className="nx-notification-skeleton-text">
                                 <span />
@@ -471,14 +630,21 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
                       ) : null}
 
                       {!loadingDropdown && dropdownError ? (
-                        <p className="nx-notifications-inline-error">{dropdownError}</p>
+                        <p className="nx-notifications-inline-error">
+                          {dropdownError}
+                        </p>
                       ) : null}
 
-                      {!loadingDropdown && !dropdownError && sortedTopNotifications.length === 0 ? (
+                      {!loadingDropdown &&
+                      !dropdownError &&
+                      sortedTopNotifications.length === 0 ? (
                         <div className="nx-notifications-empty">
                           <span aria-hidden="true">🔔</span>
                           <h5>No tenés notificaciones nuevas</h5>
-                          <p>Cuando haya novedades importantes, las vas a ver acá.</p>
+                          <p>
+                            Cuando haya novedades importantes, las vas a ver
+                            acá.
+                          </p>
                         </div>
                       ) : null}
 
@@ -487,16 +653,21 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
                             <button
                               key={item.id}
                               type="button"
-                              className={`nx-notification-item${item.readAt ? '' : ' is-unread'}`}
+                              className={`nx-notification-item${item.readAt ? "" : " is-unread"}`}
                               onClick={() => void markOneAsReadAndOpen(item)}
                             >
-                              <div className="nx-notification-item__icon" aria-hidden="true">
+                              <div
+                                className="nx-notification-item__icon"
+                                aria-hidden="true"
+                              >
                                 {notificationTypeIcon(item)}
                               </div>
                               <div className="nx-notification-item__content">
                                 <div className="nx-notification-item__topline">
                                   <strong>{item.title}</strong>
-                                  <time dateTime={item.createdAt}>{relativeTime(item.createdAt)}</time>
+                                  <time dateTime={item.createdAt}>
+                                    {relativeTime(item.createdAt)}
+                                  </time>
                                 </div>
                                 <p>{item.message}</p>
                                 <small>{notificationTypeLabel(item)}</small>
@@ -525,7 +696,11 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
             <div className="nx-user">
               {navbarAvatarUrl ? (
-                <img src={navbarAvatarUrl} alt="Avatar de usuario" className="nx-avatar" />
+                <img
+                  src={navbarAvatarUrl}
+                  alt="Avatar de usuario"
+                  className="nx-avatar"
+                />
               ) : (
                 <span className="nx-avatar nx-avatar--fallback">
                   {initialsFor(user?.firstName, user?.lastName, user?.email)}
@@ -534,9 +709,12 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
 
               <div className="nx-user__meta">
                 <div className="nx-user__name">
-                  {`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Usuario'}
+                  {`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
+                    "Usuario"}
                 </div>
-                <div className="nx-user__email">{user?.email ?? 'Sin email'}</div>
+                <div className="nx-user__email">
+                  {user?.email ?? "Sin email"}
+                </div>
               </div>
 
               <button
@@ -544,7 +722,7 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
                 className="nx-btn-secondary nx-signout-btn"
                 onClick={async () => {
                   await clearSession();
-                  navigate('/login', { replace: true });
+                  navigate("/login", { replace: true });
                 }}
               >
                 Cerrar sesión
@@ -560,14 +738,26 @@ export const AppShell = ({ children }: { children: ReactNode }): ReactElement =>
             message={internalMessagePopup}
             currentRole="secretary"
             markingRead={markingInternalRead}
-            onViewMessage={() => { setInternalMessageDetail(internalMessagePopup); setInternalMessagePopup(null); }}
+            onViewMessage={() => {
+              setInternalMessageDetail(internalMessagePopup);
+              setInternalMessagePopup(null);
+            }}
             onMarkRead={() => void markInternalPopupRead(internalMessagePopup)}
             onClose={() => setInternalMessagePopup(null)}
           />
         ) : null}
 
         {internalMessageDetail && accessToken && activeOrganizationId ? (
-          <InternalMessageDetailModal accessToken={accessToken} organizationId={activeOrganizationId} message={internalMessageDetail} allowReply onClose={() => setInternalMessageDetail(null)} onRefresh={() => { setInternalMessagesRefreshKey((current) => current + 1); }} />
+          <InternalMessageDetailModal
+            accessToken={accessToken}
+            organizationId={activeOrganizationId}
+            message={internalMessageDetail}
+            allowReply
+            onClose={() => setInternalMessageDetail(null)}
+            onRefresh={() => {
+              setInternalMessagesRefreshKey((current) => current + 1);
+            }}
+          />
         ) : null}
       </div>
     </div>
