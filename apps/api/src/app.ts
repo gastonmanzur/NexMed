@@ -1,37 +1,46 @@
-import path from 'node:path';
-import cookieParser from 'cookie-parser';
-import cors from 'cors';
-import express from 'express';
-import helmet from 'helmet';
-import { pinoHttp } from 'pino-http';
-import { env } from './config/env.js';
-import { logger } from './config/logger.js';
-import { errorMiddleware } from './core/error-middleware.js';
-import { notFoundMiddleware } from './core/not-found-middleware.js';
-import { authRouter } from './modules/auth/auth.routes.js';
-import { avatarRouter } from './modules/avatar/avatar.routes.js';
-import { healthRouter } from './modules/health/health.routes.js';
-import { pushRouter } from './modules/push/push.routes.js';
-import { paymentsRouter } from './modules/payments/payments.routes.js';
-import { adminRouter } from './modules/admin/admin.routes.js';
-import { organizationsRouter } from './modules/organizations/organizations.routes.js';
-import { joinRouter, patientRouter, publicPatientRouter } from './modules/patient/patient.routes.js';
-import { notificationsRouter } from './modules/notifications/notifications.routes.js';
-import { reminderAdminRouter } from './modules/reminders/reminder.routes.js';
-import { feedbackRouter } from './modules/feedback/feedback.routes.js';
-import { plansRouter } from './modules/plans/plans.routes.js';
-import { professionalPanelRouter } from './modules/professional-panel/professional-panel.routes.js';
-import { professionalInvitesRouter } from './modules/professionals/professional-invites.routes.js';
-import { whatsappRouter } from './modules/whatsapp/whatsapp.routes.js';
+import path from "node:path";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import express from "express";
+import helmet from "helmet";
+import { pinoHttp } from "pino-http";
+import { env } from "./config/env.js";
+import { logger } from "./config/logger.js";
+import { errorMiddleware } from "./core/error-middleware.js";
+import { notFoundMiddleware } from "./core/not-found-middleware.js";
+import { authRouter } from "./modules/auth/auth.routes.js";
+import { avatarRouter } from "./modules/avatar/avatar.routes.js";
+import { healthRouter } from "./modules/health/health.routes.js";
+import { pushRouter } from "./modules/push/push.routes.js";
+import { paymentsRouter } from "./modules/payments/payments.routes.js";
+import { adminRouter } from "./modules/admin/admin.routes.js";
+import { organizationsRouter } from "./modules/organizations/organizations.routes.js";
+import {
+  joinRouter,
+  patientRouter,
+  publicPatientRouter,
+} from "./modules/patient/patient.routes.js";
+import { notificationsRouter } from "./modules/notifications/notifications.routes.js";
+import { reminderAdminRouter } from "./modules/reminders/reminder.routes.js";
+import { feedbackRouter } from "./modules/feedback/feedback.routes.js";
+import { plansRouter } from "./modules/plans/plans.routes.js";
+import { professionalPanelRouter } from "./modules/professional-panel/professional-panel.routes.js";
+import { professionalInvitesRouter } from "./modules/professionals/professional-invites.routes.js";
+import { whatsappRouter } from "./modules/whatsapp/whatsapp.routes.js";
+import { adminSalesRouter } from "./modules/sales/admin-sales.routes.js";
+import {
+  publicSalesRouter,
+  salesRouter,
+} from "./modules/sales/sales.routes.js";
 
 export const createApp = () => {
   const app = express();
 
   app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' }
-  })
-);
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    }),
+  );
 
   app.use(
     cors({
@@ -41,15 +50,14 @@ export const createApp = () => {
           return;
         }
 
-        callback(new Error('Not allowed by CORS'));
+        callback(new Error("Not allowed by CORS"));
       },
-      credentials: true
-    })
+      credentials: true,
+    }),
   );
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
   app.use(pinoHttp({ logger }));
-
 
   app.use(
     env.AVATAR_PUBLIC_BASE_PATH,
@@ -57,27 +65,30 @@ export const createApp = () => {
       fallthrough: false,
       index: false,
       immutable: true,
-      maxAge: '7d'
-    })
+      maxAge: "7d",
+    }),
   );
 
-  app.use('/api/health', healthRouter);
-  app.use('/api/auth', authRouter);
-  app.use('/api/avatars', avatarRouter);
-  app.use('/api/push', pushRouter);
-  app.use('/api/payments', paymentsRouter);
-  app.use('/api/admin', adminRouter);
-  app.use('/api/admin/reminders', reminderAdminRouter);
-  app.use('/api/organizations', organizationsRouter);
-  app.use('/api/join', joinRouter);
-  app.use('/api/public', publicPatientRouter);
-  app.use('/api/patient', patientRouter);
-  app.use('/api/notifications', notificationsRouter);
-  app.use('/api/feedback', feedbackRouter);
-  app.use('/api/plans', plansRouter);
-  app.use('/api/professional', professionalPanelRouter);
-  app.use('/api/professional-invites', professionalInvitesRouter);
-  app.use('/api/whatsapp', whatsappRouter);
+  app.use("/api/health", healthRouter);
+  app.use("/api/auth", authRouter);
+  app.use("/api/avatars", avatarRouter);
+  app.use("/api/push", pushRouter);
+  app.use("/api/payments", paymentsRouter);
+  app.use("/api/admin", adminRouter);
+  app.use("/api/admin/sales", adminSalesRouter);
+  app.use("/api/admin/reminders", reminderAdminRouter);
+  app.use("/api/organizations", organizationsRouter);
+  app.use("/api/join", joinRouter);
+  app.use("/api/public", publicPatientRouter);
+  app.use("/api/patient", patientRouter);
+  app.use("/api/notifications", notificationsRouter);
+  app.use("/api/feedback", feedbackRouter);
+  app.use("/api/plans", plansRouter);
+  app.use("/api/professional", professionalPanelRouter);
+  app.use("/api/professional-invites", professionalInvitesRouter);
+  app.use("/api/whatsapp", whatsappRouter);
+  app.use("/api/sales/public", publicSalesRouter);
+  app.use("/api/sales", salesRouter);
 
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);
